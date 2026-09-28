@@ -47,6 +47,12 @@ export interface AdminDiscountCode {
   notes: string | null;
   created_at: string;
   stats: DiscountCodeStats;
+  /** Refused to buyers who have ordered before. False until migrated. */
+  first_order_only?: boolean;
+  /** Products the code takes nothing off. */
+  excluded_product_ids?: string[];
+  /** Slug of the landing page this code is the offer for, if any. */
+  landing_page?: string | null;
 }
 
 export interface AffiliateOption {

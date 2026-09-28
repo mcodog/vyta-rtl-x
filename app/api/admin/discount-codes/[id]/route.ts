@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { logAuditServer } from '@/lib/admin/audit';
 import { resolveStaffCaller } from '@/lib/affiliate/route-auth';
-import { DISCOUNT_CODE_COLUMNS, shapeDiscountCodeInput } from '@/lib/affiliate/discount-codes';
+import {
+  hasRestrictions,
+  RESTRICTIONS_NEED_MIGRATION,
+  shapeDiscountCodeInput,
+  withoutRestrictions,
+} from '@/lib/affiliate/discount-codes';
+import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,12 +44,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
-  const { data, error } = await db
-    .from('discount_codes')
-    .update({ ...update, updated_at: new Date().toISOString() })
-    .eq('id', params.id)
-    .select(DISCOUNT_CODE_COLUMNS)
-    .maybeSingle();
+  const write = (patch: Record<string, unknown>) =>
+    db
+      .from('discount_codes')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', params.id)
+      .select('*')
+      .maybeSingle();
+  let { data, error } = await write(update);
+  // Same rule as a create: before landing-pages-migration.sql, an edit that
+  // sets a restriction is refused, and one that does not is saved without it.
+  if (error && isMissingColumnError(error)) {
+    if (hasRestrictions(update)) {
+      return NextResponse.json({ error: RESTRICTIONS_NEED_MIGRATION }, { status: 400 });
+    }
+    ({ data, error } = await write(withoutRestrictions(update)));
+  }
 
   if (error) {
     if (error.code === '23505') {

@@ -13,9 +13,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   describeDiscount,
+  eligibleSubtotal,
   evaluateDiscountCode,
+  hasRestrictions,
   normalizeDiscountCode,
+  normalizeProductIds,
   shapeDiscountCodeInput,
+  shapeDiscountCodeRow,
+  withoutRestrictions,
 } from './discount-codes';
 import { MAX_DISCOUNT_PERCENT } from '../promos/cart-offer';
 
@@ -140,4 +145,102 @@ test('admin input is validated and normalised', () => {
     }).ok,
     false,
   );
+});
+
+// ---------------------------------------------------------------------------
+// First-order-only codes and product exclusions (landing-pages-migration.sql)
+// ---------------------------------------------------------------------------
+
+const BAC = '22222222-2222-4222-8222-222222222222';
+const PEPTIDE = '33333333-3333-4333-8333-333333333333';
+
+test('a first-order-only code is refused to anyone who has ordered', () => {
+  const code = { ...base, first_order_only: true };
+  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, firstOrder: 'first' }), { ok: true, percent: 15 });
+  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, firstOrder: 'ordered' }), {
+    ok: false,
+    reason: 'first-order-only',
+  });
+  // A checkout awaiting payment holds the offer — and says so.
+  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, firstOrder: 'pending' }), {
+    ok: false,
+    reason: 'first-order-pending',
+  });
+  // A read that failed is not a yes.
+  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, firstOrder: 'unknown' }), {
+    ok: false,
+    reason: 'first-order-unverified',
+  });
+});
+
+test('a first-order check that has not happened yet is deferred, not failed', () => {
+  // A guest previewing before typing an email. The hand-off always passes it.
+  const code = { ...base, first_order_only: true };
+  assert.deepEqual(evaluateDiscountCode(code, ctx), { ok: true, percent: 15 });
+});
+
+test('a code that is not first-order-only ignores order history', () => {
+  assert.deepEqual(evaluateDiscountCode(base, { ...ctx, firstOrder: 'ordered' }), { ok: true, percent: 15 });
+});
+
+test('the eligible subtotal leaves excluded products out', () => {
+  const lines = [
+    { productId: PEPTIDE, amount: 150 },
+    { productId: BAC.toUpperCase(), amount: 50 },
+  ];
+  assert.equal(eligibleSubtotal(lines, [BAC]), 150);
+  assert.equal(eligibleSubtotal(lines, []), 200);
+  assert.equal(eligibleSubtotal(lines, null), 200);
+});
+
+test('a cart of nothing but excluded products gets nothing, and is told so', () => {
+  const code = { ...base, excluded_product_ids: [BAC] };
+  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, subtotal: 50, eligibleSubtotal: 0 }), {
+    ok: false,
+    reason: 'nothing-eligible',
+  });
+  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, subtotal: 200, eligibleSubtotal: 150 }), {
+    ok: true,
+    percent: 15,
+  });
+});
+
+test('a fixed amount is a percentage of what it applies to', () => {
+  const fixed = { ...base, discount_type: 'fixed' as const, discount_value: 30, excluded_product_ids: [BAC] };
+  // $30 off the $150 of eligible goods is 20% of THOSE lines.
+  assert.deepEqual(evaluateDiscountCode(fixed, { ...ctx, subtotal: 200, eligibleSubtotal: 150 }), {
+    ok: true,
+    percent: 20,
+  });
+});
+
+test('restrictions are only written when the form sent them', () => {
+  // A full edit from a form that predates the fields must not reset them.
+  const legacy = shapeDiscountCodeInput({ code: 'SAVE10', discount_value: 10 });
+  assert.equal(legacy.ok, true);
+  if (legacy.ok) {
+    assert.equal('first_order_only' in legacy.value, false);
+    assert.equal('excluded_product_ids' in legacy.value, false);
+  }
+  const full = shapeDiscountCodeInput({
+    code: 'SAVE10',
+    discount_value: 10,
+    first_order_only: true,
+    excluded_product_ids: [BAC, 'not-a-uuid', BAC],
+  });
+  assert.equal(full.ok, true);
+  if (full.ok) {
+    assert.equal(full.value.first_order_only, true);
+    assert.deepEqual(full.value.excluded_product_ids, [BAC]);
+    assert.equal(hasRestrictions(full.value), true);
+    assert.equal('first_order_only' in withoutRestrictions(full.value as any), false);
+  }
+  assert.equal(hasRestrictions({ first_order_only: false, excluded_product_ids: [] }), false);
+});
+
+test('an unmigrated row reads as unrestricted', () => {
+  const row = shapeDiscountCodeRow({ code: 'OLD' });
+  assert.equal(row.first_order_only, false);
+  assert.deepEqual(row.excluded_product_ids, []);
+  assert.deepEqual(normalizeProductIds('nope'), []);
 });

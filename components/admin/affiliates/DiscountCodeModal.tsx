@@ -8,6 +8,7 @@ import {
   type AdminDiscountCode,
   type AffiliateOption,
 } from './api';
+import CodeRestrictionsFields from './CodeRestrictionsFields';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function randomCode(prefix = ''): string {
@@ -59,6 +60,8 @@ export default function DiscountCodeModal({
   const [expiresAt, setExpiresAt] = useState(toLocalInput(existing?.expires_at ?? null));
   const [active, setActive] = useState(existing?.active ?? true);
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [firstOrderOnly, setFirstOrderOnly] = useState(!!existing?.first_order_only);
+  const [excludedIds, setExcludedIds] = useState<string[]>(existing?.excluded_product_ids ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +84,8 @@ export default function DiscountCodeModal({
       expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
       active,
       notes,
+      first_order_only: firstOrderOnly,
+      excluded_product_ids: excludedIds,
     };
     const res = existing
       ? await adminFetch(`/api/admin/discount-codes/${existing.id}`, { method: 'PATCH', body })
@@ -260,6 +265,21 @@ export default function DiscountCodeModal({
               />
             </div>
           </div>
+
+          {existing?.landing_page && (
+            <p className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-dark">
+              This code is the offer for the <span className="font-mono">{existing.landing_page}</span>{' '}
+              landing page, which displays its percentage. Changing it here changes what that page shows.
+            </p>
+          )}
+
+          <CodeRestrictionsFields
+            firstOrderOnly={firstOrderOnly}
+            onFirstOrderOnly={setFirstOrderOnly}
+            excludedIds={excludedIds}
+            onExcludedIds={setExcludedIds}
+            suggestBacWater
+          />
 
           <div>
             <label className={labelCls} htmlFor="dc-notes">Internal notes</label>

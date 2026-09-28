@@ -20,6 +20,10 @@ const LIMIT = { max: 15, windowMs: 60_000 };
  * only affects what the buyer is shown.
  *
  * The response never names the affiliate a code belongs to.
+ *
+ * It does say which products the code excludes and whether it is for first
+ * orders only, so the checkout can take the saving off the right lines and say
+ * why a line is not discounted.
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -35,19 +39,37 @@ export async function POST(req: NextRequest) {
   const subtotal = Number(body?.subtotal);
 
   let customerId: string | null = null;
+  let email: string | null = null;
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (token) {
     try {
       const { data: { user } } = await db.auth.getUser(token);
       customerId = user?.id ?? null;
+      email = user?.email ?? null;
     } catch {
       customerId = null;
     }
   }
 
+  // The cart, as `{ productId, amount }` list totals, so a code that excludes
+  // products is measured against what it applies to. Optional — without it the
+  // whole subtotal counts, and the hand-off measures it properly either way.
+  const lines = Array.isArray(body?.items)
+    ? (body.items as any[])
+        .map((l) => ({ productId: String(l?.productId ?? ''), amount: Number(l?.amount) }))
+        .filter((l) => l.productId && Number.isFinite(l.amount) && l.amount >= 0)
+    : undefined;
+
+  // A guest's email is deliberately NOT taken from the body: this endpoint
+  // would then answer "has this address ordered before?" for anyone who asked.
+  // A signed-in buyer is checked against their own account and email here; a
+  // guest's first-order status is checked at hand-off, with the email they pay
+  // with.
   const result = await lookupDiscountCode(db, body?.code, {
     subtotal: Number.isFinite(subtotal) ? subtotal : 0,
     customerId,
+    email,
+    lines,
   });
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.message });
@@ -60,5 +82,7 @@ export async function POST(req: NextRequest) {
     discount_type: result.code.discount_type,
     discount_value: Number(result.code.discount_value),
     description: describeDiscount(result.code),
+    first_order_only: result.code.first_order_only,
+    excluded_product_ids: result.code.excluded_product_ids,
   });
 }

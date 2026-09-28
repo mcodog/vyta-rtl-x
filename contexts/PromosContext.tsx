@@ -12,7 +12,10 @@
  *     totals, and the hand-off itself) — for ad visitors, on their first order
  *     only;
  *   • the limited-time cart offer (the cart's offer strip and both checkout
- *     totals) — for any cart carrying enough items, while the offer runs.
+ *     totals) — for any cart carrying enough items, while the offer runs;
+ *   • the landing-page offer (the nav notice, the cart line, and the code the
+ *     checkout puts into its discount field) — for visitors who arrived from
+ *     one of our landing pages (lib/promos/landing.ts).
  *
  * Resolving them here rather than in each component means one settings fetch
  * per app load instead of one per screen, and one definition of "eligible" that
@@ -41,6 +44,8 @@ import {
   qualifiesForAdDiscount,
   type AdDiscountSettings,
 } from '@/lib/promos/ad-discount';
+import { eligibleSubtotal } from '@/lib/affiliate/discount-codes';
+import { LANDING_COOKIE } from '@/lib/promos/landing';
 import {
   cartOfferAmount,
   DEFAULT_CART_OFFER,
@@ -65,6 +70,37 @@ export interface CartOfferValue extends CartOfferSettings {
   amountOn: (subtotal: number) => number;
 }
 
+/** One cart line, as the landing offer measures it. */
+export interface PromoLine {
+  productId: string;
+  /** The line's list total, CAD. */
+  amount: number;
+}
+
+/**
+ * The offer made by the landing page this visitor arrived through. Its `code`
+ * is a real discount code: the checkout puts it into the discount field, and
+ * the hand-off applies it even if the browser never did.
+ */
+export interface LandingOfferValue {
+  /** This visitor holds a landing offer, and as far as we know it is theirs. */
+  active: boolean;
+  slug: string | null;
+  code: string | null;
+  percent: number;
+  firstOrderOnly: boolean;
+  excludedProductIds: string[];
+  /** "bacteriostatic water" — the excluded products as one phrase, for copy. */
+  exclusions: string | null;
+  /**
+   * Why a signed-in customer cannot use it (they have ordered before), or
+   * null. The offer is hidden in that case rather than advertised.
+   */
+  reason: string | null;
+  /** What it takes off these lines, CAD — excluded products count for nothing. */
+  amountOn: (lines: PromoLine[]) => number;
+}
+
 export interface PromosValue {
   /** False once the settings fetch has settled, either way. */
   loading: boolean;
@@ -87,6 +123,25 @@ export interface PromosValue {
    * is the cart, so the item count is read here rather than passed in.
    */
   cartOffer: CartOfferValue;
+  landingOffer: LandingOfferValue;
+}
+
+const NO_LANDING_OFFER: LandingOfferValue = {
+  active: false,
+  slug: null,
+  code: null,
+  percent: 0,
+  firstOrderOnly: false,
+  excludedProductIds: [],
+  exclusions: null,
+  reason: null,
+  amountOn: () => 0,
+};
+
+/** Does this browser carry a landing-page cookie? Read before asking the server. */
+function hasLandingCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split('; ').some((row) => row.startsWith(`${LANDING_COOKIE}=`));
 }
 
 const EMPTY: PromosValue = {
@@ -103,6 +158,7 @@ const EMPTY: PromosValue = {
     itemsAway: 0,
     amountOn: () => 0,
   },
+  landingOffer: NO_LANDING_OFFER,
 };
 
 const PromosContext = createContext<PromosValue>(EMPTY);
@@ -125,6 +181,7 @@ export function PromosProvider({ children }: { children: React.ReactNode }) {
   // off the customer row: `has_completed_first_order` is only written by the
   // legacy checkout, so the server joins it with their hosted orders for us.
   const [isFirstOrder, setIsFirstOrder] = useState(false);
+  const [landingOffer, setLandingOffer] = useState<Omit<LandingOfferValue, 'amountOn'>>(NO_LANDING_OFFER);
 
   useEffect(() => {
     setChannels(visitorChannels());
@@ -156,6 +213,52 @@ export function PromosProvider({ children }: { children: React.ReactNode }) {
       } catch {
         /* Unknown means "not a first order": never advertise an offer the
            checkout would then refuse to honour. */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
+
+  // The landing-page offer. Only asked for when the cookie is there — nobody
+  // who did not come through a landing page pays for the request. Re-asked on
+  // sign-in and sign-out, because a first-order-only offer is withdrawn from a
+  // signed-in customer who has already ordered.
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasLandingCookie()) {
+      setLandingOffer(NO_LANDING_OFFER);
+      return;
+    }
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const res = await fetch('/api/promos/landing', {
+          cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        const o = json?.offer;
+        if (cancelled) return;
+        if (!o?.code || !(Number(o.percent) > 0)) {
+          setLandingOffer(NO_LANDING_OFFER);
+          return;
+        }
+        setLandingOffer({
+          active: json.eligible !== false,
+          slug: o.slug ?? null,
+          code: String(o.code),
+          percent: Number(o.percent) || 0,
+          firstOrderOnly: !!o.first_order_only,
+          excludedProductIds: Array.isArray(o.excluded_product_ids) ? o.excluded_product_ids : [],
+          exclusions: o.exclusions ?? null,
+          reason: json.reason ?? null,
+        });
+      } catch {
+        /* No offer is shown if it can't be read. The hand-off still applies
+           it: it reads the same cookie itself. */
       }
     })();
     return () => {
@@ -244,6 +347,13 @@ export function PromosProvider({ children }: { children: React.ReactNode }) {
             ? cartOfferAmount(subtotal, cartOffer.percent)
             : 0,
       },
+      landingOffer: {
+        ...landingOffer,
+        amountOn: (lines: PromoLine[]) =>
+          landingOffer.active
+            ? Math.round(eligibleSubtotal(lines, landingOffer.excludedProductIds) * landingOffer.percent) / 100
+            : 0,
+      },
     };
     // `expiryTick` is a dependency on purpose: it is what re-runs this the
     // moment a limited-time offer's end date passes.
@@ -258,6 +368,7 @@ export function PromosProvider({ children }: { children: React.ReactNode }) {
     cartOffer,
     totalItems,
     expiryTick,
+    landingOffer,
   ]);
 
   return <PromosContext.Provider value={value}>{children}</PromosContext.Provider>;

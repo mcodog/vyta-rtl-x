@@ -12,6 +12,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { MAX_DISCOUNT_PERCENT } from '../promos/cart-offer';
+import { firstOrderStatus, type FirstOrderStatus } from '../promos/first-order';
 
 export type DiscountType = 'percent' | 'fixed';
 
@@ -30,10 +31,84 @@ export interface DiscountCodeRow {
   notes: string | null;
   created_at: string;
   updated_at?: string;
+  /**
+   * Refused to a buyer who has ordered before (landing-pages-migration.sql).
+   * Absent until that migration runs, which reads as false.
+   */
+  first_order_only?: boolean | null;
+  /** Products the code takes nothing off. Absent/empty = the whole cart. */
+  excluded_product_ids?: string[] | null;
 }
 
+/**
+ * The columns every install has. Reads use `select('*')` instead, so the
+ * restriction columns below come back once they exist without a query that
+ * names them failing on an install that has not run the migration yet — and
+ * `shapeDiscountCodeRow` defaults them when they are absent.
+ */
 export const DISCOUNT_CODE_COLUMNS =
   'id, code, affiliate_id, discount_type, discount_value, commission_rate, min_subtotal, max_uses, starts_at, expires_at, active, notes, created_at, updated_at';
+
+/** Added by landing-pages-migration.sql. */
+export const DISCOUNT_CODE_RESTRICTION_COLUMNS = ['first_order_only', 'excluded_product_ids'] as const;
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A clean, de-duplicated list of product ids. Anything not a UUID is dropped. */
+export function normalizeProductIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out = new Set<string>();
+  for (const value of raw) {
+    const id = String(value ?? '').trim().toLowerCase();
+    if (UUID_REGEX.test(id)) out.add(id);
+    if (out.size >= 500) break;
+  }
+  return [...out];
+}
+
+/** Fill in the restriction fields an unmigrated row does not carry. */
+export function shapeDiscountCodeRow<T extends Partial<DiscountCodeRow>>(
+  row: T,
+): T & { first_order_only: boolean; excluded_product_ids: string[] } {
+  return {
+    ...row,
+    first_order_only: !!row.first_order_only,
+    excluded_product_ids: normalizeProductIds(row.excluded_product_ids ?? []),
+  };
+}
+
+/** The input sets a restriction an unmigrated database has nowhere to store. */
+export function hasRestrictions(input: Partial<DiscountCodeInput>): boolean {
+  return input.first_order_only === true || (input.excluded_product_ids?.length ?? 0) > 0;
+}
+
+/** The same write, minus the restriction columns. */
+export function withoutRestrictions<T extends Record<string, unknown>>(input: T): T {
+  const out: Record<string, unknown> = { ...input };
+  for (const column of DISCOUNT_CODE_RESTRICTION_COLUMNS) delete out[column];
+  return out as T;
+}
+
+/** Said to an admin who sets a restriction before the migration has run. */
+export const RESTRICTIONS_NEED_MIGRATION =
+  'Run landing-pages-migration.sql in the Supabase SQL editor to use first-order-only codes and product exclusions.';
+
+/**
+ * The part of a subtotal a code applies to: every line whose product is not
+ * excluded. `amount` is the line's list total, in whatever unit the caller
+ * counts in (CAD in the browser, cents at the hand-off).
+ */
+export function eligibleSubtotal(
+  lines: { productId: string; amount: number }[],
+  excludedProductIds: readonly string[] | null | undefined,
+): number {
+  const excluded = new Set((excludedProductIds ?? []).map((id) => String(id).toLowerCase()));
+  return lines.reduce(
+    (sum, line) =>
+      excluded.has(String(line.productId).toLowerCase()) ? sum : sum + (Number(line.amount) || 0),
+    0,
+  );
+}
 
 export const DISCOUNT_CODE_REGEX = /^[A-Z0-9]{3,32}$/;
 
@@ -73,6 +148,14 @@ export interface DiscountCodeInput {
   expires_at: string | null;
   active: boolean;
   notes: string | null;
+  /**
+   * Only present when the payload carried the field. A full edit from a form
+   * that predates these fields must leave them as they are, not reset them to
+   * "any order, whole cart" — which on a landing page's code would silently
+   * turn a first-order welcome offer into a standing discount.
+   */
+  first_order_only?: boolean;
+  excluded_product_ids?: string[];
 }
 
 /**
@@ -135,6 +218,10 @@ export function shapeDiscountCodeInput(
       expires_at,
       active: body.active !== false,
       notes,
+      ...('first_order_only' in body ? { first_order_only: body.first_order_only === true } : {}),
+      ...('excluded_product_ids' in body
+        ? { excluded_product_ids: normalizeProductIds(body.excluded_product_ids) }
+        : {}),
     },
   };
 }
@@ -146,7 +233,11 @@ export type DiscountCodeRejection =
   | 'expired'
   | 'used-up'
   | 'below-minimum'
-  | 'own-code';
+  | 'own-code'
+  | 'first-order-only'
+  | 'first-order-pending'
+  | 'first-order-unverified'
+  | 'nothing-eligible';
 
 export const REJECTION_MESSAGES: Record<DiscountCodeRejection, string> = {
   'not-found': "That code isn't valid.",
@@ -156,7 +247,27 @@ export const REJECTION_MESSAGES: Record<DiscountCodeRejection, string> = {
   'used-up': 'That code has reached its usage limit.',
   'below-minimum': 'Your order is below the minimum for that code.',
   'own-code': "You can't use your own affiliate code.",
+  'first-order-only': 'That code is for first orders only.',
+  'first-order-pending':
+    'Your first-order discount is already on a checkout that is awaiting payment. ' +
+    'Complete that checkout, or it becomes available again once that checkout expires.',
+  'first-order-unverified': "We couldn't check that code right now. Please try again.",
+  'nothing-eligible': "That code doesn't apply to the items in your cart.",
 };
+
+/** Map a first-order check onto a rejection, or null when the code may apply. */
+export function firstOrderRejection(status: FirstOrderStatus): DiscountCodeRejection | null {
+  switch (status) {
+    case 'first':
+      return null;
+    case 'ordered':
+      return 'first-order-only';
+    case 'pending':
+      return 'first-order-pending';
+    default:
+      return 'first-order-unverified';
+  }
+}
 
 export type DiscountCodeEvaluation =
   | { ok: true; percent: number }
@@ -174,8 +285,27 @@ export function evaluateDiscountCode(
   code: Pick<
     DiscountCodeRow,
     'discount_type' | 'discount_value' | 'min_subtotal' | 'max_uses' | 'starts_at' | 'expires_at' | 'active' | 'affiliate_id'
-  >,
-  ctx: { subtotal: number; usesCount: number; now?: number; customerId?: string | null },
+  > &
+    Partial<Pick<DiscountCodeRow, 'first_order_only' | 'excluded_product_ids'>>,
+  ctx: {
+    subtotal: number;
+    usesCount: number;
+    now?: number;
+    customerId?: string | null;
+    /**
+     * The part of `subtotal` the code applies to — the lines whose product it
+     * does not exclude. Defaults to the whole subtotal. A fixed amount is
+     * converted against THIS, since that is what it is taken off.
+     */
+    eligibleSubtotal?: number;
+    /**
+     * For a first-order-only code: where this buyer stands. Omitted means not
+     * known yet — a guest previewing a code before typing their email — and is
+     * let through, because `/api/checkout/puramass` always checks it for real
+     * (it has the email by then) before any money is decided.
+     */
+    firstOrder?: FirstOrderStatus;
+  },
 ): DiscountCodeEvaluation {
   const now = ctx.now ?? Date.now();
   if (!code.active) return { ok: false, reason: 'inactive' };
@@ -186,16 +316,30 @@ export function evaluateDiscountCode(
     return { ok: false, reason: 'own-code' };
   }
 
+  if (code.first_order_only && ctx.firstOrder !== undefined) {
+    const rejection = firstOrderRejection(ctx.firstOrder);
+    if (rejection) return { ok: false, reason: rejection };
+  }
+
   const subtotal = Number(ctx.subtotal) || 0;
   if (code.min_subtotal && subtotal < Number(code.min_subtotal)) {
     return { ok: false, reason: 'below-minimum' };
   }
 
+  // A code that excludes products must have something left to apply to — a
+  // cart of nothing but excluded items would otherwise report "applied" and
+  // take nothing off.
+  const eligible =
+    ctx.eligibleSubtotal === undefined ? subtotal : Math.max(0, Number(ctx.eligibleSubtotal) || 0);
+  if ((code.excluded_product_ids?.length ?? 0) > 0 && subtotal > 0 && eligible <= 0) {
+    return { ok: false, reason: 'nothing-eligible' };
+  }
+
   const value = Number(code.discount_value) || 0;
   let percent: number;
   if (code.discount_type === 'fixed') {
-    if (subtotal <= 0) return { ok: false, reason: 'below-minimum' };
-    percent = (value / subtotal) * 100;
+    if (eligible <= 0) return { ok: false, reason: 'below-minimum' };
+    percent = (value / eligible) * 100;
   } else {
     percent = value;
   }
@@ -225,7 +369,13 @@ export async function countDiscountCodeUses(db: SupabaseClient, codeId: string):
 }
 
 export type DiscountCodeLookup =
-  | { ok: true; code: DiscountCodeRow; percent: number }
+  | {
+      ok: true;
+      /** The row, with the restriction fields defaulted when unmigrated. */
+      code: DiscountCodeRow & { first_order_only: boolean; excluded_product_ids: string[] };
+      /** Percentage off the ELIGIBLE lines. */
+      percent: number;
+    }
   | { ok: false; reason: DiscountCodeRejection; message: string };
 
 /**
@@ -235,11 +385,25 @@ export type DiscountCodeLookup =
  *
  * A code assigned to an affiliate who has been switched off is inactive —
  * the same rule `resolveAffiliateAttribution` applies to referral codes.
+ *
+ * `lines` lets the lookup measure a code that excludes products against the
+ * lines it actually applies to. Without them the whole subtotal is eligible,
+ * which is only right for a code with no exclusions — so the hand-off always
+ * passes them.
+ *
+ * For a first-order-only code the buyer's history is checked by `customerId`
+ * and `email`. With neither (a guest previewing before typing an email) the
+ * check is deferred, not skipped: see `evaluateDiscountCode`.
  */
 export async function lookupDiscountCode(
   db: SupabaseClient,
   raw: unknown,
-  ctx: { subtotal: number; customerId?: string | null },
+  ctx: {
+    subtotal: number;
+    customerId?: string | null;
+    email?: string | null;
+    lines?: { productId: string; amount: number }[];
+  },
 ): Promise<DiscountCodeLookup> {
   const reject = (reason: DiscountCodeRejection): DiscountCodeLookup => ({
     ok: false,
@@ -251,13 +415,14 @@ export async function lookupDiscountCode(
   if (!DISCOUNT_CODE_REGEX.test(normalized)) return reject('not-found');
 
   try {
+    // `*`, not DISCOUNT_CODE_COLUMNS: see the note on that constant.
     const { data, error } = await db
       .from('discount_codes')
-      .select(DISCOUNT_CODE_COLUMNS)
+      .select('*')
       .eq('code', normalized)
       .maybeSingle();
     if (error || !data) return reject('not-found');
-    const code = data as unknown as DiscountCodeRow;
+    const code = shapeDiscountCodeRow(data as unknown as DiscountCodeRow);
 
     if (code.affiliate_id) {
       const { data: owner } = await db
@@ -269,10 +434,16 @@ export async function lookupDiscountCode(
     }
 
     const usesCount = code.max_uses != null ? await countDiscountCodeUses(db, code.id) : 0;
+    const firstOrder =
+      code.first_order_only && (ctx.customerId || ctx.email)
+        ? await firstOrderStatus(db, { customerId: ctx.customerId, email: ctx.email })
+        : undefined;
     const result = evaluateDiscountCode(code, {
       subtotal: ctx.subtotal,
       usesCount,
       customerId: ctx.customerId ?? null,
+      eligibleSubtotal: ctx.lines ? eligibleSubtotal(ctx.lines, code.excluded_product_ids) : undefined,
+      firstOrder,
     });
     if (!result.ok) return reject(result.reason);
     return { ok: true, code, percent: result.percent };

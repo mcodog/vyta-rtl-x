@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { readVisitorContext, attributionColumns } from '@/lib/analytics/attribution-server';
+import {
+  readVisitorContext,
+  attributionColumns,
+  landingPageOf,
+} from '@/lib/analytics/attribution-server';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -103,6 +107,21 @@ export async function POST(req: NextRequest) {
           .is('attribution_channel', null);
         if (!error) stampedChannel = columns.attribution_channel;
       }
+    }
+
+    // 2b. Which landing page won them, frozen the same way — once, and only
+    //     for an account this visit actually produced. An existing customer
+    //     signing in after clicking through a landing page was not acquired by
+    //     it. A separate write rather than a column in the select above: the
+    //     column arrives with landing-pages-migration.sql, and naming it there
+    //     would fail the whole read — and with it, sign-in identification.
+    const landingPage = landingPageOf(ctx);
+    if (landingPage && registeredDuringThisVisit) {
+      await db
+        .from('customers')
+        .update({ attribution_landing_page: landingPage })
+        .eq('id', customer.id)
+        .is('attribution_landing_page', null);
     }
 
     // 3. Adopt the pre-signup event rows.

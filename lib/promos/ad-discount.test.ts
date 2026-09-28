@@ -15,6 +15,7 @@ import {
   qualifiesForAdDiscount,
   shapeAdDiscountSettings,
   type AdDiscountLine,
+  distributeLineDiscounts,
 } from './ad-discount';
 
 const ON = { enabled: true, percent: 25 };
@@ -224,4 +225,63 @@ test('a free line stays free instead of going negative', () => {
   assert.equal(out.lines[0].discountedUnitPriceCents, 0);
   assert.equal(out.lines[1].discountedUnitPriceCents, 6000);
   assert.equal(out.discountCents, 2000);
+});
+
+// ---------------------------------------------------------------------------
+// distributeLineDiscounts — different percentages on different lines
+// ---------------------------------------------------------------------------
+
+test('one shared percentage is exactly the single split it always was', () => {
+  const lines = [
+    { key: 'a', unitPriceCents: 4999, quantity: 3 },
+    { key: 'b', unitPriceCents: 12000, quantity: 1 },
+  ];
+  const single = distributeAdDiscount(lines, 35);
+  const grouped = distributeLineDiscounts(lines.map((l) => ({ ...l, percent: 35 })));
+  assert.equal(grouped.discountCents, single.discountCents);
+  assert.equal(grouped.totalCents, single.totalCents);
+  assert.deepEqual(
+    grouped.lines.map((l) => l.discountedUnitPriceCents),
+    single.lines.map((l) => l.discountedUnitPriceCents),
+  );
+});
+
+test('an excluded line keeps its list price; the rest take the full percentage', () => {
+  const split = distributeLineDiscounts([
+    { key: 'peptide', unitPriceCents: 10000, quantity: 2, percent: 35 },
+    { key: 'bac-water', unitPriceCents: 1500, quantity: 1, percent: 0 },
+  ]);
+  const bac = split.lines.find((l) => l.key === 'bac-water')!;
+  const peptide = split.lines.find((l) => l.key === 'peptide')!;
+  assert.equal(bac.discountedUnitPriceCents, 1500);
+  assert.equal(peptide.discountedUnitPriceCents, 6500);
+  // 35% of the $200 of peptide, and nothing of the water.
+  assert.equal(split.discountCents, 7000);
+  assert.equal(split.subtotalCents, 21500);
+  assert.equal(split.totalCents, 14500);
+});
+
+test('each group is rounded in the buyer favour on its own', () => {
+  const split = distributeLineDiscounts([
+    { key: 'a', unitPriceCents: 3333, quantity: 3, percent: 35 },
+    { key: 'b', unitPriceCents: 999, quantity: 7, percent: 10 },
+  ]);
+  const a = split.lines.find((l) => l.key === 'a')!;
+  const b = split.lines.find((l) => l.key === 'b')!;
+  const aSaved = (3333 - a.discountedUnitPriceCents) * 3;
+  const bSaved = (999 - b.discountedUnitPriceCents) * 7;
+  assert.ok(aSaved >= Math.round(3333 * 3 * 0.35));
+  assert.ok(bSaved >= Math.round(999 * 7 * 0.1));
+  assert.equal(split.discountCents, aSaved + bSaved);
+  // Never marked up.
+  assert.ok(a.discountedUnitPriceCents <= 3333 && b.discountedUnitPriceCents <= 999);
+});
+
+test('the lines come back in the order they were given', () => {
+  const split = distributeLineDiscounts([
+    { key: 'z', unitPriceCents: 1000, quantity: 1, percent: 0 },
+    { key: 'y', unitPriceCents: 1000, quantity: 1, percent: 20 },
+    { key: 'x', unitPriceCents: 1000, quantity: 1, percent: 0 },
+  ]);
+  assert.deepEqual(split.lines.map((l) => l.key), ['z', 'y', 'x']);
 });

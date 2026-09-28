@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>VYTA Biosciences — Your First Order Is 35% Off</title>
+  <meta name="description" content="Third-party tested, with a certificate of analysis for every batch. Shipped from Canada in discreet packaging.">
+  <!-- A pre-sell page: keep it out of search so it never competes with vytabio.com. -->
+  <meta name="robots" content="noindex, follow">
+  <meta name="theme-color" content="#07203A">
+  <meta property="og:title" content="Your First Order Is 35% Off — VYTA Biosciences">
+  <meta property="og:description" content="Third-party tested. COA with every batch. Shipped from Canada.">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" href="assets/vyta-mark-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.vytabio.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ------------------------------------------------------------------
+       VYTA design tokens — the storefront's tailwind.config.ts, verbatim.
+       The six core swatches are exact brand values; do not alter them.
+       ------------------------------------------------------------------ */
+    :root {
+      --navy: #07203A;        /* Midnight Navy — ink and darkest surface */
+      --ocean: #0E3F5F;       /* Deep Ocean — CTA hover */
+      --vital: #1B5D83;       /* Vital Blue — small accent text (AA on white) */
+      --teal: #438B9E;        /* Bio Teal — accents, focus, large text only */
+      --aqua: #6EB2B8;        /* Aqua */
+      --mist: #BBD6D6;        /* Mist — highlight band */
+      --cloud: #F7FAFB;       /* Cloud — page ground */
+      --teal-50: #F1F8F9;
+      --teal-100: #E1EFF1;
+      --ink-muted: #56707F;   /* body copy on white */
+      --ink-light: #6E8898;   /* fine print */
+      --line: #DCE7EB;
+      --shadow-card: 0 1px 2px rgba(7, 32, 58, 0.04), 0 8px 24px -12px rgba(7, 32, 58, 0.10);
+      --shadow-cta: 0 10px 24px -10px rgba(7, 32, 58, 0.45);
+      --focus: 0 0 0 3px rgba(67, 139, 158, 0.28);
+      --radius-card: 1.125rem;
+      --radius-cta: 999px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--navy);
+      /* Calm near-white ground with the faintest Cloud wash, as on vytabio.com. */
+      background: linear-gradient(180deg, #FFFFFF 0%, var(--cloud) 55%, #FFFFFF 100%);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 34rem;
+      margin: 0 auto;
+      padding: clamp(1.5rem, 6vh, 4rem) 1rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .pane {
+      background: #FFFFFF;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      padding: 2.25rem 1.5rem 1.75rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    /* The navy → teal brand rule across the top of the card. */
+    .pane::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: linear-gradient(90deg, #07203A 0%, #1B5D83 50%, #6EB2B8 100%);
+    }
+
+    /* Full lockup, at the guidelines' 160px minimum digital width. */
+    .mark {
+      display: block;
+      width: 160px;
+      height: auto;
+      margin: 0 auto 1.5rem;
+    }
+
+    .eyebrow {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--vital);
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      /* "Inter Display": Inter driven to its display optical size. */
+      font-optical-sizing: auto;
+      font-variation-settings: 'opsz' 32;
+      font-size: clamp(2rem, 8.5vw, 3.25rem);
+      font-weight: 750;
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      color: var(--navy);
+      text-wrap: balance;
+    }
+    /* The number, marked like a highlighter pass in Mist. */
+    h1 .hl {
+      color: var(--vital);
+      white-space: nowrap;
+      background: linear-gradient(transparent 64%, var(--mist) 64%, var(--mist) 92%, transparent 92%);
+      padding: 0 0.08em;
+    }
+    h1 .ast {
+      color: var(--teal);
+      font-size: 0.55em;
+      vertical-align: super;
+      margin-left: 0.04em;
+      font-weight: 600;
+    }
+
+    .lede {
+      margin: 1rem auto 0;
+      max-width: 26rem;
+      font-size: 1.0625rem;
+      line-height: 1.55;
+      color: var(--ink-muted);
+      text-wrap: pretty;
+    }
+
+    .cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      min-height: 3.5rem;
+      margin: 1.75rem 0 0;
+      padding: 0 1.5rem;
+      border-radius: var(--radius-cta);
+      background: var(--navy);
+      color: #FFFFFF;
+      font-size: 1.0625rem;
+      font-weight: 650;
+      letter-spacing: -0.005em;
+      text-decoration: none;
+      box-shadow: var(--shadow-cta);
+      transition: background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cta:hover { background: var(--ocean); }
+    .cta:active { transform: translateY(1px); }
+    .cta:focus-visible { outline: none; box-shadow: var(--shadow-cta), var(--focus); }
+    .cta .chev {
+      font-size: 1.5rem;
+      line-height: 1;
+      margin-top: -0.12em;
+      transition: transform 180ms ease;
+    }
+    .cta:hover .chev { transform: translateX(3px); }
+
+    .note {
+      margin-top: 0.875rem;
+      font-size: 0.8125rem;
+      color: var(--ink-muted);
+    }
+    .note .fine { color: var(--ink-light); }
+
+    /* Three proof points under the card, on a teal-tinted band. */
+    .strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      padding: 0.875rem 0.75rem;
+      border-radius: var(--radius-card);
+      background: var(--teal-50);
+      border: 1px solid var(--teal-100);
+    }
+    .strip p {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.25;
+      color: var(--navy);
+      text-align: center;
+    }
+    .strip svg { width: 1.125rem; height: 1.125rem; color: var(--teal); flex-shrink: 0; }
+
+    .legal {
+      font-size: 0.6875rem;
+      line-height: 1.5;
+      color: var(--ink-light);
+      text-align: center;
+      padding: 0 0.5rem;
+    }
+
+    /* Hidden until the offer API says otherwise — see the script. */
+    [data-no-offer] { display: none; }
+    .no-offer [data-offer] { display: none; }
+    .no-offer [data-no-offer] { display: revert; }
+
+    @media (min-width: 640px) {
+      .pane { padding: 3rem 3rem 2.25rem; }
+      .strip p { flex-direction: row; justify-content: center; font-size: 0.8125rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cta, .cta .chev { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="pane">
+      <picture>
+        <source srcset="assets/vyta-logo-320.webp" type="image/webp">
+        <img class="mark" src="assets/vyta-logo-320.png" width="160" height="141" alt="VYTA Biosciences">
+      </picture>
+
+      <p class="eyebrow" data-offer>First order · Save <span data-offer-percent>35%</span></p>
+      <p class="eyebrow" data-no-offer>VYTA Biosciences</p>
+
+      <h1 data-offer>Your First Order Is <span class="hl"><span data-offer-percent>35%</span> Off</span><span class="ast" aria-hidden="true">*</span></h1>
+      <h1 data-no-offer>Research Compounds, <span class="hl">Tested</span></h1>
+
+      <p class="lede">Third-party tested, with a certificate of analysis for every batch. Shipped from Canada in discreet packaging.</p>
+
+      <a class="cta" id="cta" href="https://www.vytabio.com/products?lp=standards" rel="nofollow noopener">
+        <span data-offer>Claim My <span data-offer-percent>35%</span> Off</span>
+        <span data-no-offer>Shop VYTA</span>
+        <span class="chev" aria-hidden="true">›</span>
+      </a>
+
+      <p class="note">
+        Ships from Canada 🇨🇦<span data-offer> · <span class="fine" id="fine-print">*First order only. Excludes bacteriostatic water.</span></span>
+      </p>
+    </div>
+
+    <div class="strip">
+      <p>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.5L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9.5V3"/><path d="M7.5 15h9"/></svg>
+        Third-party tested
+      </p>
+      <p>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg>
+        COA every batch
+      </p>
+      <p>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Secure checkout
+      </p>
+    </div>
+
+    <p class="legal">For laboratory research use only. Not for human or veterinary consumption. VYTA Biosciences does not diagnose, treat, prescribe, or provide medical or dosing instructions.</p>
+  </main>
+
+  <script>
+    /*
+     * The landing page's whole contract with vytabio.com, in one place.
+     * See LANDING_PAGES.md in the store's repository.
+     *
+     *   1. The percentage is READ from the store, never decided here. The
+     *      HTML above carries the launch figure so the page reads correctly
+     *      without JavaScript; this script replaces it with whatever
+     *      Admin → Landing Pages currently says, and hides the offer
+     *      altogether if the store says there is none.
+     *
+     *   2. The button forwards every query parameter this page was opened
+     *      with — fbclid, gclid, utm_* — so the store can tell which ad sent
+     *      the visitor. It always carries ?lp=<slug>, which is what makes the
+     *      store put this offer's code into the checkout's discount field.
+     */
+    (function () {
+      var CONFIG = {
+        // Must match the slug in Admin → Landing Pages.
+        slug: 'standards',
+        api: 'https://www.vytabio.com/api/landing/',
+        // Where the button goes if the store cannot be reached. Keep in sync
+        // with the "Button link" shown in Admin → Landing Pages.
+        fallbackUrl: 'https://www.vytabio.com/products?lp=standards',
+        timeoutMs: 3000
+      };
+
+      var cta = document.getElementById('cta');
+      var incoming = new URLSearchParams(window.location.search);
+
+      // Build the button link: the store's link for this page, plus every
+      // parameter the ad put on this page's URL. The slug always wins — a
+      // visitor editing ?lp= here must not pick another page's offer.
+      function withForwardedParams(base) {
+        var url;
+        try { url = new URL(base); } catch (e) { url = new URL(CONFIG.fallbackUrl); }
+        incoming.forEach(function (value, key) {
+          if (key === 'lp') return;
+          if (!url.searchParams.has(key)) url.searchParams.set(key, value);
+        });
+        url.searchParams.set('lp', CONFIG.slug);
+        return url.toString();
+      }
+
+      function setText(selector, text) {
+        var nodes = document.querySelectorAll(selector);
+        for (var i = 0; i < nodes.length; i++) nodes[i].textContent = text;
+      }
+
+      // Usable immediately, before the offer answer arrives.
+      cta.href = withForwardedParams(CONFIG.fallbackUrl);
+
+      var controller = 'AbortController' in window ? new AbortController() : null;
+      var timer = setTimeout(function () { if (controller) controller.abort(); }, CONFIG.timeoutMs);
+
+      fetch(CONFIG.api + encodeURIComponent(CONFIG.slug), {
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined
+      })
+        .then(function (res) { return res.json().then(function (body) { return { status: res.status, body: body }; }); })
+        .then(function (r) {
+          var offer = r.body || {};
+          if (offer.cta_url) cta.href = withForwardedParams(offer.cta_url);
+
+          if (offer.active && offer.percent > 0) {
+            var label = offer.percent_label || (offer.percent + '%');
+            setText('[data-offer-percent]', label);
+            document.title = 'VYTA Biosciences — Your First Order Is ' + label + ' Off';
+            var fine = document.getElementById('fine-print');
+            if (fine) {
+              if (offer.fine_print) fine.textContent = offer.fine_print;
+              else fine.parentNode.style.display = 'none';
+            }
+            // A page may only say "first order" when the offer is first-order only.
+            if (!offer.first_order_only) {
+              var h = document.querySelector('h1[data-offer]');
+              if (h) h.firstChild.textContent = 'Your Order Is ';
+              setText('.eyebrow[data-offer]', 'Save ' + label);
+            }
+          } else {
+            // The store says there is no offer right now (switched off, ended,
+            // or this slug does not exist). Never print a number it would not honour —
+            // the tab title included.
+            document.documentElement.classList.add('no-offer');
+            document.title = 'VYTA Biosciences — Third-Party Tested, Shipped from Canada';
+          }
+        })
+        .catch(function () {
+          // Store unreachable: keep the launch copy and the fallback link. The
+          // checkout applies the offer from ?lp= on its own when the visitor
+          // arrives, so the promise still holds.
+        })
+        .then(function () { clearTimeout(timer); });
+    })();
+  </script>
+</body>
+</html>

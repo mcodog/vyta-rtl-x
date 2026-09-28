@@ -18,6 +18,7 @@
  */
 
 import { isValidReferralCodeFormat, normalizeReferralCode } from '@/lib/affiliate/utils';
+import { LANDING_PARAM, normalizeLandingSlug } from '@/lib/promos/landing';
 
 /** Ad-network click identifiers, in the order they are checked. */
 export const CLICK_ID_PARAMS = [
@@ -98,6 +99,13 @@ export interface AttributionTouch {
   landing_path: string | null;
   /** Affiliate code from ?ref=, when one rode along on the same URL. */
   ref_code: string | null;
+  /**
+   * Slug of the off-site landing page that sent this visit (`?lp=`), or null.
+   * A dimension alongside the channel, not a channel of its own: the ad that
+   * put someone on the landing page is still what `channel` reports, and this
+   * says which page it put them on. See lib/promos/landing.ts.
+   */
+  landing_page: string | null;
   /** ISO timestamp of the touch. */
   at: string;
 }
@@ -294,6 +302,7 @@ export function parseTouch(input: {
     // Measured against the shared format contract, never an inline pattern:
     // a stale `{8}` here silently drops every vanity code from attribution.
     ref_code: refCode && isValidReferralCodeFormat(refCode) ? refCode : null,
+    landing_page: normalizeLandingSlug(params.get(LANDING_PARAM)),
     at: (input.at ?? new Date()).toISOString(),
   };
 }
@@ -311,7 +320,8 @@ export function isMeaningfulTouch(touch: AttributionTouch): boolean {
     !!touch.click_id ||
     !!touch.source ||
     !!touch.campaign ||
-    !!touch.ref_code
+    !!touch.ref_code ||
+    !!touch.landing_page
   );
 }
 
@@ -347,6 +357,7 @@ const COOKIE_KEYS: Record<string, keyof AttributionTouch> = {
   r: 'referrer_host',
   l: 'landing_path',
   f: 'ref_code',
+  lp: 'landing_page',
   a: 'at',
 };
 

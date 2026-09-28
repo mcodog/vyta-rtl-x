@@ -3,11 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 import { logAuditServer } from '@/lib/admin/audit';
 import { resolveStaffCaller } from '@/lib/affiliate/route-auth';
 import {
-  DISCOUNT_CODE_COLUMNS,
+  hasRestrictions,
   PAID_ORDER_STATUSES,
+  RESTRICTIONS_NEED_MIGRATION,
   shapeDiscountCodeInput,
+  shapeDiscountCodeRow,
+  withoutRestrictions,
   type DiscountCodeRow,
 } from '@/lib/affiliate/discount-codes';
+import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,6 +35,8 @@ export interface AdminDiscountCode extends DiscountCodeRow {
   affiliate_name: string | null;
   affiliate_email: string | null;
   stats: DiscountCodeStats;
+  /** Slug of the landing page this code is the offer for, if any. */
+  landing_page: string | null;
 }
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -87,7 +93,9 @@ export async function GET(req: NextRequest) {
   if (!caller.ok) return NextResponse.json({ error: caller.error }, { status: caller.status });
 
   const affiliateId = req.nextUrl.searchParams.get('affiliate_id');
-  let query = db.from('discount_codes').select(DISCOUNT_CODE_COLUMNS).order('created_at', { ascending: false });
+  // `*` so the restriction columns come back once they exist, without naming
+  // them in a query an unmigrated install would fail.
+  let query = db.from('discount_codes').select('*').order('created_at', { ascending: false });
   if (affiliateId) query = query.eq('affiliate_id', affiliateId);
 
   const { data, error } = await query;
@@ -100,15 +108,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Could not load discount codes' }, { status: 500 });
   }
 
-  const rows = (data ?? []) as unknown as DiscountCodeRow[];
+  const rows = ((data ?? []) as unknown as DiscountCodeRow[]).map(shapeDiscountCodeRow);
   const affiliateIds = [...new Set(rows.map((r) => r.affiliate_id).filter(Boolean))] as string[];
-  const [stats, { data: affiliates }] = await Promise.all([
+  const [stats, { data: affiliates }, { data: landings }] = await Promise.all([
     statsFor(rows.map((r) => r.id)),
     affiliateIds.length
       ? db.from('affiliates').select('id, first_name, last_name, email').in('id', affiliateIds)
       : Promise.resolve({ data: [] as { id: string; first_name: string | null; last_name: string | null; email: string }[] }),
+    // Which codes are a landing page's offer. The table arrives with
+    // landing-pages-migration.sql; until then this read errors and no code
+    // is tagged.
+    rows.length
+      ? db.from('landing_pages').select('slug, discount_code_id').in('discount_code_id', rows.map((r) => r.id))
+      : Promise.resolve({ data: [] as { slug: string; discount_code_id: string }[] }),
   ]);
   const byId = new Map((affiliates ?? []).map((a) => [a.id, a]));
+  const landingByCode = new Map(
+    ((landings ?? []) as { slug: string; discount_code_id: string }[]).map((l) => [l.discount_code_id, l.slug]),
+  );
 
   const codes: AdminDiscountCode[] = rows.map((r) => {
     const a = r.affiliate_id ? byId.get(r.affiliate_id) : null;
@@ -120,6 +137,7 @@ export async function GET(req: NextRequest) {
       affiliate_name: a ? `${a.first_name ?? ''} ${a.last_name ?? ''}`.trim() || a.email : null,
       affiliate_email: a?.email ?? null,
       stats: stats.get(r.id)!,
+      landing_page: landingByCode.get(r.id) ?? null,
     };
   });
 
@@ -145,11 +163,18 @@ export async function POST(req: NextRequest) {
     if (!affiliate) return NextResponse.json({ error: 'Affiliate not found' }, { status: 404 });
   }
 
-  const { data, error } = await db
-    .from('discount_codes')
-    .insert({ ...input, created_by: caller.staff.id })
-    .select(DISCOUNT_CODE_COLUMNS)
-    .single();
+  const insert = (row: Record<string, unknown>) =>
+    db.from('discount_codes').insert(row).select('*').single();
+  let { data, error } = await insert({ ...input, created_by: caller.staff.id });
+  // Before landing-pages-migration.sql there is nowhere to store a restriction.
+  // A code without one is created as before; one with one is refused rather
+  // than saved as a looser code than the admin asked for.
+  if (error && isMissingColumnError(error)) {
+    if (hasRestrictions(input)) {
+      return NextResponse.json({ error: RESTRICTIONS_NEED_MIGRATION }, { status: 400 });
+    }
+    ({ data, error } = await insert({ ...withoutRestrictions({ ...input }), created_by: caller.staff.id }));
+  }
 
   if (error) {
     if (error.code === '23505') {

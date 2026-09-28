@@ -202,6 +202,7 @@ interface Insights {
     /** marketing-attribution-migration.sql — absent on older databases. */
     attribution_channel?: string | null;
     attribution_campaign?: string | null;
+    attribution_landing_page?: string | null;
     claimed_by_id: string | null;
     claimed_by_email: string | null;
     claimed_by_name: string | null;
@@ -738,11 +739,13 @@ export default function CustomerDetailPage() {
                 icon={<Megaphone className="h-3.5 w-3.5" />}
                 label="Came from"
                 hint={<CustomerAcquisitionTip />}
-                value={
-                  c.attribution_campaign
-                    ? `${acquisitionLabel(c.attribution_channel)} · ${c.attribution_campaign}`
-                    : acquisitionLabel(c.attribution_channel)
-                }
+                value={[
+                  acquisitionLabel(c.attribution_channel),
+                  c.attribution_campaign,
+                  c.attribution_landing_page ? `landing page ${c.attribution_landing_page}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               />
             )}
           </div>

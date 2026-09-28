@@ -468,6 +468,14 @@ export default function OrderDetailPage() {
                     <p className="text-ink font-mono text-xs break-all">{acquisition.firstTouch.landing_path}</p>
                   </div>
                 )}
+                {(acquisition.firstTouch?.landing_page || acquisition.lastTouch?.landing_page) && (
+                  <div>
+                    <p className="text-ink-muted mb-1">Landing page</p>
+                    <p className="text-ink font-mono text-xs break-all">
+                      {acquisition.firstTouch?.landing_page ?? acquisition.lastTouch?.landing_page}
+                    </p>
+                  </div>
+                )}
                 {acquisition.firstTouch?.referrer_host && (
                   <div>
                     <p className="text-ink-muted mb-1">Referrer</p>
