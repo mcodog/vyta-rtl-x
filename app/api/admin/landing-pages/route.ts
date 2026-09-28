@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   const rows = (data ?? []) as LandingPageRow[];
   const codeIds = rows.map((r) => r.discount_code_id).filter(Boolean) as string[];
-  const [{ data: codes }, stats] = await Promise.all([
+  const [{ data: codes }, { stats, countersMissing }] = await Promise.all([
     codeIds.length
       ? db.from('discount_codes').select('*').in('id', codeIds)
       : Promise.resolve({ data: [] as DiscountCodeRow[] }),
@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
   const codeById = new Map(((codes ?? []) as DiscountCodeRow[]).map((c) => [c.id, c]));
 
   return NextResponse.json({
+    countersMissing,
     landingPages: rows.map((r) =>
       presentLanding(r, r.discount_code_id ? codeById.get(r.discount_code_id) ?? null : null, stats.get(r.slug)),
     ),

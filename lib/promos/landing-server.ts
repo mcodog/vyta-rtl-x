@@ -138,3 +138,44 @@ export function landingFinePrint(offer: LandingOffer, exclusions: string | null)
   }
   return parts.length ? `*${parts.join('. ')}.` : null;
 }
+
+// ---------------------------------------------------------------------------
+// Traffic tallies (landing-page-counters-migration.sql)
+// ---------------------------------------------------------------------------
+
+/**
+ * Add one view, one click-through and/or one new visitor to a landing page's
+ * tally for today.
+ *
+ * These are anonymous counts — the database function stores a number per page
+ * per day and nothing about who. That is why they are written for every
+ * visitor, where the per-visitor journey in `visitor_attribution` waits for
+ * the consent banner: a tally has nothing personal in it to consent to.
+ *
+ * Best-effort: a count that fails to land costs the report one visit, never
+ * the page view or the arrival that triggered it. The function ignores slugs
+ * that do not exist and caps each call at one of each.
+ */
+export async function bumpLandingCounters(
+  db: SupabaseClient<any, any, any>,
+  rawSlug: unknown,
+  counts: { views?: boolean; arrivals?: boolean; visitors?: boolean },
+): Promise<void> {
+  const slug = normalizeLandingSlug(rawSlug);
+  if (!slug) return;
+  try {
+    const { error } = await db.rpc('landing_page_bump', {
+      p_slug: slug,
+      p_views: counts.views ? 1 : 0,
+      p_arrivals: counts.arrivals ? 1 : 0,
+      p_visitors: counts.visitors ? 1 : 0,
+    });
+    // Before landing-page-counters-migration.sql the function does not exist;
+    // that is expected and not worth a log line per visit.
+    if (error && !/landing_page_bump|function|schema cache/i.test(error.message ?? '')) {
+      console.error('[landing] counter bump failed:', error.message);
+    }
+  } catch {
+    /* best-effort */
+  }
+}

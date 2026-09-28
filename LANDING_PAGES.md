@@ -89,7 +89,13 @@ all three follow — the landing page on its next page view, with no redeploy.
    discount codes work exactly as before. Landing offers are simply not
    honoured, and Admin → Landing Pages says the migration is needed.
 
-2. **Deploy this branch.** No new environment variables and no new
+2. **Run the counters migration.** Then run
+   [`landing-page-counters-migration.sql`](landing-page-counters-migration.sql)
+   the same way. It adds the anonymous daily tallies behind the report's
+   *Page views*, *Clicked through* and *Visitors* columns. Until it runs those
+   three show "—" and a banner says so; everything else works.
+
+3. **Deploy this branch.** No new environment variables and no new
    dependencies.
 
 That's all. There is nothing to configure in code per landing page.
@@ -361,7 +367,7 @@ window so no old cookies interfere.
 | 5 | Add a product **and** a bacteriostatic water to the cart | Cart shows "35% first-order offer −$…" computed on the product only, with "Code STANDARDS35 is applied automatically at checkout · excludes bacteriostatic water" |
 | 6 | Go to checkout | The discount field shows **STANDARDS35**, "Applied automatically from your welcome offer · first order only", and "Not discounted by this code: Bacteriostatic Water …" |
 | 7 | Fill in a **new** email and continue to payment | The payment page shows the product at 35% off and the bac water at list price |
-| 8 | Admin → Landing Pages | Visitors, checkouts and (once paid) orders and revenue go up for the page |
+| 8 | Admin → Landing Pages (use the **7 days** range) | Page views, Clicked through and Visitors went up by one each, whether or not you accepted the cookie banner. Checkouts went up after step 7, and paid orders and revenue go up once it is paid |
 | 9 | Repeat 6–7 with an email that has **already ordered** | Checkout says "That code is for first orders only." and lets them continue without it |
 | 10 | Switch the landing page off in admin, reload the landing page | Percentage disappears, headline becomes "Research Compounds, Tested", button still works |
 
@@ -577,18 +583,36 @@ preview of that.
 | --- | --- | --- | --- |
 | Cookie `vyta_lp` | slug | Arrival with `?lp=`; 30 days; latest wins | Which landing page's offer this visitor holds |
 | Cookies `aminocan_attr` / `aminocan_attr_last` | `lp` inside the touch | Arrival | First/last touch now record the landing page, next to channel and campaign |
-| `visitor_attribution` | `first_landing_page`, `last_landing_page` | First recorded event / page views | The funnel per landing page |
+| `landing_page_daily` | `views`, `arrivals`, `visitors` per slug per day | Landing page load / click-through / a browser's first click-through | Anonymous tallies — the report's traffic columns |
+| `visitor_attribution` | `first_landing_page`, `last_landing_page` | First recorded event / page views, **only after the cookie banner is accepted** | The landing page on the per-visitor journey (customer page, Acquisition tab) |
 | `customers` | `attribution_landing_page` | Sign-up during a landing visit (frozen, set once) | Which landing page won this customer |
 | `puramass_orders` | `landing_page` | Hand-off to payment (frozen) | Which landing page this order came through |
 | `puramass_orders` | `discount_code`, `discount_code_percent`, `discount_code_cents` | Hand-off | The landing code and what it took off |
 
-**Admin → Landing Pages** shows, per page and for any date range: visitors,
-sign-ups, checkouts, purchasers (with conversion rates), paid orders,
-revenue (goods after discount, per currency), and total discounts given.
+**Admin → Landing Pages** shows, per page and for any date range:
 
-Visitor-level counts only include people who accepted cookies while the
-consent banner is on, so read them as a floor. Orders and revenue are exact:
-every order is stamped whatever the consent state.
+| Column | Counted from | Notes |
+| --- | --- | --- |
+| Page views | `landing_page_daily.views` | One per landing page load (the page's read of its offer) |
+| Clicked through | `landing_page_daily.arrivals` | One per browser tab arriving on vytabio.com with `?lp=`; a reload isn't another. Shown as a % of views |
+| Visitors | `landing_page_daily.visitors` | The first click-through from each browser |
+| Sign-ups | `customers.attribution_landing_page` | Accounts created during a visit from the page |
+| Checkouts | `puramass_orders.landing_page`, any status | Distinct buyers (by email) who reached the payment page |
+| Purchasers | the same, status `paid` | Distinct buyers who paid |
+| Paid orders · Revenue · Discounts given | the same, status `paid` | Revenue is goods after discount, before shipping and tax, per currency |
+
+**Every visitor is counted, whether or not they accept the cookie banner.**
+The three traffic columns are plain tallies (a number per page per day, with
+no visitor id, cookie value, IP or email), so there is nothing personal in
+them to consent to. The browser keeps only the slug and the date of its first
+click-through, in local storage, to tell a new visitor from a returning one.
+The other columns come from account and order records the store keeps for
+every customer.
+
+The per-visitor journey (`visitor_attribution`, the customer page, the
+Analytics tabs) still waits for the banner, exactly as the rest of the site's
+tracking does. That's why the first version of this report, which counted from
+it, missed most visitors.
 
 Elsewhere:
 
@@ -627,6 +651,8 @@ creating a new page.
 | "…already on a checkout that is awaiting payment" | The buyer started a checkout and came back | They can pay the open checkout, or wait for it to expire |
 | Sales show as "Referral" from the landing domain | The page isn't forwarding `fbclid` / `utm_*` | Fix per rule ③ in [4.2](#42-building-your-own-the-contract) |
 | Admin says to run the migration | `landing-pages-migration.sql` hasn't run | Run it |
+| Page views / Clicked through / Visitors show "—" | `landing-page-counters-migration.sql` hasn't run | Run it |
+| A test visit didn't add to Visitors | That browser already arrived through this page once (Visitors is first click-throughs only), or the range excludes today | Use a new private window, and check *Clicked through*: it counts every new tab |
 
 ---
 
@@ -642,7 +668,9 @@ creating a new page.
 | `lib/promos/landing-server.ts` | Loading a landing page and its offer; fine print |
 | `middleware.ts` | Captures `?lp=` into the touch and the `vyta_lp` cookie |
 | `lib/analytics/attribution.ts` / `attribution-server.ts` | `landing_page` on the touch and on visitor rows |
-| `app/api/landing/[slug]/route.ts` | The public offer API the landing page reads |
+| `app/api/landing/[slug]/route.ts` | The public offer API the landing page reads; also counts page views |
+| `app/api/landing/[slug]/arrive/route.ts` + `lib/promos/landing-client.ts` | Counts click-throughs and new visitors (anonymous tallies) |
+| `landing-page-counters-migration.sql` | The tallies table and its increment function |
 | `app/api/promos/landing/route.ts` | The storefront's read of the visitor's offer (includes the code) |
 | `contexts/PromosContext.tsx` | `landingOffer` for the nav, cart and checkout |
 | `app/checkout/PuramassCheckoutContent.tsx` | Fills the discount field |

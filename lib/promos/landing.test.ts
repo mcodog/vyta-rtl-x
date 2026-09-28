@@ -179,3 +179,74 @@ test('the admin form is validated', () => {
   assert.equal(shapeLandingPageInput({ slug: 'ok', name: 'n', offer: { percent: 0 } }).ok, false);
   assert.equal(shapeLandingPageInput({ slug: 'ok', name: 'n', domain: 'nope' }).ok, false);
 });
+
+// ---------------------------------------------------------------------------
+// Counting click-throughs (lib/promos/landing-client.ts)
+// ---------------------------------------------------------------------------
+
+import { landingArrival, LANDING_SEEN_KEY } from './landing-client';
+
+function memoryStore() {
+  const map = new Map<string, string>();
+  return {
+    map,
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem: (k: string, v: string) => void map.set(k, v),
+  };
+}
+
+test('an arrival is counted once per tab, and as a new visitor once per browser', () => {
+  const local = memoryStore();
+  const tab1 = memoryStore();
+  const search = '?lp=Standards&fbclid=abc';
+
+  // First arrival ever from this browser: a click-through AND a new visitor.
+  assert.deepEqual(landingArrival(search, { session: tab1, local }, '2026-09-28'), {
+    slug: 'standards',
+    first: true,
+  });
+  // A reload in the same tab is not another click-through.
+  assert.equal(landingArrival(search, { session: tab1, local }, '2026-09-28'), null);
+  // A later visit in a new tab is a click-through, but not a new visitor.
+  const tab2 = memoryStore();
+  assert.deepEqual(landingArrival(search, { session: tab2, local }, '2026-09-29'), {
+    slug: 'standards',
+    first: false,
+  });
+  // A different landing page is its own first.
+  assert.deepEqual(landingArrival('?lp=other-page', { session: tab2, local }, '2026-09-29'), {
+    slug: 'other-page',
+    first: true,
+  });
+  assert.deepEqual(Object.keys(JSON.parse(local.map.get(LANDING_SEEN_KEY)!)), ['standards', 'other-page']);
+});
+
+test('no valid ?lp= is nothing to count', () => {
+  const s = { session: memoryStore(), local: memoryStore() };
+  assert.equal(landingArrival('', s, '2026-09-28'), null);
+  assert.equal(landingArrival('?utm_source=facebook', s, '2026-09-28'), null);
+  assert.equal(landingArrival('?lp=bad_slug', s, '2026-09-28'), null);
+});
+
+test('a browser that blocks storage is still counted', () => {
+  const throwing = {
+    getItem: () => {
+      throw new Error('blocked');
+    },
+    setItem: () => {
+      throw new Error('blocked');
+    },
+  };
+  assert.deepEqual(landingArrival('?lp=standards', { session: throwing, local: throwing }, '2026-09-28'), {
+    slug: 'standards',
+    first: true,
+  });
+  assert.deepEqual(landingArrival('?lp=standards', { session: null, local: null }, '2026-09-28'), {
+    slug: 'standards',
+    first: true,
+  });
+  // A corrupt seen-map is treated as empty rather than breaking the count.
+  const local = memoryStore();
+  local.setItem(LANDING_SEEN_KEY, '{not json');
+  assert.equal(landingArrival('?lp=standards', { session: memoryStore(), local }, '2026-09-28')?.first, true);
+});
