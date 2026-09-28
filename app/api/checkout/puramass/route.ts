@@ -12,6 +12,7 @@ import {
 import {
   readVisitorContext,
   attributionColumns,
+  landingPageOf,
   linkVisitorIdentity,
   stampVisitorMilestone,
 } from '@/lib/analytics/attribution-server';
@@ -37,7 +38,7 @@ import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import { trackStartedCheckout } from '@/lib/klaviyo/events';
 import { createPendingStealthHealthInvoice } from '@/lib/payments/puramass-fulfillment';
 import {
-  distributeAdDiscount,
+  distributeLineDiscounts,
   isAdTraffic,
   qualifiesForAdDiscount,
   shapeAdDiscountSettings,
@@ -49,7 +50,8 @@ import {
   shapeCartOfferSettings,
 } from '@/lib/promos/cart-offer';
 import { isCustomerFirstOrder } from '@/lib/promos/first-order';
-import { lookupDiscountCode } from '@/lib/affiliate/discount-codes';
+import { eligibleSubtotal, lookupDiscountCode } from '@/lib/affiliate/discount-codes';
+import { resolveLandingOffer } from '@/lib/promos/landing-server';
 import { resolvePriceMap } from '@/lib/pricing/resolve';
 import { packPriceFor, round2, vialPriceFor, vialsPerBoxOf } from '@/lib/pricing';
 import { isValidPhone } from '@/lib/phone';
@@ -333,6 +335,9 @@ export async function POST(req: NextRequest) {
   }
   const referralCode = String(body?.referralCode ?? '').trim() || null;
   const discountCodeInput = String(body?.discountCode ?? '').trim() || null;
+  // The buyer took the landing page's code out of the discount field
+  // themselves, so the fallback in step 8c must not put it back.
+  const declineLandingOffer = body?.declineLandingOffer === true;
 
   // 4b. Ship-to. Only collected when the buyer picks a live courier rate —
   //     with the flat fee there is nothing to quote, so Stealth Health goes on
@@ -523,17 +528,18 @@ export async function POST(req: NextRequest) {
   //     offer. Both can land on one order.
   //
   //     The hosted order has no discount field, so the only way to take money
-  //     off is to send lower prices: `distributeAdDiscount` splits the
+  //     off is to send lower prices: `distributeLineDiscounts` splits the
   //     percentage across the lines and each one travels as its own
   //     `unit_price_cents`. Undiscounted lines carry our list price. Our own
   //     summary shows the saving as one deduction off the subtotal; the hosted
   //     page can only show the already-reduced line prices.
   //
-  //     Stacked promos are COMPOSED into one percentage and split once
+  //     Stacked promos are COMPOSED into one percentage per line and split once
   //     (`combineDiscountPercents`: 25% then 10% is 32.5% off, not 35%). Two
   //     splits in a row would round twice, and adding the percentages could
   //     reach 100 — a zero line price, which this API reads as "use your own
-  //     price" and charges at full list.
+  //     price" and charges at full list. Lines only differ in percentage when
+  //     a discount code excludes some products (step 8c).
   //
   //     Both are decided here, and neither is asked of the browser: the
   //     welcome discount from the cookies and the customer row, the cart offer
@@ -550,60 +556,134 @@ export async function POST(req: NextRequest) {
   const cartOfferSettings = shapeCartOfferSettings(settingsRow);
   const earnedOffer = qualifiesForCartOffer(cartOfferSettings, cartUnits);
 
-  // 8c. A discount code the buyer typed. Checked against the LIST subtotal of
-  //     exactly these lines, the same figure its minimum and any fixed amount
-  //     are measured in. A code that does not apply is an error the buyer can
-  //     fix, not something to drop silently on the way to the payment page.
+  // 8c. The discount code — the one the buyer typed, or the one checkout put
+  //     into the field for them from the landing page they arrived through.
+  //     Checked against the LIST subtotal of exactly these lines, the same
+  //     figure its minimum and any fixed amount are measured in, and against
+  //     these lines by product, for a code that excludes some. A code the
+  //     buyer sent that does not apply is an error they can fix, not something
+  //     to drop silently on the way to the payment page.
   //
   //     It does not stack with the paid-ads welcome discount — the buyer gets
-  //     whichever is larger — but does stack with the cart offer, composed the
-  //     same way as every other pair.
+  //     whichever takes more off — but does stack with the cart offer,
+  //     composed the same way as every other pair.
   const listSubtotalCents = [...linesBySku.values()].reduce(
     (total, line) => total + line.unitPriceCents * line.quantity,
     0,
   );
-  let appliedCode: { id: string; code: string; percent: number } | null = null;
-  if (discountCodeInput) {
-    const lookup = await lookupDiscountCode(db, discountCodeInput, {
+  const codeLines = [...linesBySku.values()].map((line) => ({
+    productId: line.productId,
+    amount: (line.unitPriceCents * line.quantity) / 100,
+  }));
+
+  // The landing page's code, when the buyer sent none. The storefront puts it
+  // into the discount field itself; this is the backstop for when it could
+  // not — the offer fetch failed, the buyer pressed Pay before it landed, or
+  // their browser blocks our scripts. The promise was made on the landing
+  // page, so keeping it cannot depend on the browser.
+  //
+  // It is only a default: a code the buyer typed replaces it, and a buyer who
+  // took it out of the field is not given it back. And unlike a typed code,
+  // one that turns out not to apply (they have ordered before) does not stop
+  // the checkout — they never asked for it, so they pay list price as anyone
+  // else would.
+  let codeToApply = discountCodeInput;
+  let codeFromLanding = false;
+  if (!codeToApply && !declineLandingOffer && visitor.landingPage) {
+    const landing = await resolveLandingOffer(db, visitor.landingPage);
+    if (landing?.offer.code) {
+      codeToApply = landing.offer.code;
+      codeFromLanding = true;
+    }
+  }
+
+  let appliedCode:
+    | { id: string; code: string; percent: number; excluded: Set<string>; eligibleCents: number }
+    | null = null;
+  if (codeToApply) {
+    const lookup = await lookupDiscountCode(db, codeToApply, {
       subtotal: listSubtotalCents / 100,
       customerId,
+      email,
+      lines: codeLines,
     });
-    if (!lookup.ok) {
+    if (lookup.ok) {
+      const excluded = new Set(lookup.code.excluded_product_ids.map((id) => id.toLowerCase()));
+      appliedCode = {
+        id: lookup.code.id,
+        code: lookup.code.code,
+        percent: lookup.percent,
+        excluded,
+        eligibleCents: Math.round(eligibleSubtotal(codeLines, lookup.code.excluded_product_ids) * 100),
+      };
+    } else if (codeFromLanding) {
+      console.info(
+        '[puramass] landing offer %s not applied for this buyer: %s',
+        visitor.landingPage,
+        lookup.reason,
+      );
+    } else {
       return NextResponse.json(
         { error: lookup.message, discount_code_error: true },
         { status: 400 },
       );
     }
-    appliedCode = { id: lookup.code.id, code: lookup.code.code, percent: lookup.percent };
   }
 
+  // Code against welcome discount, compared by what each would take off the
+  // whole order: a code that excludes products takes its percentage off only
+  // part of it. With no exclusions the eligible share is exactly 1, so this is
+  // the plain percentage comparison it always was.
   const adPercent = earnedAd ? adDiscountSettings.percent : 0;
-  const codeBeatsAd = appliedCode !== null && appliedCode.percent >= adPercent;
+  const codeEffectivePercent =
+    appliedCode && listSubtotalCents > 0
+      ? (appliedCode.percent * appliedCode.eligibleCents) / listSubtotalCents
+      : 0;
+  const codeBeatsAd = appliedCode !== null && codeEffectivePercent >= adPercent;
   const usedAd = earnedAd && !codeBeatsAd;
-  const discountPercent = combineDiscountPercents(
-    usedAd ? adPercent : 0,
-    codeBeatsAd ? appliedCode!.percent : 0,
-    earnedOffer ? cartOfferSettings.percent : 0,
-  );
-  let discount: ReturnType<typeof distributeAdDiscount> | null = null;
-  if (discountPercent > 0) {
-    const split = distributeAdDiscount(
-      [...linesBySku.entries()].map(([sku, line]) => ({
-        key: sku,
-        unitPriceCents: line.unitPriceCents,
-        quantity: line.quantity,
-      })),
-      discountPercent,
-    );
+  const offerPercent = earnedOffer ? cartOfferSettings.percent : 0;
+
+  // Each line's own percentage: the winning first discount (none on a line the
+  // code excludes), composed with the cart offer. Lines sharing a percentage
+  // are split together, so an order where every line shares one is priced by
+  // exactly the single split it always was.
+  const percentLines = [...linesBySku.entries()].map(([key, line]) => {
+    const first = codeBeatsAd
+      ? appliedCode!.excluded.has(line.productId.toLowerCase())
+        ? 0
+        : appliedCode!.percent
+      : usedAd
+        ? adPercent
+        : 0;
+    return {
+      key,
+      unitPriceCents: line.unitPriceCents,
+      quantity: line.quantity,
+      percent: combineDiscountPercents(first, offerPercent),
+    };
+  });
+  const excludedLinesInCart =
+    codeBeatsAd &&
+    [...linesBySku.values()].some((line) => appliedCode!.excluded.has(line.productId.toLowerCase()));
+
+  let discount: ReturnType<typeof distributeLineDiscounts> | null = null;
+  if (percentLines.some((line) => line.percent > 0)) {
+    const split = distributeLineDiscounts(percentLines);
     if (split.lines.every((l) => l.discountedUnitPriceCents > 0)) {
       discount = split;
     } else {
       console.error(
-        '[puramass] discount skipped: %s%% would zero a line price; sending list prices',
-        discountPercent,
+        '[puramass] discount skipped: %s would zero a line price; sending list prices',
+        percentLines.map((l) => `${l.percent}%`).join('/'),
       );
     }
   }
+  // One figure for the whole saving, as a share of the list subtotal — the
+  // percentage itself when every line got the same one.
+  const uniformPercent = new Set(percentLines.map((l) => l.percent)).size === 1 ? percentLines[0].percent : null;
+  const overallPercent = discount
+    ? uniformPercent ?? Math.round((discount.discountCents / Math.max(1, discount.subtotalCents)) * 10000) / 100
+    : 0;
 
   const discountedBySku = new Map(
     (discount?.lines ?? []).map((l) => [l.key, l.discountedUnitPriceCents]),
@@ -752,7 +832,7 @@ export async function POST(req: NextRequest) {
   // The discount code, recorded whether or not the split landed: it is what
   // credits the affiliate and counts against the code's usage limit.
   // `discount_code_cents` is the code's own share of the saving — what it
-  // alone would have taken off the list subtotal.
+  // alone would have taken off the list total of the lines it applies to.
   const codeColumns: Record<string, unknown> = appliedCode
     ? {
         discount_code_id: appliedCode.id,
@@ -760,12 +840,28 @@ export async function POST(req: NextRequest) {
         discount_code_percent: codeBeatsAd && discount ? appliedCode.percent : 0,
         discount_code_cents:
           codeBeatsAd && discount
-            ? Math.round((listSubtotalCents * appliedCode.percent) / 100)
+            ? Math.round((appliedCode.eligibleCents * appliedCode.percent) / 100)
             : 0,
       }
     : {};
 
+  // Which landing page sent this buyer — the one whose offer they hold, else
+  // the one on their first or last touch. Frozen here for the same reason the
+  // channel is: past this point they are on Stealth Health's domain, and
+  // nothing about their visit comes back with the payment.
+  const landingPage = landingPageOf(visitor);
+  const landingColumns: Record<string, unknown> = landingPage ? { landing_page: landingPage } : {};
+
   const attempts: Record<string, unknown>[] = [
+    {
+      ...base,
+      ...attribution,
+      ...addressColumns,
+      ...shippingColumns,
+      ...discountColumns,
+      ...codeColumns,
+      ...landingColumns,
+    },
     { ...base, ...attribution, ...addressColumns, ...shippingColumns, ...discountColumns, ...codeColumns },
     { ...base, ...attribution, ...addressColumns, ...shippingColumns, ...discountColumns },
     { ...base, ...attribution, ...addressColumns, ...shippingColumns },
@@ -807,9 +903,16 @@ export async function POST(req: NextRequest) {
       vials_per_unit: line.packSize,
     }));
     const chargedSubtotal = invoiceLines.reduce((sum, l) => sum + l.qty * l.unit_price, 0);
+    const discountParts = [
+      appliedCode && codeBeatsAd
+        ? `code ${appliedCode.code}, ${appliedCode.percent}% off` +
+          (excludedLinesInCart ? ' eligible items (excluded products at list price)' : '')
+        : null,
+      usedAd ? `${adPercent}% first-order discount` : null,
+      earnedOffer ? `${offerPercent}% limited-time offer` : null,
+    ].filter(Boolean);
     const discountNote = discount
-      ? `Discount applied: ${discount.percent}% off` +
-        (appliedCode && codeBeatsAd ? ` (code ${appliedCode.code})` : '') +
+      ? `Discount applied: ${discountParts.join(' + ') || `${overallPercent}% off`}` +
         ` — saved $${(discount.discountCents / 100).toFixed(2)} CAD.`
       : null;
     await createPendingStealthHealthInvoice(db, {
@@ -884,8 +987,11 @@ export async function POST(req: NextRequest) {
     ad_discount_percent: discount && usedAd ? adDiscountSettings.percent : 0,
     discount_code: appliedCode?.code ?? null,
     discount_code_percent: discount && codeBeatsAd ? appliedCode!.percent : 0,
+    // True when the code was the landing page's, applied here because the
+    // browser did not send one.
+    discount_code_from_landing: codeFromLanding && appliedCode !== null,
     cart_offer_percent: discount && earnedOffer ? cartOfferSettings.percent : 0,
-    discount_percent: discount ? discount.percent : 0,
+    discount_percent: overallPercent,
     ad_discount: discount ? discount.discountCents / 100 : 0,
   });
 }

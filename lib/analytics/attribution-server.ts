@@ -19,6 +19,8 @@ import {
   CONSENT_COOKIE,
   type AttributionTouch,
 } from './attribution';
+import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import { LANDING_COOKIE, normalizeLandingSlug } from '@/lib/promos/landing';
 
 const SESSION_COOKIE = 'aminocan_sid';
 const REF_COOKIE = 'ref_code';
@@ -35,6 +37,12 @@ export interface VisitorContext {
   first: AttributionTouch | null;
   last: AttributionTouch | null;
   refCode: string | null;
+  /**
+   * Slug of the landing page whose offer this visitor holds — the `vyta_lp`
+   * cookie, validated. Distinct from `first/last.landing_page`: see
+   * lib/promos/landing.ts for why the offer has a cookie of its own.
+   */
+  landingPage: string | null;
 }
 
 /** Pull the visitor + attribution cookies off a request. */
@@ -46,7 +54,19 @@ export function readVisitorContext(cookies: CookieReader): VisitorContext {
     first: decodeTouch(value(ATTRIBUTION_COOKIE)),
     last: decodeTouch(value(ATTRIBUTION_LAST_COOKIE)),
     refCode: value(REF_COOKIE),
+    landingPage: normalizeLandingSlug(value(LANDING_COOKIE)),
   };
+}
+
+/**
+ * The landing page to credit for this visitor, if any: the one whose offer
+ * they hold, else the one on their first touch, else their last.
+ *
+ * The offer cookie leads because it is the page they were most recently shown
+ * — the one whose promise the order is being placed on.
+ */
+export function landingPageOf(ctx: VisitorContext): string | null {
+  return ctx.landingPage ?? ctx.first?.landing_page ?? ctx.last?.landing_page ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +143,7 @@ function firstTouchColumns(touch: AttributionTouch | null) {
     first_landing: touch.landing_path,
     first_ref_code: touch.ref_code,
     first_seen_at: touch.at,
+    ...(touch.landing_page ? { first_landing_page: touch.landing_page } : {}),
   };
 }
 
@@ -138,7 +159,38 @@ function lastTouchColumns(touch: AttributionTouch | null) {
     last_referrer: touch.referrer_host,
     last_landing: touch.landing_path,
     last_seen_at: touch.at,
+    ...(touch.landing_page ? { last_landing_page: touch.landing_page } : {}),
   };
+}
+
+/** Added by landing-pages-migration.sql — see `writeVisitorRow`. */
+const LANDING_VISITOR_COLUMNS = ['first_landing_page', 'last_landing_page'];
+
+function withoutLandingColumns(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (!LANDING_VISITOR_COLUMNS.includes(k)) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * Run a `visitor_attribution` write, and if the database does not know the
+ * landing-page columns yet, run it again without them.
+ *
+ * The landing columns are only present on a row when the touch actually came
+ * from a landing page, so an unmigrated database costs nothing for anyone
+ * else — but for a landing visitor it must not cost the whole attribution row.
+ */
+async function writeVisitorRow(
+  row: Record<string, unknown>,
+  write: (row: Record<string, unknown>) => PromiseLike<{ error: unknown }>,
+): Promise<void> {
+  const { error } = await write(row);
+  if (!error || !isMissingColumnError(error)) return;
+  const stripped = withoutLandingColumns(row);
+  if (Object.keys(stripped).length === Object.keys(row).length) return;
+  await write(stripped);
 }
 
 /**
@@ -154,13 +206,16 @@ export async function ensureVisitorAttribution(
 ): Promise<void> {
   if (!ctx.anonymousId) return;
   try {
-    await db.from('visitor_attribution').upsert(
+    await writeVisitorRow(
       {
         anonymous_id: ctx.anonymousId,
         ...firstTouchColumns(ctx.first ?? ctx.last),
         ...lastTouchColumns(ctx.last ?? ctx.first),
       },
-      { onConflict: 'anonymous_id', ignoreDuplicates: true },
+      (row) =>
+        db
+          .from('visitor_attribution')
+          .upsert(row, { onConflict: 'anonymous_id', ignoreDuplicates: true }),
     );
   } catch {
     /* attribution is reporting — never fail the caller */
@@ -173,11 +228,12 @@ export async function refreshLastTouch(
   ctx: VisitorContext,
 ): Promise<void> {
   if (!ctx.anonymousId || !ctx.last) return;
+  const anonymousId = ctx.anonymousId;
   try {
-    await db
-      .from('visitor_attribution')
-      .update({ ...lastTouchColumns(ctx.last), updated_at: new Date().toISOString() })
-      .eq('anonymous_id', ctx.anonymousId);
+    await writeVisitorRow(
+      { ...lastTouchColumns(ctx.last), updated_at: new Date().toISOString() },
+      (row) => db.from('visitor_attribution').update(row).eq('anonymous_id', anonymousId),
+    );
   } catch {
     /* best-effort */
   }

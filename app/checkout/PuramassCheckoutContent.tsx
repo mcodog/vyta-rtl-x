@@ -50,6 +50,7 @@ import type { ShippingAddressErrors } from "@/lib/payments/puramass-address";
 import FreeShippingProgress from "@/components/FreeShippingProgress";
 import { usePromos } from "@/contexts/PromosContext";
 import { isValidPhone } from "@/lib/phone";
+import { eligibleSubtotal } from "@/lib/affiliate/discount-codes";
 
 interface AddonProduct {
   id: string;
@@ -262,6 +263,11 @@ interface AppliedDiscountCode {
   discountType: "percent" | "fixed";
   discountValue: number;
   description: string;
+  /** Products the code takes nothing off. */
+  excludedProductIds: string[];
+  firstOrderOnly: boolean;
+  /** Put into the field by us, from the landing page the buyer arrived through. */
+  fromLanding: boolean;
 }
 
 /**
@@ -325,7 +331,7 @@ export default function PuramassCheckoutContent({
   // (the welcome discount from the attribution cookies and the customer row,
   // the offer from the settings row and the quantities being ordered) and
   // takes the money off the line prices itself.
-  const { adDiscount, adDiscountEligible, adDiscountOn, cartOffer } = usePromos();
+  const { adDiscount, adDiscountEligible, adDiscountOn, cartOffer, landingOffer } = usePromos();
 
   const [email, setEmail] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -344,6 +350,12 @@ export default function PuramassCheckoutContent({
   const [appliedCode, setAppliedCode] = useState<AppliedDiscountCode | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeChecking, setCodeChecking] = useState(false);
+  // The landing page's code: the subtotal it was last tried against (so a
+  // cart that changes after a miss is tried again), and whether the buyer took
+  // it out of the field — which the hand-off is told, so it does not put it
+  // back (see `declineLandingOffer` in /api/checkout/puramass).
+  const [landingTriedFor, setLandingTriedFor] = useState<number | null>(null);
+  const [landingDeclined, setLandingDeclined] = useState(false);
 
   // ---- Shipping ----
   const [shipping, setShipping] = useState<ShippingForm>(EMPTY_SHIPPING);
@@ -362,7 +374,7 @@ export default function PuramassCheckoutContent({
     setReferralCode(readReferralCode());
   }, []);
 
-  const applyDiscountCode = async (raw: string) => {
+  const applyDiscountCode = async (raw: string, opts: { fromLanding?: boolean } = {}) => {
     const code = raw.trim();
     if (!code) return;
     setCodeChecking(true);
@@ -376,7 +388,13 @@ export default function PuramassCheckoutContent({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ code, subtotal: totalPrice }),
+        body: JSON.stringify({
+          code,
+          subtotal: totalPrice,
+          // Per product, so a code that excludes some is measured against
+          // the lines it applies to.
+          items: items.map((it) => ({ productId: it.productId, amount: it.price * it.quantity })),
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (json?.ok) {
@@ -385,8 +403,12 @@ export default function PuramassCheckoutContent({
           discountType: json.discount_type === "fixed" ? "fixed" : "percent",
           discountValue: Number(json.discount_value) || 0,
           description: json.description,
+          excludedProductIds: Array.isArray(json.excluded_product_ids) ? json.excluded_product_ids : [],
+          firstOrderOnly: !!json.first_order_only,
+          fromLanding: !!opts.fromLanding,
         });
         setCodeInput(json.code);
+        if (opts.fromLanding) setLandingDeclined(false);
       } else {
         setAppliedCode(null);
         setCodeError(json?.error || "That code isn't valid.");
@@ -416,6 +438,34 @@ export default function PuramassCheckoutContent({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalPrice, linkCodeTried]);
+
+  // The landing page's offer goes into the discount field by itself — that is
+  // the promise the landing page made. After the link code above has had its
+  // turn, and never over a code the buyer has typed or applied. A miss (a cart
+  // of nothing but excluded products) is tried again when the cart changes.
+  //
+  // This is the visible half. The hand-off applies the same code on its own
+  // when the field arrives empty, so the discount does not depend on this
+  // effect having run.
+  useEffect(() => {
+    if (!linkCodeTried || totalPrice <= 0 || codeChecking) return;
+    if (!landingOffer.active || !landingOffer.code || landingDeclined) return;
+    if (appliedCode || codeInput.trim()) return;
+    if (landingTriedFor === totalPrice) return;
+    setLandingTriedFor(totalPrice);
+    void applyDiscountCode(landingOffer.code, { fromLanding: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    linkCodeTried,
+    totalPrice,
+    landingOffer.active,
+    landingOffer.code,
+    landingDeclined,
+    appliedCode,
+    codeInput,
+    codeChecking,
+    landingTriedFor,
+  ]);
 
   // Checkout upsell — products flagged is_checkout_addon. Only forms Stealth
   // Health can fulfil are offered (a case and/or vial SKU); store stock is
@@ -550,11 +600,28 @@ export default function PuramassCheckoutContent({
   //
   // A discount code does not stack with the first-order discount: the larger
   // of the two applies, the same rule the hand-off uses.
+  //
+  // A code that excludes products (the landing page's "*excluding Bac water")
+  // is taken off the other lines only, so the two are compared by what each
+  // takes off rather than by percentage.
   const welcomeSaving = adDiscountOn(totalPrice);
-  const welcomePercent = welcomeSaving > 0 ? adDiscount.percent : 0;
-  const codePercent = appliedCode ? discountCodePercent(appliedCode, totalPrice) : 0;
-  const codeWins = appliedCode !== null && codePercent > 0 && codePercent >= welcomePercent;
-  const codeSaving = codeWins ? Math.round(totalPrice * codePercent) / 100 : 0;
+  const codeBase = appliedCode
+    ? eligibleSubtotal(
+        items.map((it) => ({ productId: it.productId, amount: it.price * it.quantity })),
+        appliedCode.excludedProductIds,
+      )
+    : 0;
+  const codePercent = appliedCode ? discountCodePercent(appliedCode, codeBase) : 0;
+  const codeFullSaving = Math.round(codeBase * codePercent) / 100;
+  const codeWins = appliedCode !== null && codePercent > 0 && codeFullSaving >= welcomeSaving;
+  const codeSaving = codeWins ? codeFullSaving : 0;
+  // Lines in this cart the applied code does not discount, by name.
+  const excludedInCart = appliedCode
+    ? items
+        .filter((it) => appliedCode.excludedProductIds.includes(it.productId))
+        .map((it) => it.name)
+        .filter((name, i, all) => all.indexOf(name) === i)
+    : [];
   const adSaving = codeWins ? 0 : welcomeSaving;
   const firstSaving = codeSaving + adSaving;
   const offerSaving = cartOffer.amountOn(Math.max(0, totalPrice - firstSaving));
@@ -565,7 +632,11 @@ export default function PuramassCheckoutContent({
   const showOfferDiscount = offerSaving > 0;
   const showCodeDiscount = codeSaving > 0;
   const appliedLabels = [
-    showCodeDiscount && appliedCode ? `code ${appliedCode.code}` : null,
+    showCodeDiscount && appliedCode
+      ? appliedCode.fromLanding
+        ? `${appliedCode.description.replace(/ off$/, "")} welcome offer (code ${appliedCode.code})`
+        : `code ${appliedCode.code}`
+      : null,
     showAdDiscount ? `${adDiscount.percent}% first-order discount` : null,
     showOfferDiscount ? `${cartOffer.percent}% limited-time offer` : null,
   ].filter(Boolean) as string[];
@@ -722,6 +793,8 @@ export default function PuramassCheckoutContent({
           : undefined,
         referralCode: referralCode || undefined,
         discountCode: appliedCode?.code || undefined,
+        // Only sent when the buyer removed the landing page's code themselves.
+        declineLandingOffer: landingDeclined && !appliedCode ? true : undefined,
       };
 
       const res = await fetch("/api/checkout/puramass", {
@@ -739,9 +812,17 @@ export default function PuramassCheckoutContent({
           // The code stopped applying between preview and pay (the cart
           // shrank under its minimum, or it hit its limit). Drop it so the
           // buyer can pay without it or try another.
+          const wasLanding = !!appliedCode?.fromLanding;
           setAppliedCode(null);
           setCodeError(json.error || "That code no longer applies.");
-          setError(`${json.error || "That discount code no longer applies."} Remove it or try another to continue.`);
+          if (wasLanding) {
+            // The buyer never typed it, so there is nothing for them to fix:
+            // it has been taken out and they can pay without it.
+            setLandingDeclined(true);
+            setError(`${json.error || "Your welcome offer doesn't apply to this order."} You can continue without it.`);
+          } else {
+            setError(`${json.error || "That discount code no longer applies."} Remove it or try another to continue.`);
+          }
         } else if (res.status === 409 && Array.isArray(json.unmapped)) {
           setUnmapped(json.unmapped);
           setError("Some items aren't available for the secure hosted checkout.");
@@ -1375,6 +1456,17 @@ export default function PuramassCheckoutContent({
                         <span className="text-sm text-emerald-800">
                           <span className="font-mono font-semibold">{appliedCode.code}</span>
                           <span className="ml-2 text-xs">{appliedCode.description}</span>
+                          {appliedCode.fromLanding && (
+                            <span className="mt-0.5 block text-[11px] text-emerald-700">
+                              Applied automatically from your welcome offer
+                              {appliedCode.firstOrderOnly ? " · first order only" : ""}.
+                            </span>
+                          )}
+                          {excludedInCart.length > 0 && (
+                            <span className="mt-0.5 block text-[11px] text-emerald-700">
+                              Not discounted by this code: {excludedInCart.join(", ")}.
+                            </span>
+                          )}
                           {!codeWins && codePercent > 0 && (
                             <span className="mt-0.5 block text-[11px] text-emerald-700">
                               Your first-order discount is larger, so it applies instead.
@@ -1384,6 +1476,15 @@ export default function PuramassCheckoutContent({
                         <button
                           type="button"
                           onClick={() => {
+                            // Taking the landing page's code out is remembered, so
+                            // neither this screen nor the hand-off puts it back.
+                            // Taking out any other code lets the landing code
+                            // return, which is what an empty field means.
+                            if (appliedCode.fromLanding) {
+                              setLandingDeclined(true);
+                            } else {
+                              setLandingTriedFor(null);
+                            }
                             setAppliedCode(null);
                             setCodeInput("");
                             setCodeError(null);
@@ -1426,6 +1527,18 @@ export default function PuramassCheckoutContent({
                     {codeError && (
                       <p className="mt-1.5 text-xs text-amber-700">{codeError}</p>
                     )}
+                    {!appliedCode && !codeError && landingDeclined && landingOffer.active && landingOffer.code && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCodeInput(landingOffer.code!);
+                          void applyDiscountCode(landingOffer.code!, { fromLanding: true });
+                        }}
+                        className="mt-1.5 text-xs font-medium text-teal-dark hover:underline"
+                      >
+                        Re-apply your {+landingOffer.percent.toFixed(2)}% welcome offer ({landingOffer.code})
+                      </button>
+                    )}
                   </div>
 
                   {/* ---- Totals ---- */}
@@ -1440,7 +1553,7 @@ export default function PuramassCheckoutContent({
                       <div className="flex items-center justify-between">
                         <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700">
                           <Ticket className="h-3.5 w-3.5" />
-                          Code {appliedCode.code}
+                          {appliedCode.fromLanding ? "Welcome offer" : "Code"} {appliedCode.code}
                         </span>
                         <span className="text-sm font-semibold text-emerald-700 tabular-nums">
                           -${codeSaving.toFixed(2)}

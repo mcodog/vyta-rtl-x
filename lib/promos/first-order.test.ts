@@ -114,3 +114,129 @@ test('a failed order count fails closed', async () => {
   const { db } = stubDb({ ordersError: true });
   assert.equal(await isCustomerFirstOrder(db, 'cus_1'), false);
 });
+
+// ---------------------------------------------------------------------------
+// firstOrderStatus — by customer id AND email, for first-order-only codes
+// ---------------------------------------------------------------------------
+
+import { escapeLike, firstOrderStatus, normalizeOrderEmail } from './first-order';
+
+interface Fixture {
+  customersById?: any;
+  customersByEmail?: any[];
+  hostedById?: any[];
+  hostedByEmail?: any[];
+  legacyByEmail?: any[];
+  fail?: 'customers' | 'puramass_orders' | 'orders';
+}
+
+/**
+ * Chainable stand-in for the query builder. Records which filter each query
+ * used (`eq` for the id, `ilike` for the email) and answers from the fixture.
+ */
+function chainDb(f: Fixture) {
+  const asked: { table: string; filter: string; value: unknown }[] = [];
+  const db = {
+    from(table: string) {
+      let filter = '';
+      let value: unknown = null;
+      const answer = () => {
+        if (f.fail === table) return { data: null, error: { message: 'boom' } };
+        if (table === 'customers') {
+          return filter === 'eq'
+            ? { data: f.customersById ?? null, error: null }
+            : { data: f.customersByEmail ?? [], error: null };
+        }
+        if (table === 'puramass_orders') {
+          return { data: (filter === 'eq' ? f.hostedById : f.hostedByEmail) ?? [], error: null };
+        }
+        return { data: f.legacyByEmail ?? [], error: null };
+      };
+      const q: any = {
+        select: () => q,
+        eq: (_c: string, v: unknown) => {
+          filter = 'eq';
+          value = v;
+          asked.push({ table, filter, value });
+          return q;
+        },
+        ilike: (_c: string, v: unknown) => {
+          filter = 'ilike';
+          value = v;
+          asked.push({ table, filter, value });
+          return q;
+        },
+        in: () => q,
+        limit: () => q,
+        maybeSingle: async () => answer(),
+        then: (resolve: any, reject: any) => Promise.resolve(answer()).then(resolve, reject),
+      };
+      return q;
+    },
+  };
+  return { db: db as any, asked };
+}
+
+test('nobody to check is unknown, never first', async () => {
+  const { db } = chainDb({});
+  assert.equal(await firstOrderStatus(db, {}), 'unknown');
+  assert.equal(await firstOrderStatus(db, { email: 'not an email' }), 'unknown');
+});
+
+test('a guest with no history is on their first order', async () => {
+  const { db } = chainDb({});
+  assert.equal(await firstOrderStatus(db, { email: 'New@Example.com' }), 'first');
+});
+
+test('a guest who paid before, as a guest, has ordered', async () => {
+  const { db } = chainDb({ hostedByEmail: [{ status: 'paid' }] });
+  assert.equal(await firstOrderStatus(db, { email: 'buyer@example.com' }), 'ordered');
+});
+
+test('a checkout awaiting payment is pending, not ordered', async () => {
+  const { db } = chainDb({ hostedByEmail: [{ status: 'payment_pending' }] });
+  assert.equal(await firstOrderStatus(db, { email: 'buyer@example.com' }), 'pending');
+});
+
+test('paid beats pending when both exist', async () => {
+  const { db } = chainDb({
+    hostedById: [{ status: 'payment_pending' }],
+    hostedByEmail: [{ status: 'paid' }],
+  });
+  assert.equal(await firstOrderStatus(db, { customerId: 'cus_1', email: 'b@example.com' }), 'ordered');
+});
+
+test('an account under the same email with the legacy flag has ordered', async () => {
+  const { db } = chainDb({ customersByEmail: [{ has_completed_first_order: true }] });
+  assert.equal(await firstOrderStatus(db, { email: 'b@example.com' }), 'ordered');
+});
+
+test('a completed legacy order under the email has ordered; an unpaid one has not', async () => {
+  assert.equal(
+    await firstOrderStatus(chainDb({ legacyByEmail: [{ status: 'confirmed' }] }).db, { email: 'b@example.com' }),
+    'ordered',
+  );
+  assert.equal(
+    await firstOrderStatus(chainDb({ legacyByEmail: [{ status: 'pending', payment_confirmed_at: null }] }).db, {
+      email: 'b@example.com',
+    }),
+    'first',
+  );
+});
+
+test('any failed read is unknown', async () => {
+  for (const fail of ['customers', 'puramass_orders', 'orders'] as const) {
+    const { db } = chainDb({ fail });
+    assert.equal(await firstOrderStatus(db, { customerId: 'cus_1', email: 'b@example.com' }), 'unknown');
+  }
+});
+
+test('emails are matched literally and case-insensitively', async () => {
+  const { db, asked } = chainDb({});
+  await firstOrderStatus(db, { email: ' John_Doe%1@Example.com ' });
+  const patterns = asked.filter((a) => a.filter === 'ilike').map((a) => a.value);
+  assert.ok(patterns.length > 0);
+  for (const p of patterns) assert.equal(p, 'john\\_doe\\%1@example.com');
+  assert.equal(escapeLike('a\\b'), 'a\\\\b');
+  assert.equal(normalizeOrderEmail('  X@Y.CO '), 'x@y.co');
+});

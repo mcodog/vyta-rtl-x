@@ -230,6 +230,14 @@ export default function DiscountCodesPage() {
                     <tr key={c.id} className="hover:bg-surface/50">
                       <td className="px-4 py-3">
                         <span className="font-mono font-semibold text-ink">{c.code}</span>
+                        {c.landing_page && (
+                          <Link
+                            href="/admin/landing-pages"
+                            className="ml-2 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-medium text-teal-dark hover:underline"
+                          >
+                            Landing: {c.landing_page}
+                          </Link>
+                        )}
                         {c.notes && <span className="block max-w-[180px] truncate text-[11px] text-ink-muted">{c.notes}</span>}
                       </td>
                       <td className="px-4 py-3">
@@ -249,6 +257,10 @@ export default function DiscountCodesPage() {
                               ? c.commission_rate != null ? `${c.commission_rate}% commission` : 'Default commission'
                               : null,
                             c.min_subtotal ? `min ${fmtMoney(c.min_subtotal)}` : null,
+                            c.first_order_only ? 'first order only' : null,
+                            c.excluded_product_ids?.length
+                              ? `excl. ${c.excluded_product_ids.length} product${c.excluded_product_ids.length === 1 ? '' : 's'}`
+                              : null,
                             c.expires_at ? `ends ${new Date(c.expires_at).toLocaleDateString()}` : null,
                           ].filter(Boolean).join(' · ')}
                         </span>

@@ -150,6 +150,8 @@ export const DIRECTORY_CUSTOMER_FIELDS = [
   // marketing-attribution-migration.sql — how this customer was acquired.
   'attribution_channel',
   'attribution_campaign',
+  // landing-pages-migration.sql — the landing page that won them, if any.
+  'attribution_landing_page',
 ] as const;
 
 /**

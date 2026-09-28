@@ -8,6 +8,11 @@ For the narrower question of **why one particular order is shown as "Paid ads"**
 Analytics and the order page — see
 [`docs/paid-ads-order-attribution.md`](docs/paid-ads-order-attribution.md).
 
+For **off-site landing pages** (a page on another domain that links here with
+`?lp=<slug>` and advertises a discount the checkout then applies), see
+[`LANDING_PAGES.md`](LANDING_PAGES.md). The landing page is recorded on the
+touch alongside the channel described below, not as a channel of its own.
+
 ## The problem this solves
 
 GA4 and GTM were already installed, so Google could report campaign performance

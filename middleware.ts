@@ -10,6 +10,12 @@ import {
   VISITOR_COOKIE,
 } from '@/lib/analytics/attribution';
 import { isValidReferralCodeFormat, normalizeReferralCode } from '@/lib/affiliate/utils';
+import {
+  LANDING_COOKIE,
+  LANDING_COOKIE_MAX_AGE,
+  LANDING_PARAM,
+  normalizeLandingSlug,
+} from '@/lib/promos/landing';
 
 const REF_COOKIE = 'ref_code';
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -41,7 +47,9 @@ function randomId(): string {
  *   1. mints the anonymous visitor + session ids the activity log is keyed by;
  *   2. records the first and last marketing touch (Google Ads gclid, Meta
  *      fbclid, UTM tagging, referring host) as cookies;
- *   3. keeps the existing affiliate `?ref=` capture.
+ *   3. keeps the existing affiliate `?ref=` capture;
+ *   4. remembers which off-site landing page (`?lp=`) sent the visitor, so its
+ *      offer can be put into the checkout's discount field (lib/promos/landing.ts).
  *
  * Only `?ref=` is stripped from the URL. `gclid` and friends are deliberately
  * left in place: Google's own conversion linker and GA4 auto-tagging read them
@@ -116,6 +124,26 @@ export function middleware(req: NextRequest) {
     response.cookies.set(ATTRIBUTION_LAST_COOKIE, encoded, {
       ...COOKIE_BASE,
       maxAge: ATTRIBUTION_MAX_AGE,
+    });
+  }
+
+  // 3. Landing page. The most recent one wins — unlike the affiliate cookie —
+  //    because this cookie carries an OFFER, and the offer checkout honours
+  //    must be the one the visitor was most recently shown. Which page first
+  //    won them is kept separately, on the first touch above.
+  //
+  //    Re-set on every landing arrival, so a repeat click restarts the 30 days.
+  //    Such a request already writes the last-touch cookie above, so this adds
+  //    no Set-Cookie to a response that would otherwise have been cacheable.
+  //
+  //    Left in the address bar: it is harmless there, GA4 sees it, and
+  //    stripping it would cost a redirect on the one request an ad is paying
+  //    for.
+  const landing = normalizeLandingSlug(url.searchParams.get(LANDING_PARAM));
+  if (landing) {
+    response.cookies.set(LANDING_COOKIE, landing, {
+      ...COOKIE_BASE,
+      maxAge: LANDING_COOKIE_MAX_AGE,
     });
   }
 

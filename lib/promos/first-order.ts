@@ -90,3 +90,116 @@ export async function isCustomerFirstOrder(
 
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// First order by customer id OR email — for first-order-only discount codes
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a buyer stands with a first-order-only offer.
+ *
+ *   first    — nothing on record: the offer is theirs.
+ *   ordered  — a paid order (hosted, or legacy by flag or email) exists.
+ *   pending  — no paid order, but a hosted checkout is still awaiting payment.
+ *              It consumes the offer for the same reason it does in
+ *              `isCustomerFirstOrder`; kept apart from `ordered` only so the
+ *              buyer can be told the offer is waiting on that checkout rather
+ *              than that it is gone.
+ *   unknown  — no identity to check, or a read failed. Callers that decide
+ *              money treat this as "not first" (fail closed).
+ */
+export type FirstOrderStatus = 'first' | 'ordered' | 'pending' | 'unknown';
+
+/**
+ * Legacy (pre-hosted-checkout) order statuses that mean the order went
+ * through. `payment_confirmed_at` is checked as well, for crypto orders.
+ */
+const LEGACY_COMPLETED_STATUSES = ['confirmed', 'paid', 'processing', 'shipped', 'delivered', 'completed'];
+
+/** Lower-cased, trimmed, or null when it is not plausibly an email. */
+export function normalizeOrderEmail(raw: unknown): string | null {
+  const email = String(raw ?? '').trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+/**
+ * Escape `%`, `_` and `\` so an email can be matched with ILIKE as a literal.
+ * Emails routinely contain `_`, which ILIKE would otherwise read as "any one
+ * character" — a false match there would refuse a genuine first-time buyer.
+ */
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Has this buyer ordered before? Checked against every record a past order
+ * could have left, by customer id AND by email, because a first-order-only
+ * code is also offered to guests — and a guest's history is only findable by
+ * the email they check out with:
+ *
+ *   • `customers.has_completed_first_order`, on their own row and on any
+ *     account registered to the same email;
+ *   • hosted orders (`puramass_orders`) under their customer id or email that
+ *     are paid, or still awaiting payment (see `FirstOrderStatus`);
+ *   • legacy orders (`orders`) placed with the same email.
+ *
+ * Emails are matched case-insensitively: the hosted ledger stores the address
+ * as it was typed.
+ */
+export async function firstOrderStatus(
+  db: SupabaseClient<any, any, any>,
+  identity: { customerId?: string | null; email?: string | null },
+): Promise<FirstOrderStatus> {
+  const customerId = identity.customerId || null;
+  const email = normalizeOrderEmail(identity.email);
+  if (!customerId && !email) return 'unknown';
+  const pattern = email ? escapeLike(email) : null;
+  const consuming = [...WELCOME_DISCOUNT_CONSUMING_STATUSES] as string[];
+
+  try {
+    const reads = await Promise.all([
+      customerId
+        ? db.from('customers').select('has_completed_first_order').eq('id', customerId).maybeSingle()
+        : null,
+      pattern
+        ? db.from('customers').select('has_completed_first_order').ilike('email', pattern).limit(5)
+        : null,
+      customerId
+        ? db.from('puramass_orders').select('status').eq('customer_id', customerId).in('status', consuming).limit(20)
+        : null,
+      pattern
+        ? db.from('puramass_orders').select('status').ilike('customer_email', pattern).in('status', consuming).limit(20)
+        : null,
+      pattern
+        ? db
+            .from('orders')
+            .select('status, payment_confirmed_at')
+            .ilike('email', pattern)
+            .limit(20)
+        : null,
+    ]);
+
+    // Any read that errored makes the answer unknown — never a guess.
+    if (reads.some((r: any) => r && r.error)) return 'unknown';
+    const [byId, byEmail, hostedById, hostedByEmail, legacy] = reads as any[];
+
+    const rows = (r: any): any[] => (r ? (Array.isArray(r.data) ? r.data : r.data ? [r.data] : []) : []);
+
+    if (rows(byId).some((c) => c.has_completed_first_order)) return 'ordered';
+    if (rows(byEmail).some((c) => c.has_completed_first_order)) return 'ordered';
+    if (
+      rows(legacy).some(
+        (o) => !!o.payment_confirmed_at || LEGACY_COMPLETED_STATUSES.includes(String(o.status)),
+      )
+    ) {
+      return 'ordered';
+    }
+
+    const hosted = [...rows(hostedById), ...rows(hostedByEmail)];
+    if (hosted.some((o) => o.status === 'paid')) return 'ordered';
+    if (hosted.length > 0) return 'pending';
+    return 'first';
+  } catch {
+    return 'unknown';
+  }
+}

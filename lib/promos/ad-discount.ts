@@ -256,3 +256,66 @@ export function distributeAdDiscount(
     percent: pct,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Different percentages on different lines
+// ---------------------------------------------------------------------------
+
+/** A line together with the percentage that comes off it. */
+export interface PercentLine extends AdDiscountLine {
+  percent: number;
+}
+
+export interface LineDiscountBreakdown {
+  lines: (AdDiscountedLine & { percent: number })[];
+  subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+}
+
+/**
+ * Split discounts that do not apply to every line alike — a discount code that
+ * excludes some products, stacked with an offer that does not.
+ *
+ * Lines are grouped by their percentage and each group is split on its own by
+ * `distributeAdDiscount`, so every group keeps that function's guarantees: the
+ * saving is never less than its advertised percentage of the group, a line is
+ * never marked up, and the rounding goes the buyer's way. Splitting everything
+ * at one blended percentage instead would move money from the excluded lines
+ * onto the eligible ones — taking something off bac water after all.
+ *
+ * When every line shares one percentage this is exactly one
+ * `distributeAdDiscount` call, so an order without exclusions is priced the
+ * same as it always was.
+ */
+export function distributeLineDiscounts(lines: PercentLine[]): LineDiscountBreakdown {
+  const groups = new Map<number, PercentLine[]>();
+  for (const line of lines) {
+    const pct = clampDiscountPercent(line.percent);
+    const group = groups.get(pct) ?? [];
+    group.push(line);
+    groups.set(pct, group);
+  }
+
+  const byKey = new Map<string, AdDiscountedLine & { percent: number }>();
+  let subtotalCents = 0;
+  let discountCents = 0;
+  for (const [pct, group] of groups) {
+    const split = distributeAdDiscount(group, pct);
+    subtotalCents += split.subtotalCents;
+    discountCents += split.discountCents;
+    for (const line of split.lines) byKey.set(line.key, { ...line, percent: pct });
+  }
+
+  // Back in the caller's order, so the payload reads the same as the cart.
+  const ordered = lines
+    .map((line) => byKey.get(line.key))
+    .filter((line): line is AdDiscountedLine & { percent: number } => !!line);
+
+  return {
+    lines: ordered,
+    subtotalCents,
+    discountCents,
+    totalCents: subtotalCents - discountCents,
+  };
+}

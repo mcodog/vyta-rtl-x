@@ -87,16 +87,27 @@ export default function CartPage() {
   // — came from an ad, signed in, and has not ordered before — and `cartOffer`
   // has already been measured against this cart's item count and the offer's
   // end date. All three are settled again server-side at hand-off.
-  const { freeShipping, adDiscount, adDiscountEligible, adDiscountOn, cartOffer } = usePromos();
+  const { freeShipping, adDiscount, adDiscountEligible, adDiscountOn, cartOffer, landingOffer } =
+    usePromos();
 
-  // Order of operations, and it matters: the welcome discount comes off the
+  // Order of operations, and it matters: the first discount comes off the
   // subtotal first, then the cart offer comes off what is left. That is what
   // `combineDiscountPercents` does at the checkout, so showing them any other
   // way here would quote a total the hand-off then disagrees with by a cent.
-  const adSaving = adDiscountOn(totalPrice);
-  const afterAd = Math.max(0, totalPrice - adSaving);
-  const offerSaving = cartOffer.amountOn(afterAd);
-  const estimatedTotal = Math.max(0, afterAd - offerSaving);
+  //
+  // "The first discount" is whichever of two takes more off, the same rule the
+  // hand-off applies: the landing page's code (off the products it does not
+  // exclude) or the paid-ads welcome discount (off everything). They never
+  // stack.
+  const landingSaving = landingOffer.amountOn(
+    items.map((item) => ({ productId: item.productId, amount: item.price * item.quantity })),
+  );
+  const welcomeSaving = adDiscountOn(totalPrice);
+  const landingWins = landingSaving > 0 && landingSaving >= welcomeSaving;
+  const adSaving = landingWins ? 0 : welcomeSaving;
+  const afterFirst = Math.max(0, totalPrice - (landingWins ? landingSaving : adSaving));
+  const offerSaving = cartOffer.amountOn(afterFirst);
+  const estimatedTotal = Math.max(0, afterFirst - offerSaving);
 
   // The cart's own scarcity note, taken from the tightest line rather than
   // invented: `stock_quantity` on a line is already the cap in that line's own
@@ -340,6 +351,25 @@ export default function CartPage() {
                           ${totalPrice.toFixed(2)}
                         </span>
                       </div>
+
+                      {landingWins && (
+                        <div className="text-xs sm:text-sm">
+                          <div className="flex justify-between">
+                            <span className="inline-flex items-center gap-1.5 text-emerald-700">
+                              <BadgePercent className="h-3.5 w-3.5" />
+                              {+landingOffer.percent.toFixed(2)}%{' '}
+                              {landingOffer.firstOrderOnly ? 'first-order offer' : 'welcome offer'}
+                            </span>
+                            <span className="font-semibold text-emerald-700 tabular-nums">
+                              -${landingSaving.toFixed(2)}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[10px] text-ink-muted sm:text-xs">
+                            Code {landingOffer.code} is applied automatically at checkout
+                            {landingOffer.exclusions ? ` · excludes ${landingOffer.exclusions}` : ''}.
+                          </p>
+                        </div>
+                      )}
 
                       {adDiscountEligible && adSaving > 0 && (
                         <div className="flex justify-between text-xs sm:text-sm">

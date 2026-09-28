@@ -26,6 +26,15 @@
  * background and no spacing of its own: just a separator and the offer, as
  * siblings of "Research Only".
  *
+ * ## Landing-page visitors
+ *
+ * Someone who came through one of our landing pages was promised THAT page's
+ * percentage, so it replaces the ad offer here — they usually count as ad
+ * traffic too (the page forwards the ad's click id), and telling them "25%"
+ * after the page said "35%" would read as a bait and switch. No sign-up is
+ * asked for: the landing offer is a discount code, which works for guests, and
+ * checkout puts it in the discount field for them.
+ *
  * Nothing here decides money. `/api/checkout/puramass` re-reads the attribution
  * cookies, the customer row and their order history, and applies the discount
  * itself (lib/promos/ad-discount.ts); this only says what is about to happen.
@@ -43,6 +52,8 @@ export interface AdOfferNotice {
   eligible: boolean;
   /** The offer as advertised, e.g. "25%". */
   off: string;
+  /** Limited to the first order — changes the wording. */
+  firstOrder: boolean;
 }
 
 /**
@@ -54,14 +65,23 @@ export interface AdOfferNotice {
  * make the fixed nav taller than the pages below it allow for.
  */
 export function useAdOfferNotice(): AdOfferNotice {
-  const { adDiscount, isAdVisitor, adDiscountEligible } = usePromos();
+  const { adDiscount, isAdVisitor, adDiscountEligible, landingOffer } = usePromos();
   const { customer } = useCustomer();
+  // A landing page's offer wins: it is the promise this visitor actually saw.
+  if (landingOffer.active) {
+    return {
+      show: true,
+      eligible: true,
+      off: `${+landingOffer.percent.toFixed(2)}%`,
+      firstOrder: landingOffer.firstOrderOnly,
+    };
+  }
   // A guest from an ad gets the invitation. A signed-in customer gets the line
   // only while the offer is still theirs to spend — which also keeps it hidden
   // during the moment before the first-order check has answered.
   const show =
     adDiscount.active && isAdVisitor && (customer ? adDiscountEligible : true);
-  return { show, eligible: adDiscountEligible, off: `${adDiscount.percent}%` };
+  return { show, eligible: adDiscountEligible, off: `${adDiscount.percent}%`, firstOrder: true };
 }
 
 /**
@@ -70,7 +90,7 @@ export function useAdOfferNotice(): AdOfferNotice {
  * make, which is what lets `Navigation` drop it in unconditionally.
  */
 export default function AdDiscountNotice() {
-  const { show, eligible, off } = useAdOfferNotice();
+  const { show, eligible, off, firstOrder } = useAdOfferNotice();
   if (!show) return null;
 
   const amount = <span className="font-semibold text-ink">{off} off</span>;
@@ -84,7 +104,9 @@ export default function AdDiscountNotice() {
           <Check className="h-3 w-3 flex-shrink-0" />
           <span>
             <span className="font-semibold">{off} off</span>
-            <span className="hidden sm:inline"> your first order — applied at checkout</span>
+            <span className="hidden sm:inline">
+              {firstOrder ? ' your first order' : ''} — applied at checkout
+            </span>
             <span className="sm:hidden"> applied</span>
           </span>
         </span>
