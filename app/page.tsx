@@ -1,6 +1,5 @@
 import Navigation from '@/components/Navigation';
 import Hero from '@/components/Hero';
-import WellnessFocus from '@/components/home/WellnessFocus';
 import BestSellers from '@/components/home/BestSellers';
 import WhyChooseVyta from '@/components/home/WhyChooseVyta';
 import CollectionBanner from '@/components/home/CollectionBanner';
@@ -15,6 +14,9 @@ import Footer from '@/components/Footer';
  * The "We Show Our Work" band (`components/home/ShowOurWork`) is hidden for
  * now; re-add it after `<BestSellers />` to bring it back.
  *
+ * The "Shop by Wellness Focus" tiles (`components/home/WellnessFocus`) are
+ * hidden too; see docs/wellness-focus-restore.md to bring them back.
+ *
  * `Testimonials` renders nothing until a quote is written in Admin →
  * Testimonials, so the page reads correctly on a brand-new store too.
  */
@@ -23,7 +25,6 @@ export default function Home() {
     <main className="min-h-screen">
       <Navigation />
       <Hero />
-      <WellnessFocus />
       <BestSellers />
       <WhyChooseVyta />
       <CollectionBanner />
