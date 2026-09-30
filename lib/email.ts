@@ -1114,6 +1114,8 @@ export async function sendStealthHealthOrderAlert(data: {
   total: number;
   discountCode?: string | null;
   shipTo?: string | null;
+  /** Lines that took no stock (no product linked) — shown as a warning. */
+  stockWarnings?: string[];
 }) {
   const { to, invoiceId, invoiceNumber, customerName, customerEmail, items } = data;
   if (!to || (Array.isArray(to) && to.length === 0)) {
@@ -1163,6 +1165,16 @@ export async function sendStealthHealthOrderAlert(data: {
       <p style="font-size: 13px; color: #56707F; margin: 16px 0 20px; text-align:center;">
         Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue.
       </p>
+
+      ${
+        data.stockWarnings && data.stockWarnings.length > 0
+          ? `<div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; margin-bottom:20px;">
+        <p style="font-size:13px; font-weight:600; color:#92400E; margin:0 0 6px;">Stock was not taken for:</p>
+        <p style="font-size:13px; color:#92400E; margin:0;">${data.stockWarnings.map((w) => escapeHtml(w)).join("<br>")}</p>
+        <p style="font-size:12px; color:#92400E; margin:8px 0 0;">Link them under Admin → Stock Ledger → Needs attention.</p>
+      </div>`
+          : ""
+      }
 
       ${insightsButton(`${SITE_URL}/admin/invoices/${invoiceId}`, "View invoice")}
     </div>

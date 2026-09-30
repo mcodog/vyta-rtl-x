@@ -3,6 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { canEdit, canDelete, canEditProductDescriptors, PRODUCT_DESCRIPTOR_FIELDS } from '@/lib/permissions';
 import { logAuditServer } from '@/lib/admin/audit';
 import { recordProductChanges } from '@/lib/admin/product-history';
+import { setProductStock } from '@/lib/admin/stock-ledger';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
 import { parsePriceOverride, parseVialsPerBox } from '@/lib/admin/product-input';
 import { normalizePackOptions, normalizePackSizes, reconcilePackOptions } from '@/lib/pricing';
@@ -353,6 +354,30 @@ export async function PATCH(
       }
     }
 
+    // Stock goes through set_product_stock so the change and the ledger row
+    // naming who made it commit together. Before stock-ledger-migration.sql
+    // has run it stays in the plain update, logged by the diff below.
+    let stockLogged = false;
+    if (
+      'stock_quantity' in updateData &&
+      Number.isInteger(Number(updateData.stock_quantity)) &&
+      Number(updateData.stock_quantity) !== Number(existingProduct.stock_quantity ?? 0)
+    ) {
+      const res = await setProductStock(supabase, {
+        productId: id,
+        quantity: Number(updateData.stock_quantity),
+        actorId: actor_id,
+        actorEmail: actor_email,
+      });
+      if (res.ok) {
+        stockLogged = true;
+        delete updateData.stock_quantity;
+      } else if (!res.unsupported) {
+        console.error('Error setting product stock:', res.error);
+        return NextResponse.json({ error: res.error }, { status: 500 });
+      }
+    }
+
     const { data, error } = await supabase
       .from('products')
       .update(updateData)
@@ -386,13 +411,16 @@ export async function PATCH(
     await checkLowStockForProducts(supabase, [id]);
 
     // Field-level history: log price / stock / general changes made here.
+    // A stock change set_product_stock already logged is left out here.
     if (data) {
+      const after: Record<string, unknown> = { ...data };
+      if (stockLogged) delete after.stock_quantity;
       await recordProductChanges(
         supabase,
         { actor_id, actor_email },
         id,
         existingProduct,
-        data,
+        after,
         { source: 'admin_edit' },
       );
     }

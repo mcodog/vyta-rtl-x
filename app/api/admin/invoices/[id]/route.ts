@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { EasyshipHandover } from '@/lib/types/ecommerce';
 import { logAuditServer } from '@/lib/admin/audit';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
+import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
 import { syncInvoiceBackorder } from '@/lib/admin/backorder-sync';
 import {
   autoCreateShipmentForInvoice,
@@ -212,7 +213,8 @@ export async function PATCH(
 
   // First transition into `paid` decrements stock once (idempotent in the DB).
   if (body.status === 'paid' && !wasPaid) {
-    await db.rpc('adjust_stock_for_invoice', { p_invoice_id: params.id, p_actor_email: actor_email });
+    const stock = await adjustInvoiceStock(db, params.id, actor_email);
+    if (!stock.ok) console.error('adjust_stock_for_invoice failed:', stock.error);
     const { data: lines } = await db
       .from('invoice_line_items')
       .select('product_id')

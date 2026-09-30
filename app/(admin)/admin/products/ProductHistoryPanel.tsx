@@ -50,7 +50,26 @@ const SOURCE_META: Record<string, { label: string; className: string }> = {
   admin_edit: { label: 'Admin edit', className: 'bg-teal/10 text-teal-dark' },
   csv_import: { label: 'CSV import', className: 'bg-indigo-500/10 text-indigo-600' },
   invoice_paid: { label: 'Invoice paid', className: 'bg-blue-500/10 text-blue-600' },
+  invoice_cancel: { label: 'Invoice cancelled', className: 'bg-blue-500/10 text-blue-600' },
   order_confirmed: { label: 'Order confirmed', className: 'bg-purple-500/10 text-purple-600' },
+  order_cancelled: { label: 'Order cancelled', className: 'bg-purple-500/10 text-purple-600' },
+  po_receipt: { label: 'PO received', className: 'bg-emerald-500/10 text-emerald-700' },
+  untracked: { label: 'Outside the admin', className: 'bg-amber-500/10 text-amber-700' },
+};
+
+/** Admin page for the row that caused an automatic change, when there is one. */
+function referenceHref(r: HistoryRow): string | null {
+  if (!r.reference_id) return null;
+  if (r.reference_type === 'invoice') return `/admin/invoices/${r.reference_id}`;
+  if (r.reference_type === 'order') return `/admin/orders/${r.reference_id}`;
+  if (r.reference_type === 'purchase_order') return `/admin/purchase-orders/${r.reference_id}`;
+  return null;
+}
+
+const REFERENCE_LABELS: Record<string, string> = {
+  invoice: 'View invoice',
+  order: 'View order',
+  purchase_order: 'View purchase order',
 };
 
 function sourceMeta(source: string) {
@@ -151,10 +170,11 @@ export default function ProductHistoryPanel({ productId }: { productId: string }
         <div className="flex items-start gap-2 mb-3 text-xs text-ink-muted bg-blue-500/5 border border-blue-500/15 rounded-lg px-3 py-2">
           <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
           <span>
-            Stock changes include manual edits and automatic deductions made when an
-            order is <strong>confirmed/paid</strong> or an invoice is marked{' '}
-            <strong>paid</strong>. Each deduction happens once and is attributed to its
-            source.
+            Stock changes include manual edits (with who made them) and automatic moves
+            when an order is <strong>confirmed</strong>, an invoice is{' '}
+            <strong>paid</strong> or <strong>cancelled</strong>, or a purchase order is{' '}
+            <strong>received</strong> — each linked to its source. The full ledger across
+            all products is under <strong>Stock Ledger</strong>.
           </span>
         </div>
       )}
@@ -199,6 +219,15 @@ export default function ProductHistoryPanel({ productId }: { productId: string }
                   </div>
                   {r.note && (
                     <p className="text-[11px] text-ink-muted mt-1">{r.note}</p>
+                  )}
+                  {referenceHref(r) && (
+                    <a
+                      href={referenceHref(r)!}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-dark hover:underline mt-1"
+                    >
+                      {REFERENCE_LABELS[r.reference_type ?? ''] ?? 'View source'}
+                      <ArrowRight className="w-3 h-3" />
+                    </a>
                   )}
                 </div>
                 <div className="flex flex-col sm:items-end gap-1 text-[11px] text-ink-muted flex-shrink-0">

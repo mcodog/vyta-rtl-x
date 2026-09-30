@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { logAuditServer } from '@/lib/admin/audit';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
+import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +20,8 @@ async function verifyAdmin(req: NextRequest) {
 
 /** Decrement stock once when an invoice becomes paid, then re-check low stock. */
 async function settlePaidStock(invoiceId: string, actorEmail: string | null) {
-  await db.rpc('adjust_stock_for_invoice', { p_invoice_id: invoiceId, p_actor_email: actorEmail });
+  const stock = await adjustInvoiceStock(db, invoiceId, actorEmail);
+  if (!stock.ok) console.error('adjust_stock_for_invoice failed:', stock.error);
   const { data: lines } = await db
     .from('invoice_line_items')
     .select('product_id')

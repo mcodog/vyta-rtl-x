@@ -8,10 +8,11 @@
  *      status `pending_payment`. It stays out of the warehouse queue, the
  *      customer's account and every revenue figure until it is paid.
  *   2. Paid — `materializeStealthHealthFulfillment` (webhook, poller, admin
- *      refresh) flips it to `paid`. The pass that wins that flip takes the
- *      stock, checks low-stock thresholds and emails the admins; every pass
- *      credits the affiliate and books the Easyship shipment (both are
- *      idempotent, so a failure on one pass is retried by the next).
+ *      refresh) flips it to `paid`. The pass that wins that flip emails the
+ *      admins; every pass takes the stock, credits the affiliate and books the
+ *      Easyship shipment (all idempotent, so a failure on one pass is retried
+ *      by the next — and `healStealthHealthPaidOrders` retries from the cron
+ *      for an order no webhook or poll will touch again).
  *      A hand-off made before invoices were created up front has none, so
  *      this creates it already paid.
  *   3. Lapsed — `expireStealthHealthInvoice` moves an unpaid invoice to
@@ -28,6 +29,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAffiliateCommission } from '@/lib/affiliate/commission';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import { splitName, trackPlacedOrder } from '@/lib/klaviyo/events';
+import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
 
 export interface StealthHealthLedgerRow {
   id: string;
@@ -35,11 +37,21 @@ export interface StealthHealthLedgerRow {
   customer_email?: string | null;
   /** Buyer name from the Stealth Health customer block, when it reported one. */
   customer_name?: string | null;
-  items?: { sku?: string; quantity?: number }[] | null;
+  items?: StealthHealthLedgerItem[] | null;
   subtotal_cents?: number | null;
   invoice_id?: string | null;
   /** Referral code captured at hand-off, if the buyer arrived through one. */
   referral_code?: string | null;
+}
+
+/** One line of the hand-off as the ledger stores it. */
+export interface StealthHealthLedgerItem {
+  sku?: string;
+  quantity?: number;
+  unit_price_cents?: number;
+  /** Product and pack size the line was sold as — hand-offs since the stock ledger. */
+  product_id?: string | null;
+  pack_size?: number | null;
 }
 
 export interface StealthHealthPaidItem {
@@ -118,9 +130,11 @@ const round2 = (n: number) => +n.toFixed(2);
 
 /**
  * Insert invoice lines. `vials_per_unit` arrives with
- * stealth-health-pending-invoice-migration.sql; without it the stock RPC would
- * read a pack of 5 as one vial, so the retry drops `product_id` as well and
- * the lines simply take no stock.
+ * stealth-health-pending-invoice-migration.sql (or stock-ledger-migration.sql);
+ * without it the stock RPC would read a pack of 5 as one vial, so the retry
+ * drops `product_id` from pack lines, which then take no stock and are listed
+ * under Stock Ledger → Needs attention. A single vial is one vial either way,
+ * so it keeps its product.
  */
 async function insertLines(
   db: SupabaseClient,
@@ -148,8 +162,8 @@ async function insertLines(
       .insert(
         rows.map((r) => {
           const rest: Record<string, unknown> = { ...r };
+          if (r.vials_per_unit !== 1) delete rest.product_id;
           delete rest.vials_per_unit;
-          delete rest.product_id;
           return rest;
         }),
       ));
@@ -291,6 +305,43 @@ async function vialSkuProducts(
   return out;
 }
 
+/**
+ * Invoice lines straight from the ledger, for a hand-off that recorded the
+ * product and pack size of every line. Null when any line lacks them.
+ */
+async function linesFromLedger(
+  db: SupabaseClient,
+  items: StealthHealthLedgerItem[] | null | undefined,
+): Promise<StealthHealthInvoiceLine[] | null> {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) return null;
+  if (!list.every((i) => typeof i.product_id === 'string' && i.product_id && Number(i.pack_size) >= 1)) {
+    return null;
+  }
+  const names = new Map<string, string>();
+  try {
+    const { data } = await db
+      .from('products')
+      .select('id, name')
+      .in('id', [...new Set(list.map((i) => i.product_id as string))]);
+    for (const p of (data ?? []) as any[]) names.set(String(p.id), String(p.name ?? ''));
+  } catch {
+    /* names are cosmetic */
+  }
+  return list.map((i) => {
+    const pack = Math.max(1, Math.round(Number(i.pack_size)) || 1);
+    const name = names.get(i.product_id as string) || i.sku || 'Stealth Health item';
+    return {
+      product_id: i.product_id as string,
+      description: pack > 1 ? `${name} — Pack of ${pack}` : `${name} — Single vial`,
+      qty: Math.max(1, Math.round(Number(i.quantity ?? 1)) || 1),
+      unit_price: typeof i.unit_price_cents === 'number' ? i.unit_price_cents / 100 : 0,
+      price_type: pack > 1 ? 'box' : 'vial',
+      vials_per_unit: pack,
+    };
+  });
+}
+
 /** Create the invoice, already paid, for a hand-off that never got one. */
 async function createPaidInvoice(
   db: SupabaseClient,
@@ -298,27 +349,31 @@ async function createPaidInvoice(
   stored: Record<string, any>,
   paidItems: StealthHealthPaidItem[] | null | undefined,
 ): Promise<string | null> {
-  const source: StealthHealthPaidItem[] =
-    Array.isArray(paidItems) && paidItems.length > 0
-      ? paidItems
-      : (ledger.items ?? []).map((i) => ({ sku: i.sku, quantity: i.quantity }));
+  let lines = await linesFromLedger(db, ledger.items ?? stored.items);
 
-  const vialProducts = await vialSkuProducts(
-    db,
-    source.filter((it) => puramassPriceType(it) === 'vial').map((it) => it.sku ?? ''),
-  );
+  if (!lines) {
+    const source: StealthHealthPaidItem[] =
+      Array.isArray(paidItems) && paidItems.length > 0
+        ? paidItems
+        : (ledger.items ?? []).map((i) => ({ sku: i.sku, quantity: i.quantity }));
 
-  const lines: StealthHealthInvoiceLine[] = source.map((it) => {
-    const priceType = puramassPriceType(it);
-    return {
-      product_id: priceType === 'vial' ? vialProducts.get(it.sku ?? '') ?? null : null,
-      description: (it.name || it.sku || 'Stealth Health item').toString(),
-      qty: Math.max(1, Math.round(Number(it.quantity ?? 1)) || 1),
-      unit_price: typeof it.unit_price_cents === 'number' ? it.unit_price_cents / 100 : 0,
-      price_type: priceType,
-      vials_per_unit: 1,
-    };
-  });
+    const vialProducts = await vialSkuProducts(
+      db,
+      source.filter((it) => puramassPriceType(it) === 'vial').map((it) => it.sku ?? ''),
+    );
+
+    lines = source.map((it) => {
+      const priceType = puramassPriceType(it);
+      return {
+        product_id: priceType === 'vial' ? vialProducts.get(it.sku ?? '') ?? null : null,
+        description: (it.name || it.sku || 'Stealth Health item').toString(),
+        qty: Math.max(1, Math.round(Number(it.quantity ?? 1)) || 1),
+        unit_price: typeof it.unit_price_cents === 'number' ? it.unit_price_cents / 100 : 0,
+        price_type: priceType,
+        vials_per_unit: 1,
+      };
+    });
+  }
 
   const lineSum = lines.reduce((s, l) => s + l.qty * l.unit_price, 0);
   const subtotal =
@@ -422,7 +477,12 @@ export async function materializeStealthHealthFulfillment(
       firstPaid = await markInvoicePaid(db, invoiceId, ledger);
     }
 
-    if (firstPaid) await onFirstPaid(db, invoiceId, ledger, stored);
+    // Stock on EVERY pass, not only the one that flipped the invoice to paid:
+    // a decrement that failed once is retried by the next webhook or poll.
+    // Idempotent in the database via invoices.stock_adjusted.
+    const stock = await takeStealthHealthStock(db, invoiceId);
+
+    if (firstPaid) await onFirstPaid(db, invoiceId, ledger, stored, stock.unlinked);
 
     await creditAffiliate(db, ledger, invoiceId, stored.discount_code_id ?? null);
     // Retried on every pass so a shipment that failed to book once is picked
@@ -446,37 +506,151 @@ function formatShipTo(addr: unknown): string | null {
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
+/** Who the ledger credits for a Stealth Health stock move. */
+const STOCK_ACTOR = 'stealth-health';
+
+/**
+ * Take a paid invoice's stock if it has not been taken yet, then report the
+ * lines that carry no product — those took nothing and need linking by hand
+ * (Stock Ledger → Needs attention). Every ledger row this writes points at the
+ * invoice. Never throws.
+ */
+export async function takeStealthHealthStock(
+  db: SupabaseClient,
+  invoiceId: string,
+): Promise<{ taken: boolean; unlinked: string[] }> {
+  try {
+    const { data: inv, error: invErr } = await db
+      .from('invoices')
+      .select('status, stock_adjusted')
+      .eq('id', invoiceId)
+      .maybeSingle();
+    if (invErr) console.error('[stealth-health] stock status read failed:', invErr);
+    if (!inv || inv.status !== 'paid') return { taken: false, unlinked: [] };
+
+    let taken = false;
+    if (inv.stock_adjusted !== true) {
+      const res = await adjustInvoiceStock(db, invoiceId, STOCK_ACTOR);
+      if (res.ok) taken = true;
+      else console.error('[stealth-health] stock decrement failed for invoice %s: %s', invoiceId, res.error);
+    }
+
+    const { data: lines } = await db
+      .from('invoice_line_items')
+      .select('product_id, description, qty')
+      .eq('invoice_id', invoiceId);
+    const all = (lines ?? []) as any[];
+    const productIds = [...new Set(all.map((l) => l.product_id).filter(Boolean) as string[])];
+    const unlinked = all
+      .filter((l) => !l.product_id)
+      .map((l) => `${String(l.description ?? 'Item')} × ${Number(l.qty) || 0}`);
+
+    if (unlinked.length > 0) {
+      console.error(
+        '[stealth-health] invoice %s has lines with no product — no stock taken for: %s',
+        invoiceId,
+        unlinked.join('; '),
+      );
+    }
+    if (taken && productIds.length > 0) {
+      const { checkLowStockForProducts } = await import('@/lib/admin/low-stock');
+      await checkLowStockForProducts(db, productIds);
+    }
+    return { taken, unlinked };
+  } catch (err) {
+    console.error('[stealth-health] stock step threw:', err);
+    return { taken: false, unlinked: [] };
+  }
+}
+
+/**
+ * Self-heal for the cron: an order the webhook or poll marked paid, but whose
+ * invoice is still unpaid (the pass threw), is materialized again; a paid
+ * invoice whose stock was never taken takes it now. Once the poller has seen
+ * `paid` it never revisits an order, so without this a single failed pass
+ * would leave the stock untouched for good. Bounded and never throws.
+ */
+export async function healStealthHealthPaidOrders(
+  db: SupabaseClient,
+  opts: { days?: number; limit?: number } = {},
+): Promise<{ rematerialized: number; stockTaken: number }> {
+  const since = new Date(Date.now() - (opts.days ?? 14) * 86_400_000).toISOString();
+  const limit = opts.limit ?? 50;
+  let rematerialized = 0;
+  let stockTaken = 0;
+
+  try {
+    // 1. Paid ledger rows whose invoice is still unpaid. A row with no invoice,
+    //    or one whose invoice is gone, is left alone: an admin may have deleted
+    //    it on purpose, and recreating it would take stock again.
+    const { data: paid } = await db
+      .from('puramass_orders')
+      .select('id, customer_id, customer_email, items, subtotal_cents, invoice_id, referral_code')
+      .eq('status', 'paid')
+      .not('invoice_id', 'is', null)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    const rows = (paid ?? []) as any[];
+    const invoiceIds = rows.map((r) => r.invoice_id).filter(Boolean) as string[];
+    const statusById = new Map<string, string>();
+    if (invoiceIds.length > 0) {
+      const { data: invs } = await db.from('invoices').select('id, status').in('id', invoiceIds);
+      for (const i of (invs ?? []) as any[]) statusById.set(String(i.id), String(i.status));
+    }
+    const stuck = rows
+      .filter((r) => {
+        const status = statusById.get(String(r.invoice_id));
+        return !!status && (UNPAID_HANDOFF_INVOICE_STATUSES as readonly string[]).includes(status);
+      })
+      .slice(0, limit);
+    for (const r of stuck) {
+      const res = await materializeStealthHealthFulfillment(
+        db,
+        {
+          id: r.id,
+          customer_id: r.customer_id ?? null,
+          customer_email: r.customer_email ?? null,
+          items: r.items ?? null,
+          subtotal_cents: r.subtotal_cents ?? null,
+          invoice_id: r.invoice_id ?? null,
+          referral_code: r.referral_code ?? null,
+        },
+        null,
+      );
+      if (res.created) rematerialized += 1;
+    }
+
+    // 2. Paid Stealth Health invoices whose stock was never taken.
+    const { data: unstocked } = await db
+      .from('invoices')
+      .select('id')
+      .eq('source', 'stealth_health')
+      .eq('status', 'paid')
+      .eq('stock_adjusted', false)
+      .gte('created_at', since)
+      .limit(limit);
+    for (const inv of (unstocked ?? []) as any[]) {
+      const res = await takeStealthHealthStock(db, String(inv.id));
+      if (res.taken) stockTaken += 1;
+    }
+  } catch (err) {
+    console.error('[stealth-health] heal sweep threw:', err);
+  }
+  return { rematerialized, stockTaken };
+}
+
 /**
  * Everything that happens once, when an order is first known to be paid:
- * take the stock, check low-stock thresholds, and email the admins.
+ * email the admins (flagging any line that took no stock) and tell Klaviyo.
  */
 async function onFirstPaid(
   db: SupabaseClient,
   invoiceId: string,
   ledger: StealthHealthLedgerRow,
   stored: Record<string, any>,
+  stockWarnings: string[],
 ): Promise<void> {
-  // Stock — idempotent in the database via invoices.stock_adjusted.
-  let productIds: string[] = [];
-  try {
-    const { error } = await db.rpc('adjust_stock_for_invoice', {
-      p_invoice_id: invoiceId,
-      p_actor_email: 'stealth-health',
-    });
-    if (error) console.error('[stealth-health] stock decrement failed:', error);
-    const { data: lines } = await db
-      .from('invoice_line_items')
-      .select('product_id')
-      .eq('invoice_id', invoiceId);
-    productIds = ((lines ?? []) as any[]).map((l) => l.product_id).filter(Boolean);
-    if (productIds.length > 0) {
-      const { checkLowStockForProducts } = await import('@/lib/admin/low-stock');
-      await checkLowStockForProducts(db, productIds);
-    }
-  } catch (err) {
-    console.error('[stealth-health] stock step threw:', err);
-  }
-
   // Admin alert.
   try {
     const [{ data: inv }, { data: lines }] = await Promise.all([
@@ -510,6 +684,7 @@ async function onFirstPaid(
       total: Number(inv?.total) || 0,
       discountCode: trimOrNull(stored.discount_code),
       shipTo: formatShipTo(stored.shipping_address),
+      stockWarnings,
     });
   } catch (err) {
     console.error('[stealth-health] admin order alert failed:', err);

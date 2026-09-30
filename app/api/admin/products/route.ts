@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canCreate } from '@/lib/permissions';
 import { logAuditServer } from '@/lib/admin/audit';
+import { recordProductChanges } from '@/lib/admin/product-history';
 import { toUrlSlug } from '@/lib/products/url';
 import { parsePriceOverride, parseVialsPerBox } from '@/lib/admin/product-input';
 import { normalizePackOptions, normalizePackSizes } from '@/lib/pricing';
@@ -225,6 +226,18 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error creating product:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Opening stock goes on the ledger as a manual entry by whoever created it.
+    if (data?.id && Number(data.stock_quantity) > 0) {
+      await recordProductChanges(
+        supabase,
+        { actor_id, actor_email },
+        data.id,
+        { stock_quantity: null },
+        { stock_quantity: data.stock_quantity },
+        { source: 'admin_edit' },
+      );
     }
 
     await logAuditServer(supabase, { actor_id, actor_email }, {
