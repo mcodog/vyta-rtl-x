@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { trackActivity } from '@/lib/customer/activity';
+import { reportLandingArrival } from '@/lib/promos/landing-client';
 
 /**
  * Records which storefront pages a visitor sees, so the admin customer page can
@@ -31,6 +32,11 @@ export default function CustomerJourneyTracker() {
     // referrer is just the previous page, which the log already holds.
     const isEntry = lastPath.current === null;
     lastPath.current = pathname;
+
+    // A landing page's click-through is counted on entry, as an anonymous
+    // tally that does not wait on the consent banner the journey below is
+    // gated by — so the Landing Pages report sees every visitor.
+    if (isEntry) reportLandingArrival();
 
     trackActivity({
       type: 'page',

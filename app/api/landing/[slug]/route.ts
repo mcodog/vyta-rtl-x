@@ -19,13 +19,19 @@
  *
  * A landing page must never print a percentage this endpoint did not return —
  * see LANDING_PAGES.md, "The number on the page".
+ *
+ * Each call is also the landing page's view counter: the page fetches this
+ * once per load, so a read of an existing page adds one to its anonymous
+ * "views" tally (landing-page-counters-migration.sql). After the response,
+ * so the page never waits on it.
  */
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { SITE_URL } from '@/lib/config';
 import { formatPercent, landingCtaUrl, normalizeLandingSlug } from '@/lib/promos/landing';
 import {
+  bumpLandingCounters,
   exclusionsPhrase,
   landingFinePrint,
   loadLandingPage,
@@ -80,6 +86,7 @@ export async function GET(
     // landing page's config.
     const loaded = await loadLandingPage(db, slug);
     if (!loaded || !loaded.landing.active) return notFound();
+    after(() => bumpLandingCounters(db, slug, { views: true }));
     return NextResponse.json(
       {
         ok: true,
@@ -93,6 +100,7 @@ export async function GET(
   }
 
   const { offer, loaded } = resolved;
+  after(() => bumpLandingCounters(db, slug, { views: true }));
   const exclusions = exclusionsPhrase(await productNames(db, offer.excludedProductIds));
 
   return NextResponse.json(

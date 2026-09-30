@@ -17,8 +17,9 @@ const RANGES = [
   { days: 7, label: '7 days' },
 ];
 
-const pct = (n: number | null | undefined, d: number | null | undefined) =>
-  n != null && d ? `${Math.round((n / d) * 1000) / 10}%` : '—';
+/** "12.5% of visitors", or nothing when either side is unknown or zero. */
+const rate = (n: number | null | undefined, d: number | null | undefined, of: string) =>
+  n != null && d ? `${Math.round((n / d) * 1000) / 10}% ${of}` : undefined;
 
 /**
  * Admin → Landing Pages.
@@ -34,17 +35,23 @@ export default function LandingPagesPage() {
   const [pages, setPages] = useState<AdminLandingPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [migrationNeeded, setMigrationNeeded] = useState(false);
+  const [countersMissing, setCountersMissing] = useState(false);
   const [days, setDays] = useState(0);
   const [editing, setEditing] = useState<AdminLandingPage | 'new' | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await adminFetch<{ landingPages?: AdminLandingPage[]; migrationNeeded?: boolean }>(
+    const res = await adminFetch<{
+      landingPages?: AdminLandingPage[];
+      migrationNeeded?: boolean;
+      countersMissing?: boolean;
+    }>(
       `/api/admin/landing-pages${days ? `?days=${days}` : ''}`,
     );
     if (!res.ok) toast.error(res.data.error ?? 'Could not load landing pages');
     setPages(res.data.landingPages ?? []);
     setMigrationNeeded(!!res.data.migrationNeeded);
+    setCountersMissing(!!res.data.countersMissing);
     setLoading(false);
   }, [toast, days]);
 
@@ -120,6 +127,16 @@ export default function LandingPagesPage() {
           <span>
             Run <span className="font-mono">landing-pages-migration.sql</span> in the Supabase SQL editor to
             enable landing pages. Until then no landing offer is applied.
+          </span>
+        </div>
+      )}
+
+      {!migrationNeeded && countersMissing && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Run <span className="font-mono">landing-page-counters-migration.sql</span> in the Supabase SQL editor
+            to count page views, click-throughs and visitors. Sign-ups, checkouts and orders are counted already.
           </span>
         </div>
       )}
@@ -201,11 +218,15 @@ export default function LandingPagesPage() {
                   <CopyRow label="Offer API" value={p.api_url} onCopy={() => copy(p.api_url, 'Offer API URL')} />
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-                  <Stat label="Visitors" value={s?.visitors ?? null} />
-                  <Stat label="Sign-ups" value={s?.signups ?? null} hint={pct(s?.signups, s?.visitors)} />
-                  <Stat label="Checkouts" value={s?.checkouts ?? null} hint={pct(s?.checkouts, s?.visitors)} />
-                  <Stat label="Purchasers" value={s?.purchasers ?? null} hint={pct(s?.purchasers, s?.visitors)} />
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                  <Stat label="Page views" value={s?.views ?? null} />
+                  <Stat label="Clicked through" value={s?.clicks ?? null} hint={rate(s?.clicks, s?.views, 'of views')} />
+                  <Stat label="Visitors" value={s?.visitors ?? null} hint="unique browsers" />
+                  <Stat label="Sign-ups" value={s?.signups ?? null} hint={rate(s?.signups, s?.visitors, 'of visitors')} />
+                  <Stat label="Checkouts" value={s?.checkouts ?? 0} hint={rate(s?.checkouts, s?.visitors, 'of visitors')} />
+                  <Stat label="Purchasers" value={s?.purchasers ?? 0} hint={rate(s?.purchasers, s?.visitors, 'of visitors')} />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Stat label="Paid orders" value={s?.orders ?? 0} />
                   <div className="rounded-lg bg-surface px-3 py-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Revenue</p>
@@ -228,10 +249,10 @@ export default function LandingPagesPage() {
             );
           })}
           <p className="text-[11px] text-ink-muted">
-            Visitors, sign-ups, checkouts and purchasers count people whose first or last visit came through the
-            page, and only those who accepted cookies when the consent banner is on — read them as a floor. Paid
-            orders and revenue are exact: every order is stamped with its landing page at checkout. Revenue is goods
-            after discounts, before shipping and tax.
+            Every visitor counts, whether or not they accept cookies. Page views, click-throughs and visitors are
+            anonymous daily tallies (a click-through is counted once per browser tab, a visitor once per browser).
+            Sign-ups are accounts created during a visit from the page. Checkouts and purchasers are distinct buyers
+            by email. Revenue is goods after discounts, before shipping and tax.
           </p>
         </div>
       )}
@@ -256,7 +277,7 @@ function Stat({ label, value, hint }: { label: string; value: number | null; hin
     <div className="rounded-lg bg-surface px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
       <p className="mt-1 text-sm font-bold text-ink tabular-nums">{value == null ? '—' : value.toLocaleString()}</p>
-      {hint && hint !== '—' && <p className="text-[10px] text-ink-muted">{hint} of visitors</p>}
+      {hint && <p className="text-[10px] text-ink-muted">{hint}</p>}
     </div>
   );
 }

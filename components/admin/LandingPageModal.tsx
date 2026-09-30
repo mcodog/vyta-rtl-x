@@ -31,10 +31,12 @@ export interface AdminLandingPage {
   cta_url: string;
   api_url: string;
   stats: {
+    views: number | null;
+    clicks: number | null;
     visitors: number | null;
     signups: number | null;
-    checkouts: number | null;
-    purchasers: number | null;
+    checkouts: number;
+    purchasers: number;
     orders: number;
     revenue: Record<string, number>;
     discount_given: number;
