@@ -6,6 +6,7 @@ import { getInvoiceCaller, callerCanWrite } from '@/lib/admin/invoice-access';
 import { effectiveStatus } from '@/lib/admin/invoice-status';
 import { computeStockSplit, type SplitLine, type ComputedLine } from '@/lib/admin/invoice-split';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
+import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
 import {
   autoCreateShipmentForOrder,
   autoCreateShipmentForInvoice,
@@ -248,7 +249,8 @@ async function insertInvoice(
 
   // Created-as-paid decrements stock once (idempotent in the DB).
   if (args.status === 'paid') {
-    await db.rpc('adjust_stock_for_invoice', { p_invoice_id: invoice.id, p_actor_email: caller.actor_email });
+    const stock = await adjustInvoiceStock(db, invoice.id, caller.actor_email);
+    if (!stock.ok) console.error('adjust_stock_for_invoice failed:', stock.error);
     const productIds = args.lines.map((l) => l.product_id).filter(Boolean) as string[];
     if (productIds.length) await checkLowStockForProducts(db, productIds);
   }

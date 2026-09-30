@@ -7,7 +7,10 @@ import {
 } from '@/lib/payments/puramass';
 import { applyPuramassStatus, type PuramassLedgerOrder } from '@/lib/payments/puramass-poll';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
-import { expireStealthHealthInvoices } from '@/lib/payments/puramass-fulfillment';
+import {
+  expireStealthHealthInvoices,
+  healStealthHealthPaidOrders,
+} from '@/lib/payments/puramass-fulfillment';
 
 /**
  * GET /api/cron/puramass-poll
@@ -18,7 +21,9 @@ import { expireStealthHealthInvoices } from '@/lib/payments/puramass-fulfillment
  *
  * For each local order still `payment_pending` and within the 7-day link window
  * (+6h grace), read `GET /partner/store/orders/{transaction_id}` and apply the
- * result idempotently. Orders past the window are swept to `expired`.
+ * result idempotently. Orders past the window are swept to `expired`. Paid
+ * orders whose invoice or stock step failed are retried
+ * (`healStealthHealthPaidOrders`).
  *
  * Authenticated with CRON_SECRET (same as the other /api/cron/* jobs), scheduled
  * via Supabase pg_cron — see supabase-cron-puramass-poll.sql.
@@ -71,6 +76,11 @@ export async function GET(req: NextRequest) {
     expired = sweptRows?.length ?? 0;
     await expireStealthHealthInvoices(db, (sweptRows ?? []).map((r: any) => r.invoice_id));
   }
+
+  // 1b. Self-heal — paid orders whose invoice flip or stock decrement failed
+  //     on an earlier pass. Runs before the poll so a rate-limit back-off
+  //     below never skips it.
+  const healed = await healStealthHealthPaidOrders(db);
 
   // 2. Poll set — still pending, within the window, has a transaction id.
   const pollQuery = (columns: string) =>
@@ -152,5 +162,7 @@ export async function GET(req: NextRequest) {
     errors,
     rate_limited: rateLimited,
     pending_total: orders.length,
+    healed_invoices: healed.rematerialized,
+    healed_stock: healed.stockTaken,
   });
 }

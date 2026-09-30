@@ -693,6 +693,17 @@ export async function POST(req: NextRequest) {
     quantity: line.quantity,
     unit_price_cents: discountedBySku.get(key) ?? line.unitPriceCents,
   }));
+  // The ledger keeps the same lines plus the product and pack size behind
+  // each, so an invoice first built at payment (because the one below could
+  // not be written) still takes the right stock. Only `items` goes to Stealth
+  // Health.
+  const ledgerItems = [...linesBySku.entries()].map(([key, line]) => ({
+    sku: line.sku,
+    quantity: line.quantity,
+    unit_price_cents: discountedBySku.get(key) ?? line.unitPriceCents,
+    product_id: line.productId,
+    pack_size: line.packSize,
+  }));
 
   // 9. Price the shipping. Re-quoted here rather than trusted from the
   //    browser; a courier that is no longer on offer sends the buyer back to
@@ -778,7 +789,7 @@ export async function POST(req: NextRequest) {
     subtotal_cents: order.subtotal_cents ?? null,
     customer_id: customerId,
     customer_email: email,
-    items,
+    items: ledgerItems,
     referral_code: referralCode,
   };
 

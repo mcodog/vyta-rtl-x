@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, createContext, useContext } from 'react';
-import { LayoutDashboard, Users, DollarSign, UserCircle, ArrowLeft, Mail, Lock, LogIn, AlertCircle, Info, ShoppingBag, FileText, ClipboardList, ScrollText, Briefcase, TrendingUp, Tag, Tags, Megaphone, Bell, Settings, PackageX, Warehouse, FlaskConical, Menu, X, ChevronsLeft, ChevronsRight, BookOpen, Handshake, Eye, Target, Sparkles, Radio, FileEdit, Newspaper, Layers, MessageSquareQuote, Ticket, Globe } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, UserCircle, ArrowLeft, Mail, Lock, LogIn, AlertCircle, Info, ShoppingBag, FileText, ClipboardList, ScrollText, Briefcase, TrendingUp, Tag, Tags, Megaphone, Bell, Settings, PackageX, Warehouse, FlaskConical, Menu, X, ChevronsLeft, ChevronsRight, BookOpen, Handshake, Eye, Target, Sparkles, Radio, FileEdit, Newspaper, Layers, MessageSquareQuote, Ticket, Globe, History } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -77,6 +77,7 @@ const navGroups = [
       { href: '/admin/products', label: 'Products', icon: ShoppingBag },
       { href: '/admin/categories', label: 'Categories', icon: Tags },
       { href: '/admin/purchase-orders', label: 'Purchase Orders', icon: ClipboardList },
+      { href: '/admin/stock-ledger', label: 'Stock Ledger', icon: History },
       { href: '/admin/warehouse', label: 'Warehouse', icon: Warehouse },
       { href: '/admin/lab-results', label: 'Lab Results', icon: FlaskConical },
       { href: '/admin/stock-requests', label: 'Stock Requests', icon: Bell },
