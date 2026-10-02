@@ -972,11 +972,51 @@ async function collectTraffic(
     s.add(id);
   }
 
+  const visitorsPerDay = new Map<string, number>([...perDay].map(([d, s]) => [d, s.size]));
+
+  // The activity log only holds anonymous visitors who accepted the cookie
+  // banner, which most never do. The anonymous daily tally
+  // (site-traffic-counters-migration.sql) counts every browser, so the full
+  // report reads it wherever it has a day. Paid-ads readers keep the activity
+  // count: a tally carries no id, so it cannot say which visitors an ad won.
+  const tally = paidOnly ? null : await readSiteTraffic(fromDay, toDay);
+  if (tally && tally.size > 0) {
+    // A day is the larger of the two: a day before the tally existed has only
+    // the activity count, and on a day it covers it is the fuller figure.
+    for (const [day, n] of tally) {
+      visitorsPerDay.set(day, Math.max(n, visitorsPerDay.get(day) ?? 0));
+    }
+    // A tally is per day, so the range total is the sum of its days — a
+    // visitor who returns on three days counts three times.
+    let visitors = 0;
+    for (const n of visitorsPerDay.values()) visitors += n;
+    return { visitors, new_customers: registrationsRes.count ?? 0, perDay: visitorsPerDay };
+  }
+
   return {
     visitors: all.size,
     new_customers: registrationsRes.count ?? 0,
-    perDay: new Map<string, number>([...perDay].map(([d, s]) => [d, s.size])),
+    perDay: visitorsPerDay,
   };
+}
+
+/**
+ * Anonymous daily visitor tallies for the window, by day. Null when the
+ * table isn't there yet, so the caller keeps the activity-based count.
+ */
+async function readSiteTraffic(fromDay: string, toDay: string): Promise<Map<string, number> | null> {
+  const { data, error } = await db
+    .from('site_traffic_daily')
+    .select('day, visitors')
+    .gte('day', fromDay)
+    .lte('day', toDay);
+  if (error) return null;
+  return new Map(
+    ((data ?? []) as Array<{ day: string; visitors: number }>).map((r) => [
+      String(r.day).slice(0, 10),
+      Number(r.visitors) || 0,
+    ]),
+  );
 }
 
 // ---- assembly ----
