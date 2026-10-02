@@ -36,7 +36,7 @@ The [design scheme](#8-design-scheme) is in section 8.
    ▼
  Landing page  (getvyta.ca — its own domain, static HTML)
    │  • asks vytabio.com what it is offering:   GET https://www.vytabio.com/api/landing/standards
-   │    → { active: true, percent: 35, fine_print: "*First order only. Excludes bacteriostatic water." }
+   │    → { active: true, percent: 20, fine_print: "*First order only. Excludes bacteriostatic water." }
    │  • prints that percentage
    │  • button → https://www.vytabio.com/products?lp=standards&fbclid=…&utm_source=…   (every param forwarded)
    ▼
@@ -46,11 +46,11 @@ The [design scheme](#8-design-scheme) is in section 8.
    │  • sets the vyta_lp=standards cookie (30 days) — the landing page's OFFER
    ▼
  Storefront
-   │  • nav bar: "✓ 35% off your first order — applied at checkout"
-   │  • cart:    "35% first-order offer  −$X"
+   │  • nav bar: "✓ 20% off your first order — applied at checkout"
+   │  • cart:    "20% first-order offer  −$X"
    ▼
  Checkout
-   │  • the discount field is filled with the landing page's code (e.g. STANDARDS35) and applied
+   │  • the discount field is filled with the landing page's code (VYTA20) and applied
    ▼
  Hand-off to the payment page  (/api/checkout/puramass)
       • re-checks everything server-side and takes the discount off the line prices
@@ -108,13 +108,13 @@ That's all. There is nothing to configure in code per landing page.
 
 | Field | What to enter | Example |
 | --- | --- | --- |
-| Name | Internal label | `Meta — first order 35%` |
-| Slug | What rides on the button link as `?lp=`. 2–40 lower-case letters, digits, dashes. **This must match `CONFIG.slug` in the landing page.** | `standards` |
+| Name | Internal label | `Meta — first order 20%` |
+| Slug | What rides on the button link as `?lp=`. 2–40 lower-case letters, digits, dashes. **This must match `slug` in the landing page's `VYTA_OFFER` config.** | `standards` |
 | Landing domain | Where the page is hosted (reference only) | `getvyta.ca` |
 | Button goes to | A path on vytabio.com | `/products` |
 | This landing page offers a discount | On | ✓ |
-| Percent off | The number the page will print | `35` |
-| Discount code | Auto-suggested from slug + percent; editable | `STANDARDS35` |
+| Percent off | The number the page will print | `20` |
+| Discount code | Auto-suggested from slug + percent; editable. **The reference page prints it ("Use Code: VYTA20"), so it must match the page exactly** | `VYTA20` |
 | First order only | On by default. Refuses buyers who already ordered, **checked by account and by email** so guest checkouts count | ✓ |
 | Excluded products | Click **"+ Exclude all bacteriostatic water"** to match "*excluding Bac water" | 4 bac water products |
 | Starts / Ends / Usage limit | Optional | — |
@@ -147,21 +147,27 @@ landing-page/
     └── vyta-mark-192.png    ← favicon
 ```
 
-Edit the `CONFIG` block at the bottom of `index.html`:
+Edit the `VYTA_OFFER` block in the `<head>` of `index.html`:
 
 ```js
-var CONFIG = {
-  slug: 'standards',                                           // = the slug in admin
+window.VYTA_OFFER = {
+  slug: 'standards',                                            // = the slug in admin
   api: 'https://www.vytabio.com/api/landing/',
   fallbackUrl: 'https://www.vytabio.com/products?lp=standards', // = "Button link" in admin
-  timeoutMs: 3000
+  holdMs: 900,
+  timeoutMs: 6000
 };
 ```
 
-Then update the three places the launch percentage appears in the HTML
-(`35%` inside each `data-offer-percent` span), and the fine print, so the page
-reads correctly even before its script runs. That's all. Go to
+Then make the page's own figures match admin: the percentage (`20%`) in the
+eyebrow, the headline, `<title>` and `og:title`, and the code (`VYTA20`) in
+the "Use Code" chip. The page shows these if the store is slow or
+unreachable, so they must agree with admin. That's all. Go to
 [section 5](#5-deploy-it-on-the-new-domain).
+
+The reference page currently reads **Claim 20% Off Your First Order\*** /
+**Use Code: VYTA20** / **CLICK TO SHOP NOW**, with a strip of **Free Shipping ·
+Lab Tested · Discreet Packaging**.
 
 ### 4.2 Building your own: the contract
 
@@ -174,14 +180,23 @@ building in something else.
 Fetch `GET https://www.vytabio.com/api/landing/<slug>` on page load and print
 its `percent_label` wherever the percentage appears.
 
-- The HTML may carry the launch figure so the page reads correctly with no
-  JavaScript (and for link-preview crawlers), but the script **replaces** it
+- The HTML carries the current figures so the page reads correctly with no
+  JavaScript (and for link-preview crawlers), but the script **replaces** them
   with what the API returns.
+- **Don't let a stale number flash.** The store's API can take a couple of
+  seconds to answer when its server has been idle. A page that draws its own
+  figure first and then swaps in the API's shows one number, then another.
+  The reference page avoids it in three ways. It starts the request in
+  `<head>`. It holds the offer text invisible (`.offer-pending
+  [data-offer-hold] { opacity: 0 }`, which keeps its space) until the answer
+  arrives, for at most 0.9s. And its HTML figures match admin. The only
+  remaining case is a slow store **and** HTML that disagrees with admin. The
+  page then corrects itself and writes a console warning.
 - If the API returns `active: false` or a 404, **hide the percentage
   entirely**: the offer is switched off or ended. The reference page switches
-  to a no-offer headline ("Research Compounds, Tested" / "Shop VYTA").
-- Never print a percentage the API didn't return. If the page says 35% and
-  admin says 30%, the buyer gets 30%.
+  to a no-offer headline ("Research Compounds, Tested") and hides the code.
+- Never print a percentage the API didn't return. If the page says 25% and
+  admin says 20%, the buyer gets 20%.
 
 #### ② The button carries `?lp=<slug>`
 
@@ -228,8 +243,8 @@ origin, never cached, rate-limited to 240 requests per minute per IP.
   "ok": true,
   "slug": "standards",
   "active": true,
-  "percent": 35,
-  "percent_label": "35%",
+  "percent": 20,
+  "percent_label": "20%",
   "first_order_only": true,
   "exclusions": "bacteriostatic water",
   "fine_print": "*First order only. Excludes bacteriostatic water.",
@@ -263,10 +278,10 @@ Stick to claims vytabio.com already makes about itself:
 
 | Use | Avoid |
 | --- | --- |
-| Third-party tested | Any health, treatment, dosing or results claim |
+| Third-party tested · Lab tested | Any health, treatment, dosing or results claim |
 | Certificate of analysis (COA) with every batch | "Pharmaceutical grade", "FDA/Health Canada approved" |
 | Ships from Canada · discreet packaging | Naming specific compounds or what they're "for" |
-| Secure checkout | Countdown timers or scarcity that isn't real |
+| Secure checkout · Free shipping (only as far as it's true: if there's a minimum, say "Free shipping over $X") | Countdown timers or scarcity that isn't real |
 
 Keep the research-use disclaimer at the foot of the page:
 
@@ -363,10 +378,10 @@ window so no old cookies interfere.
 | 1 | Open `https://www.vytabio.com/api/landing/<slug>` | `active: true`, the right `percent`, the right `fine_print` |
 | 2 | Open `https://getvyta.ca/?utm_source=facebook&utm_medium=paid_social&utm_campaign=launch-test&fbclid=TEST123` | The page shows the same percentage and fine print |
 | 3 | Hover the button | `…/products?lp=<slug>&utm_source=facebook&utm_medium=paid_social&utm_campaign=launch-test&fbclid=TEST123` |
-| 4 | Click it | vytabio.com opens. Nav bar shows "✓ 35% off your first order — applied at checkout", not the 25% ad offer |
-| 5 | Add a product **and** a bacteriostatic water to the cart | Cart shows "35% first-order offer −$…" computed on the product only, with "Code STANDARDS35 is applied automatically at checkout · excludes bacteriostatic water" |
-| 6 | Go to checkout | The discount field shows **STANDARDS35**, "Applied automatically from your welcome offer · first order only", and "Not discounted by this code: Bacteriostatic Water …" |
-| 7 | Fill in a **new** email and continue to payment | The payment page shows the product at 35% off and the bac water at list price |
+| 4 | Click it | vytabio.com opens. Nav bar shows "✓ 20% off your first order — applied at checkout", not the ad offer |
+| 5 | Add a product **and** a bacteriostatic water to the cart | Cart shows "20% first-order offer −$…" computed on the product only, with "Code VYTA20 is applied automatically at checkout · excludes bacteriostatic water" |
+| 6 | Go to checkout | The discount field shows **VYTA20**, "Applied automatically from your welcome offer · first order only", and "Not discounted by this code: Bacteriostatic Water …" |
+| 7 | Fill in a **new** email and continue to payment | The payment page shows the product at 20% off and the bac water at list price |
 | 8 | Admin → Landing Pages (use the **7 days** range) | Page views, Clicked through and Visitors went up by one each, whether or not you accepted the cookie banner. Checkouts went up after step 7, and paid orders and revenue go up once it is paid |
 | 9 | Repeat 6–7 with an email that has **already ordered** | Checkout says "That code is for first orders only." and lets them continue without it |
 | 10 | Switch the landing page off in admin, reload the landing page | Percentage disappears, headline becomes "Research Compounds, Tested", button still works |
@@ -442,7 +457,8 @@ size (`font-variation-settings: 'opsz' 32`), exactly as vytabio.com does it.
 | Asterisk | 0.55em, superscript | 600 | — | — | Bio Teal |
 | Eyebrow | 11px (0.6875rem) | 600 | — | +0.14em, UPPERCASE | Vital Blue |
 | Lede | 17px (1.0625rem) | 400 | 1.55 | normal | Ink muted |
-| Button label | 17px | 650 | — | −0.005em | White |
+| Button label | 16px, UPPERCASE | 700 | — | +0.06em | White |
+| Code chip | 15px ("Use Code:") / 15px code | 500 / 750 | — | normal / +0.08em | Ink muted / Navy |
 | Note / fine print | 13px (0.8125rem) | 400 | — | normal | Ink muted / Ink light |
 | Strip labels | 12px mobile, 13px ≥640px | 600 | 1.25 | normal | Navy |
 | Legal | 11px | 400 | 1.5 | normal | Ink light |
@@ -459,7 +475,7 @@ wraps (`white-space: nowrap`).
   shadow, 4px brand rule along the top edge. Padding **36px 24px 28px** on
   phones, **48px 48px 36px** from 640px up. Content centred.
 - **Vertical rhythm inside the card:** logo → 24px → eyebrow → 12px → H1 →
-  16px → lede → 28px → button → 14px → note.
+  16px → code chip → 16px → lede → 28px → button → 14px → note.
 - **Strip** below the card, 16px gap: three equal columns, Teal 50 background,
   Teal 100 border, same 18px radius, 14px/12px padding. Icons stack above the
   label on phones and sit beside it from 640px.
@@ -474,27 +490,40 @@ Serve it as `vyta-logo-320.webp` (2× for sharpness) with a PNG fallback. Never
 stretch, rotate, recolour, or add a shadow. Keep clear space of at least half
 the icon's width around it.
 
-**Eyebrow.** `FIRST ORDER · SAVE 35%`: a small all-caps kicker that states
+**Eyebrow.** `FIRST ORDER · SAVE 20%`: a small all-caps kicker that states
 the offer in plain words before the headline does.
 
-**Headline.** `Your First Order Is 35% Off*`. The percentage is the only
-coloured word, marked with a Mist highlighter band (a linear gradient from 64%
-to 92% of the line height, so it sits under the lower half of the numerals like
-a pen stroke).
+**Headline.** `Claim 20% Off Your First Order*`. "20% Off" is the only
+coloured phrase, marked with a Mist highlighter band (a linear gradient from
+64% to 92% of the line height, so it sits under the lower half of the numerals
+like a pen stroke).
+
+**Code chip.** `Use Code: VYTA20`, directly under the headline: an inline
+coupon with a 1.5px **dashed Bio Teal** border, Teal 50 fill, 12px radius,
+8px × 15px padding. "Use Code:" in 15px Ink muted, weight 500; the code in
+Midnight Navy, weight 750, +0.08em tracking. Hidden whenever there is no live
+offer.
+
+**Offer text appears together.** The eyebrow, headline, code chip and fine
+print fade in over 160ms once the store has confirmed the offer (at most 0.9s
+after load), keeping their space while they wait so nothing below them moves.
+Everything else is drawn immediately.
 
 **Button.** Full-width pill (radius 999px), min height **56px** (comfortably
 above the 44px touch minimum), Midnight Navy with white text. Hover: Deep
 Ocean, and the `›` chevron nudges 3px right. Active: 1px press. Keyboard focus:
-the Bio Teal focus ring. Label: `Claim My 35% Off ›`. One button only: the
-page has a single decision.
+the Bio Teal focus ring. Label: `CLICK TO SHOP NOW ›`: 16px, weight 700,
+uppercase with +0.06em tracking (written in sentence case in the HTML so
+screen readers say it as words). The same label with or without an offer. One
+button only: the page has a single decision.
 
 **Note.** `Ships from Canada 🇨🇦 · *First order only. Excludes bacteriostatic
 water.`: the asterisk's explanation, directly under the button, never hidden
 further down.
 
-**Proof strip.** Three icon + label pairs: *Third-party tested* (flask),
-*COA every batch* (document with a tick), *Secure checkout* (padlock). 18px
-stroke icons in Bio Teal, 2px stroke, round caps. Same visual family as the
+**Proof strip.** Three icon + label pairs: *Free Shipping* (truck), *Lab
+Tested* (flask), *Discreet Packaging* (box). 18px stroke icons in Bio Teal,
+2px stroke, round caps. Same visual family as the
 store's Lucide icons.
 
 **Legal.** The research-use disclaimer, in the smallest, lightest type on the
@@ -564,8 +593,8 @@ nothing but excluded products is told the code doesn't apply to it.
 
 | Promotion | Relationship to the landing code |
 | --- | --- |
-| Paid-ads welcome discount (25%, Admin → Promotions) | **Never stacks.** The buyer gets whichever takes more off the order. With 35% vs 25% that's the landing code, unless the cart is mostly excluded products |
-| Limited-time cart offer | **Stacks**, composed like every other pair (35% then 10% = 41.5% off eligible lines) |
+| Paid-ads welcome discount (Admin → Promotions) | **Never stacks.** The buyer gets whichever takes more off the order. That discount only goes to **signed-in** first-time buyers who came from an ad, and the landing page forwards the ad's click id, so a signed-in landing visitor qualifies for both. With the landing code at 20% and the welcome discount at 25%, those buyers get **25%** (guests get the code's 20%). The nav still advertises the landing page's 20%, and the cart and checkout show the larger one. To make 20% the only offer, set the welcome discount to 20% or lower, or switch it off |
+| Limited-time cart offer | **Stacks**, composed like every other pair (20% then 10% = 28% off eligible lines) |
 | Another discount code | One code per order. A code the buyer types **replaces** the landing code; removing it brings the landing code back |
 | Free shipping | Unaffected. The threshold is measured at list price, as always |
 
@@ -627,13 +656,13 @@ Elsewhere:
 
 | To | Do |
 | --- | --- |
-| Change the percentage | Admin → Landing Pages → Edit → Percent. The landing page updates on its next view. Also update the launch figure in the page's HTML at your next deploy, and the ad creative if it names the number |
+| Change the percentage or code | Admin → Landing Pages → Edit. The landing page reads the new percentage on its next view. **Also update the page's HTML** (`20%` in the eyebrow, headline and titles; `VYTA20` in the code chip) and redeploy. The code isn't sent by the store, so the chip only changes when the HTML does. Update the ad creative if it names either |
 | Pause the offer | Switch the landing page off. The page hides its percentage and checkout stops applying the code, immediately |
 | End it on a date | Set **Ends** on the offer. The page hides the percentage at that moment |
 | Run a second page | New landing page with its own slug and code; deploy a copy of the page with that slug |
 | Retire a page | Switch it off. Pages that produced orders can't be deleted, so their revenue keeps a name |
 
-**Changing a slug** breaks the live landing page until its `CONFIG.slug` is
+**Changing a slug** breaks the live landing page until its `VYTA_OFFER.slug` is
 updated, and visitors already holding the old slug lose the offer. Prefer
 creating a new page.
 
@@ -643,8 +672,10 @@ creating a new page.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Landing page shows no percentage | API says inactive or 404 | Open the Offer API URL. 404: the slug in `CONFIG` doesn't match admin, or the page is off. `active: false`: the code is off, ended or not started |
-| Percentage on the page differs from admin | The page is showing its baked-in HTML because its script didn't run | Check the browser console on the landing page; make sure `CONFIG.api` is `https://www.vytabio.com/api/landing/` |
+| Landing page shows no percentage | API says inactive or 404 | Open the Offer API URL. 404: the slug in `VYTA_OFFER` doesn't match admin, or the page is off. `active: false`: the code is off, ended or not started |
+| Percentage on the page differs from admin | The page is showing its own HTML figures because its script didn't run or couldn't reach the store | Check the browser console on the landing page; make sure `VYTA_OFFER.api` is `https://www.vytabio.com/api/landing/` |
+| One number shows, then another a moment later | The page's HTML figures disagree with admin and the store answered slowly. The console says *"The HTML says … but Admin → Landing Pages says …"* | Update the figures in `index.html` to match admin and redeploy |
+| A buyer who types the code is told it isn't valid | The code printed on the page isn't the landing page's code in admin | Make them the same: admin's *Discount code* field and the `VYTA20` in the chip |
 | Discount field empty at checkout | No `vyta_lp` cookie: the button link lost `?lp=` | Hover the button and check the link. The hand-off still applies the code if the cookie exists |
 | Nav shows 25% instead of the landing percentage | Visitor arrived without `?lp=` | Same as above |
 | "That code is for first orders only" | The email or account has a paid order | Expected |
