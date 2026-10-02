@@ -1,3 +1,205 @@
+# Landing page update: 20% / VYTA20
+
+Changes for the landing page site (the separate domain). Nothing needs to
+change on vytabio.com except **one admin setting** (step 1).
+
+| What | Before | After |
+| --- | --- | --- |
+| Headline | Your First Order Is 35% Off* | **Claim 20% Off Your First Order*** |
+| Under the headline | — | **Use Code: VYTA20** (dashed coupon chip) |
+| Button | Claim My 35% Off › | **CLICK TO SHOP NOW ›** |
+| Strip, 1st | Third-party tested | **Free Shipping** (truck icon) |
+| Strip, 2nd | COA every batch | **Lab Tested** (flask icon) |
+| Strip, 3rd | Secure checkout | **Discreet Packaging** (box icon) |
+| Tab title | …Your First Order Is 35% Off | …Claim 20% Off Your First Order |
+| Paragraph and legal line | unchanged | unchanged |
+| **Bug:** shows 35%, then 20% a few seconds later | — | **Fixed**, see below |
+
+---
+
+## 1. First, in Admin on vytabio.com
+
+**Admin → Marketing → Landing Pages → Edit** your landing page:
+
+- **Percent off:** `20`
+- **Discount code:** `VYTA20`
+
+Save. The page now prints the code, so the code in admin **must be exactly
+`VYTA20`**. Otherwise a buyer who types it at checkout is told it isn't valid.
+(Checkout still fills the field with the right code automatically for anyone
+who clicks through, but people do retype codes.)
+
+If saving says *"VYTA20 is already used by another discount code"*: a
+separate VYTA20 code already exists under **Partners → Discount Codes**.
+Delete it, or rename it if it has orders, then save the landing page again.
+
+Check it worked: open `https://www.vytabio.com/api/landing/standards` (use
+your slug). It should say `"percent": 20`.
+
+---
+
+## 2. Why it showed 35% and then 20%
+
+The page's HTML still had the launch figure, **35%**, written into it. The
+browser drew that immediately. A moment later the page's script heard back
+from vytabio.com ("the offer is 20%") and swapped the number. That answer can
+take a couple of seconds when the store's server has been idle (a "cold
+start"), which is the delay you saw.
+
+**The fix, in the new file below:**
+
+1. **The HTML now says 20% and VYTA20**, so the first thing drawn is already
+   right.
+2. **The offer text waits for the store's answer before showing.** The
+   eyebrow, headline, code chip and fine print stay invisible (but keep their
+   space, so nothing jumps) until vytabio.com answers, for at most 0.9
+   seconds. Then they fade in. The logo, paragraph, button and strip show
+   instantly as before.
+3. **The request starts earlier**: in the page's `<head>`, in parallel with the
+   fonts and logo, instead of after the page has loaded.
+
+Tested against a simulated store:
+
+| Store answers… | Visitor sees |
+| --- | --- |
+| fast | 20% after ~0.3s, never anything else |
+| slowly (cold start, 2.5s) | 20% at 0.9s, never anything else |
+| fast, after admin changed the % | only the new %; the HTML's figure never shows |
+| offer switched off | the no-offer headline; no number, no code |
+| not at all | 20% / VYTA20 from the HTML, button still works |
+
+The only way a number can still change on screen is if **admin is changed and
+the HTML isn't**, and the store is slow that time. The page then writes a
+warning in the browser console saying the HTML is out of date. So:
+
+> **Whenever you change the offer in admin, update the HTML to match.** Change
+> the `20%` (three places) and `VYTA20` (one place) in `index.html`, and
+> redeploy. See section 5.
+
+---
+
+## 3. Apply the changes
+
+**If the site is the reference page** (a single `index.html` plus an `assets/`
+folder): replace `index.html` with the complete file in [section 7](#7-the-complete-indexhtml)
+and redeploy. The `assets/` folder is unchanged. That's the whole job.
+
+**If the page was rebuilt in something else** (a site builder, another
+framework), make these edits instead:
+
+### a. Headline
+
+```html
+<h1 data-offer data-offer-hold>Claim <span class="hl"><span data-offer-percent>20%</span> Off</span> <span data-offer-scope>Your First Order</span><span class="ast" aria-hidden="true">*</span></h1>
+```
+
+### b. Code chip, directly under the headline
+
+```html
+<p class="code" data-offer data-offer-hold>Use Code: <strong data-offer-code>VYTA20</strong></p>
+```
+
+```css
+.code {
+  display: inline-flex; align-items: center; gap: .5rem;
+  margin-top: 1rem; padding: .5rem .95rem;
+  border: 1.5px dashed #438B9E;      /* Bio Teal */
+  border-radius: .75rem;
+  background: #F1F8F9;               /* Teal 50 */
+  font-size: .9375rem; font-weight: 500; color: #56707F;
+}
+.code strong { font-weight: 750; letter-spacing: .08em; color: #07203A; }
+```
+
+### c. Button
+
+Label `Click to Shop Now`. The CSS uppercases it, so screen readers don't
+spell it out letter by letter. One label whether or not an offer is running.
+
+```css
+.cta { font-size: 1rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+```
+
+### d. Strip
+
+Three items, left to right: **Free Shipping** (truck), **Lab Tested**
+(flask), **Discreet Packaging** (box). Same 18px Bio Teal stroke icons as
+before. The exact SVGs are in the file in section 7.
+
+### e. The no-flash behaviour
+
+1. Mark the offer text with `data-offer-hold`: the eyebrow, the headline, the
+   code chip and the fine-print span.
+2. Add this CSS:
+
+   ```css
+   [data-offer-hold] { transition: opacity 160ms ease; }
+   .offer-pending [data-offer-hold] { opacity: 0; }
+   ```
+3. Put the small `<script>` from the top of section 7's `<head>` into your
+   `<head>`. It adds `offer-pending` to `<html>` before anything is drawn, and
+   starts the request to vytabio.com.
+4. Your page script then fills in the store's figures and removes
+   `offer-pending` when the answer arrives, or after 0.9s at the latest. The
+   script at the bottom of section 7 does exactly this.
+
+Everything else (forwarding `fbclid`/`utm_*` to the button, `?lp=` on the
+link, hiding the offer when the store says it's off) works as before.
+
+---
+
+## 4. Check it after deploying
+
+In a private window, open the landing page with a test parameter, e.g.
+`https://<landing-domain>/?utm_source=test&fbclid=abc`.
+
+- [ ] The headline reads **Claim 20% Off Your First Order\***, and reload a few
+      times: **35% never appears**, not even for a moment
+- [ ] **Use Code: VYTA20** sits under the headline
+- [ ] The button reads **CLICK TO SHOP NOW ›**
+- [ ] The strip reads **Free Shipping · Lab Tested · Discreet Packaging**
+- [ ] Hover the button: the link ends `?lp=<slug>&utm_source=test&fbclid=abc`
+- [ ] Click it, add a product, go to checkout: the discount field shows
+      **VYTA20** and 20% comes off
+
+---
+
+## 5. When you change the offer later
+
+1. Change it in **Admin → Landing Pages** (percent and/or code).
+2. In `index.html`, update the figures to match. Search for `20%` (the eyebrow,
+   the headline and the `<title>`/`og:title` tags) and `VYTA20` (the code
+   chip), and redeploy.
+3. Update the ad creative if it names the number or code.
+
+If step 2 is skipped, the page still corrects itself from the store, but a
+visitor may briefly see the old figure when the store is slow.
+
+---
+
+## 6. Notes
+
+- **"Free Shipping" is a promise on an ad landing page.** If shipping is only
+  free above a threshold, say so, e.g. **Free Shipping Over $150**, or the
+  page advertises something checkout doesn't do (and ad platforms treat that
+  as misleading). Check Admin → Promotions for the current rule.
+- **The code is part of the page, not read from the store.** The store's offer
+  API sends the percentage but not the code, so `VYTA20` lives in the HTML and
+  has to match admin by hand (section 5). The page is already wired to use a
+  code from the store if it ever sends one. That needs a small change on
+  vytabio.com, which can be done separately if wanted.
+- The paragraph ("Third-party tested, with a certificate of analysis…") and the
+  research-use line at the bottom are unchanged.
+
+---
+
+## 7. The complete `index.html`
+
+Replace the whole file with this. Only the `slug` and `fallbackUrl` in the
+`<head>` script need to match your landing page in admin. They're set to
+`standards`, as before.
+
+```html
 <!doctype html>
 <html lang="en-CA">
 <head>
@@ -421,3 +623,4 @@
   </script>
 </body>
 </html>
+```
