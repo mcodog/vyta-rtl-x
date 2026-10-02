@@ -1,0 +1,5 @@
+id,name,category,categories,description,retailPrice,currency,clinicUsePrice,b2bPrice,price,shippingRate,image,images,badge,requiresConsult,consultProgramId,active,sortOrder,subStore,notificationEmails,shipStationEnabled,shipStationSku,shipStationIntegration,easyShipEnabled,easyShipSku,easyShipIntegration,netSuiteEnabled,netSuiteItemId,netSuiteIntegration
+puramass-semax-selank-10mg-mix-case,Puramass- Semax - Selank 10mg Mix (Case),Peptides,Peptides,Case,170.00,CAD,,,CA$170.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,semax-selank-10mg-mix-case,puramass,,,
+puramass-semax-selank-10mg-mix-vial,Puramass- Semax - Selank 10mg Mix (Single Vial),Peptides,Peptides,Single Vial,17.00,CAD,,,CA$17.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,semax-selank-10mg-mix-vial,puramass,,,
