@@ -61,6 +61,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const KLAVIYO_INIT_SNIPPET = `!function(){if(!window.klaviyo){window._klOnsite=window._klOnsite||[];try{window.klaviyo=new Proxy({},{get:function(n,i){return"push"===i?function(){var n;(n=window._klOnsite).push.apply(n,arguments)}:function(){for(var n=arguments.length,o=new Array(n),w=0;w<n;w++)o[w]=arguments[w];var t="function"==typeof o[o.length-1]?o.pop():void 0,e=new Promise((function(n){window._klOnsite.push([i].concat(o,[function(i){t&&t(i),n(i)}]))}));return e}}})}catch(n){window.klaviyo=window.klaviyo||[],window.klaviyo.push=function(){var n;(n=window._klOnsite).push.apply(n,arguments)}}}}();`;
 
+// Whop Pixel, verbatim from Whop's install snippet (business biz_4uByt2hc4AZpRx).
+// Do not edit: it must match the snippet character-for-character.
+const WHOP_PIXEL_SNIPPET = `!function(w,d,s,u,n,a,b){if(w[n])return;a=w[n]={q:[],t:+new Date,s:[],o:u,track:function(){a.q.push([+new Date].concat([].slice.call(arguments)))},setScope:function(){a.s=[].slice.call(arguments).filter(function(x){return typeof x==="string"});a.q.push([+new Date,"setScope"].concat(a.s))},scope:function(){var c=[].slice.call(arguments);return{track:function(){a.q.push([+new Date].concat([].slice.call(arguments)).concat([{__scope:c}]))}}}};b=d.createElement(s);b.async=1;b.src=u+"/s.js";d.getElementsByTagName(s)[0].parentNode.insertBefore(b,d.getElementsByTagName(s)[0])}(window,document,"script","https://t.whop.tw","whop");whop.setScope("biz_4uByt2hc4AZpRx");whop.track("page");`;
+
 function MaybeWeb3Provider({ children }: { children: React.ReactNode }) {
   if (!siteConfig.cryptoPaymentsEnabled) return <>{children}</>;
   return <Web3Provider>{children}</Web3Provider>;
@@ -129,6 +133,8 @@ window.gtag=window.gtag||gtag;gtag('js',new Date());gtag('config','${ga4Id}');`,
         {/* Google Tag Manager */}
         {gtmSnippet && <script dangerouslySetInnerHTML={{ __html: gtmSnippet }} />}
         {/* End Google Tag Manager */}
+        {/* Whop Pixel */}
+        <script dangerouslySetInnerHTML={{ __html: WHOP_PIXEL_SNIPPET }} />
       </head>
       <body className={`${inter.variable} ${inter.className}`}>
         {/* Google Tag Manager (noscript) */}
