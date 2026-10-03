@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { trackActivity } from '@/lib/customer/activity';
 import { reportLandingArrival } from '@/lib/promos/landing-client';
+import { reportSiteVisit } from '@/lib/analytics/site-visit';
 
 /**
  * Records which storefront pages a visitor sees, so the admin customer page can
@@ -37,6 +38,9 @@ export default function CustomerJourneyTracker() {
     // tally that does not wait on the consent banner the journey below is
     // gated by — so the Landing Pages report sees every visitor.
     if (isEntry) reportLandingArrival();
+    // Same for the site-wide visitor count: an anonymous once-a-day tally, so
+    // Admin → Analytics counts visitors who never answer the banner.
+    if (isEntry) reportSiteVisit(pathname);
 
     trackActivity({
       type: 'page',
