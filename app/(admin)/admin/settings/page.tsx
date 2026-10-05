@@ -708,7 +708,7 @@ export default function SettingsPage() {
             onChange={(v) => handleSectionToggle('product_benefits_enabled', v)}
             icon={<Check className="w-4 h-4" />}
             label="Key Research Benefits"
-            description="The bulleted benefits list above the pack picker." />
+            description="The bulleted benefits list under the Add to Cart badges." />
           <ToggleSwitch
             checked={settings.product_cta_badges_enabled !== false} disabled={isReadOnly}
             onChange={(v) => handleSectionToggle('product_cta_badges_enabled', v)}

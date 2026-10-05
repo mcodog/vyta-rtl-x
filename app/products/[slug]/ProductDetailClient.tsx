@@ -431,27 +431,6 @@ export default function ProductDetailClient({
                 </button>
               )}
 
-              {/* Benefits — one point per line in the column (see
-                  lib/products/benefits.ts), with a legacy comma-separated row
-                  still read the way it always was. Each point goes through the
-                  site's inline syntax, so a point can carry a bold phrase or a
-                  link to the study behind it. */}
-              {showBenefits && benefitPoints.length > 0 && (
-                <div className="mb-4 sm:mb-6">
-                  <h3 className="font-semibold text-ink mb-2 sm:mb-3 text-sm">Key Research Benefits</h3>
-                  <ul className="space-y-1.5 sm:space-y-2">
-                    {benefitPoints.map((benefit, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-teal-dark flex-shrink-0 mt-0.5" />
-                        <span className="text-ink-muted text-xs sm:text-sm">
-                          {renderInline(benefit)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
               {/* Pack picker, price and Add to Cart.
                   The packs are the variants: they are laid out on the page
                   itself so a customer can compare a 1, a 3 and a 10 — and see
@@ -691,6 +670,27 @@ export default function ProductDetailClient({
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Benefits, below the badge row — one point per line in the
+                    column (see lib/products/benefits.ts), with a legacy
+                    comma-separated row still read the way it always was. Each
+                    point goes through the site's inline syntax, so a point can
+                    carry a bold phrase or a link to the study behind it. */}
+                {showBenefits && benefitPoints.length > 0 && (
+                  <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-line">
+                    <h3 className="font-semibold text-ink mb-2 sm:mb-3 text-sm">Key Research Benefits</h3>
+                    <ul className="space-y-1.5 sm:space-y-2">
+                      {benefitPoints.map((benefit, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-teal-dark flex-shrink-0 mt-0.5" />
+                          <span className="text-ink-muted text-xs sm:text-sm">
+                            {renderInline(benefit)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
