@@ -97,13 +97,13 @@ test('storefront payload is null without an address', () => {
 test('builds a Stealth Health payload from the ledger and invoice', () => {
   const data = stealthHealthConfirmationData(
     { id: 'p1', customer_email: 'nope', customer_name: '', partner_reference: 'ref-1', currency: 'usd' },
-    { invoice_number: 'INV-0042', customer_email: 'sh@buyer.ca', customer_name: 'Sam', subtotal: 90, shipping_cost: 15, total: 105, currency: 'CAD' },
+    { invoice_number: 'VYTA-0042', customer_email: 'sh@buyer.ca', customer_name: 'Sam', subtotal: 90, shipping_cost: 15, total: 105, currency: 'CAD' },
     [{ description: 'TB-500 — Pack of 5', qty: 2, unit_price: 45 }],
   );
   assert.deepEqual(data, {
     to: 'sh@buyer.ca',
     customerName: 'Sam',
-    orderNumber: 'INV-0042',
+    orderNumber: 'VYTA-0042',
     items: [{ name: 'TB-500', quantity: 2, price: 45, unit: 'case', vialsPerBox: 5 }],
     subtotal: 90,
     discount: 0,
@@ -126,7 +126,7 @@ test('Stealth Health payload carries what the email shows', () => {
     },
     {
       id: '11111111-2222-4333-8444-555555555555',
-      invoice_number: 'INV-1016',
+      invoice_number: 'VYTA-1016',
       status: 'paid',
       paid_at: '2026-10-04T18:00:00Z',
       subtotal: 364.8,
@@ -179,7 +179,7 @@ test('discounted Stealth Health order shows list prices and a Discount row', () 
       { product_id: P2, pack_size: 5, quantity: 1, unit_price_cents: 37544, list_unit_price_cents: 49400 },
     ],
   };
-  const invoice = { id: 'i3', invoice_number: 'INV-1016', status: 'paid', subtotal: 577.6, shipping_cost: 0, tax_total: 0, total: 577.6 };
+  const invoice = { id: 'i3', invoice_number: 'VYTA-1016', status: 'paid', subtotal: 577.6, shipping_cost: 0, tax_total: 0, total: 577.6 };
   const lines = [
     { description: 'GLP-3 20mg — Single vial', qty: 2, unit_price: 101.08, price_type: 'vial', vials_per_unit: 1, product_id: P1 },
     { description: 'MOTS C 40mg — Pack of 5', qty: 1, unit_price: 375.44, price_type: 'box', vials_per_unit: 5, product_id: P2 },
@@ -217,7 +217,7 @@ test('manual invoice: line discounts become a Discount row, customer gives email
   const data = manualInvoiceConfirmationData(
     {
       id: 'inv-9',
-      invoice_number: 'INV-2001',
+      invoice_number: 'VYTA-2001',
       status: 'paid',
       issue_date: '2026-10-05',
       subtotal: 270,
@@ -246,7 +246,7 @@ test('manual invoice: line discounts become a Discount row, customer gives email
   assert.ok(data);
   assert.equal(data.to, 'Dr.Lee@lab.ca');
   assert.equal(data.customerName, 'Ana Lee');
-  assert.equal(data.orderNumber, 'INV-2001');
+  assert.equal(data.orderNumber, 'VYTA-2001');
   assert.deepEqual(data.items, [
     { name: 'BPC-157 10mg', quantity: 2, price: 100, unit: 'case', vialsPerBox: 10, productId: P1 },
     { name: 'Bacteriostatic water', quantity: 3, price: 30 },
@@ -268,7 +268,7 @@ test('manual invoice: line discounts become a Discount row, customer gives email
 
 test('manual invoice: drop-ship client wins; unreconciled discounts show charged prices', () => {
   const data = manualInvoiceConfirmationData(
-    { id: 'inv-10', invoice_number: 'INV-2002', status: 'paid', subtotal: 90, shipping_cost: 0, tax_total: 0, total: 85, customer_email: 'g@guest.ca', customer_name: 'Guest Buyer' },
+    { id: 'inv-10', invoice_number: 'VYTA-2002', status: 'paid', subtotal: 90, shipping_cost: 0, tax_total: 0, total: 85, customer_email: 'g@guest.ca', customer_name: 'Guest Buyer' },
     [{ description: 'TB-500', qty: 1, unit_price: 100, discount_pct: 10, line_total: 90 }],
     null,
     { first_name: 'Clinic', last_name: 'North', address: '9 Bay St', city: 'Ottawa', state: 'ON', postal_code: 'K1A 0A1', country: 'CA', phone: '613-555-0101' },
@@ -299,7 +299,7 @@ test('the recipient follows the admin page: account email, then the record, then
   // Stealth Health: a linked account with the only real address still sends.
   const data = stealthHealthConfirmationData(
     { id: 'p9', status: 'paid', customer_email: null },
-    { id: 'i9', invoice_number: 'INV-9', status: 'paid', customer_email: '', subtotal: 10, total: 10 },
+    { id: 'i9', invoice_number: 'VYTA-9', status: 'paid', customer_email: '', subtotal: 10, total: 10 },
     [{ description: 'X', qty: 1, unit_price: 10 }],
     { email: 'codogmjo@gmail.com' },
   );

@@ -1,11 +1,10 @@
 /**
- * The paid-order emails, in one design:
+ * The paid-order emails:
  *   • the customer's confirmation ("Thank you for your order.") from a
  *     `ConfirmationEmailData` — `renderOrderConfirmationHtml/Text`;
  *   • the team's "New order paid" notification from an
- *     `AdminOrderPaidEmailData` — `renderAdminOrderPaidHtml/Text`.
- * Both share the shell (hero, footer), the info strip, the line items and the
- * order summary.
+ *     `AdminOrderPaidEmailData` — `renderAdminOrderPaidHtml/Text`, which is
+ *     the customer's email, identical; only its subject differs.
  *
  * Email-client safe: table layout, inline styles, no SVG, no web fonts, no
  * CSS the big clients strip (Gmail, Outlook, Apple Mail). Images are absolute
@@ -36,7 +35,6 @@ const MUTED = '#56707F';
 const LINE = '#DCE7EB';
 const SOFT = '#F3F8FB';
 const GREEN = '#047857';
-const AMBER = '#92400E';
 
 const FONT = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
 
@@ -91,11 +89,7 @@ type IconName =
   | 'shield-check-white'
   | 'canadian-maple-leaf-white'
   | 'arrow-right-white'
-  | 'arrow-right-muted'
-  | 'user-blue'
-  | 'phone-blue'
-  | 'tag-blue'
-  | 'triangle-alert-amber';
+  | 'arrow-right-muted';
 
 /** One pre-rendered icon (see the header comment), shown at `px`. */
 function icon(site: string, name: IconName, px: number, alt = ''): string {
@@ -527,162 +521,18 @@ function adminWho(data: AdminOrderPaidEmailData): string {
   return data.customer.name || data.customer.email || 'Guest';
 }
 
+/** Admin-only: says who paid how much, so the inbox can be scanned. */
 export function adminOrderPaidSubject(data: AdminOrderPaidEmailData): string {
   const o = data.order;
   const label = o.orderNumber || (data.source === 'manual' ? 'Invoice' : 'Stealth Health order');
   return `${data.source === 'manual' ? 'Invoice paid' : 'New order'}: ${label} · ${adminWho(data)} · ${money(o.total)} ${o.currency}`;
 }
 
-function adminPaidLine(data: AdminOrderPaidEmailData): string {
-  if (data.source === 'manual') return 'This manual invoice is marked paid.';
-  return data.paidVia === 'admin'
-    ? 'The invoice was marked paid by an admin. The order is now in the fulfillment queue.'
-    : 'Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue.';
-}
-
-function stockWarningCard(site: string, warnings: string[]): string {
-  if (warnings.length === 0) return '';
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: 16px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 16px;">
-              <tr><td style="padding: 18px 22px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
-                  <td valign="top" style="padding-right: 12px;">${iconCircle(icon(site, 'triangle-alert-amber', 18), { size: 34, bg: '#FEF3C7' })}</td>
-                  <td valign="top">
-                    <p style="margin: 6px 0 6px; font-size: 14px; font-weight: 700; color: ${AMBER};">Stock was not taken for:</p>
-                    ${warnings.map((w) => `<p style="margin: 0; font-size: 13px; line-height: 20px; color: ${AMBER};">${esc(w)}</p>`).join('')}
-                    <p style="margin: 8px 0 0; font-size: 12px; color: ${AMBER};">Link them under Admin → Stock Ledger → Needs attention.</p>
-                  </td>
-                </tr></table>
-              </td></tr>
-            </table>`;
-}
-
-function detailBlock(site: string, iconName: IconName, heading: string, rows: string[]): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
-      <td valign="top" style="padding-right: 10px;">${iconCircle(icon(site, iconName, 18), { size: 34 })}</td>
-      <td valign="top">
-        <p style="margin: 6px 0 8px; font-size: 14px; font-weight: 700; color: ${NAVY};">${heading}</p>
-        ${rows.join('')}
-      </td>
-    </tr></table>`;
-}
-
-function detailRow(label: string, valueHtml: string): string {
-  return `<p style="margin: 0 0 4px; font-size: 13px; line-height: 20px; color: ${MUTED};"><span style="color: ${MUTED};">${label}</span>&nbsp; <span style="color: ${NAVY};">${valueHtml}</span></p>`;
-}
-
-/** Customer contact and fulfillment details — the admin-only card. */
-function adminDetails(site: string, data: AdminOrderPaidEmailData): string {
-  const c = data.customer;
-  const customerRows = [
-    c.name ? `<p style="margin: 0 0 4px; font-size: 14px; font-weight: 700; color: ${NAVY};">${esc(c.name)}</p>` : '',
-    c.email
-      ? `<p style="margin: 0 0 4px; font-size: 13px; line-height: 20px;"><a href="mailto:${esc(c.email)}" style="color: ${BLUE}; text-decoration: none;">${esc(c.email)}</a></p>`
-      : '',
-    c.phone ? `<p style="margin: 0; font-size: 13px; line-height: 20px; color: ${MUTED};">${esc(c.phone)}</p>` : '',
-  ].filter(Boolean);
-  if (customerRows.length === 0) {
-    customerRows.push(`<p style="margin: 0; font-size: 13px; color: ${MUTED};">Guest — no contact details.</p>`);
-  }
-
-  const courier = data.courier || (data.source === 'stealth_health' ? 'Flat-rate shipping' : null);
-  const fulfillmentRows = [
-    detailRow('Source', data.source === 'manual' ? 'Manual invoice' : 'Stealth Health checkout'),
-    courier ? detailRow('Courier', esc(courier)) : '',
-    data.discountCode ? detailRow('Discount code', esc(data.discountCode)) : '',
-  ].filter(Boolean);
-
-  return `
-    <td class="stack" width="50%" valign="top" style="padding: 22px 16px 22px 24px;">${detailBlock(site, 'user-blue', 'Customer', customerRows)}</td>
-    <td class="stack stack-rule" width="50%" valign="top" style="padding: 22px 24px 22px 16px; border-left: 1px solid ${LINE};">${detailBlock(site, data.discountCode ? 'tag-blue' : 'truck-blue', 'Fulfillment', fulfillmentRows)}</td>`;
-}
-
-function adminButton(site: string, url: string): string {
-  return `<td align="center" style="padding: 24px;">
-      <a href="${esc(url)}" style="display: inline-block; padding: 14px 30px; border-radius: 999px; background: ${BLUE}; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;">View invoice&nbsp;&nbsp;${icon(site, 'arrow-right-white', 16)}</a>
-      <p style="margin: 10px 0 0; font-size: 11px; color: ${MUTED};">You'll be asked to sign in as an admin.</p>
-    </td>`;
-}
-
+/** The body is the customer's confirmation, unchanged — the team sees what the buyer saw. */
 export function renderAdminOrderPaidHtml(data: AdminOrderPaidEmailData, siteUrl: string): string {
-  const site = siteUrl.replace(/\/$/, '');
-  const o = data.order;
-  const manual = data.source === 'manual';
-  const date = formatOrderDate(o.orderDate);
-  const strip = infoStrip(
-    [
-      { icon: iconCircle(icon(site, 'file-text-blue', 22)), label: 'Invoice', value: esc(o.orderNumber) },
-      date ? { icon: iconCircle(icon(site, 'calendar-blue', 22)), label: 'Order Date', value: esc(date) } : null,
-      {
-        icon: iconCircle(icon(site, 'check-teal', 22), { bg: '#DDF3EC' }),
-        label: 'Paid',
-        value: `${money(o.total)} ${esc(o.currency)}`,
-      },
-    ].filter(Boolean) as StripCell[],
-  );
-
-  return renderShell({
-    site,
-    title: adminOrderPaidSubject(data),
-    preheader: `${adminWho(data)} · ${money(o.total)} ${o.currency} · ${o.orderNumber}`,
-    eyebrow: manual ? 'Manual invoice' : 'Stealth Health order',
-    titleHtml: manual
-      ? `Invoice<br><span style="color: ${BLUE};">paid.</span>`
-      : `New order<br><span style="color: ${BLUE};">paid.</span>`,
-    introHtml: `<strong>${esc(adminWho(data))}</strong> paid <strong>${money(o.total)} ${esc(o.currency)}</strong> for ${esc(o.orderNumber)}. ${esc(adminPaidLine(data))}`,
-    bodyHtml: `
-        <tr>
-          <td style="background: #FFFFFF; padding: 0 20px 4px;">
-            <div style="height: 20px; line-height: 20px;">&nbsp;</div>
-            ${strip}
-            ${stockWarningCard(site, data.stockWarnings)}
-
-            ${itemsSection(site, 'Order', o.items)}
-
-            ${card(orderSummary(site, o))}
-
-            ${card(adminDetails(site, data))}
-
-            ${card(adminButton(site, data.invoiceUrl), { last: true })}
-          </td>
-        </tr>
-`,
-  });
+  return renderOrderConfirmationHtml(data.order, siteUrl);
 }
 
 export function renderAdminOrderPaidText(data: AdminOrderPaidEmailData): string {
-  const o = data.order;
-  const date = formatOrderDate(o.orderDate);
-  const lines = o.items.map((i) => {
-    const pack = packLabel(i);
-    const qty = Number(i.quantity) || 0;
-    return `  ${i.name}${pack ? ` (${pack})` : ''} × ${qty} — ${money((Number(i.price) || 0) * qty)}`;
-  });
-  const out = [
-    data.source === 'manual' ? 'INVOICE PAID' : 'NEW STEALTH HEALTH ORDER PAID',
-    `${adminWho(data)} paid ${money(o.total)} ${o.currency} for ${o.orderNumber}.`,
-    adminPaidLine(data),
-    '',
-    date ? `Order date: ${date}` : null,
-    '',
-    data.stockWarnings.length
-      ? ['Stock was not taken for:', ...data.stockWarnings.map((w) => `  ${w}`), 'Link them under Admin → Stock Ledger → Needs attention.', ''].join('\n')
-      : null,
-    'Order:',
-    ...lines,
-    '',
-    `Subtotal: ${money(o.subtotal)}`,
-    Number(o.discount) > 0 ? `Discount${o.discountLabel ? ` (${o.discountLabel})` : ''}: -${money(o.discount)}` : null,
-    `Shipping: ${Number(o.shipping) > 0 ? money(o.shipping) : 'Free'}`,
-    o.tax != null ? `Tax: ${money(o.tax)}` : null,
-    `Total: ${money(o.total)} ${o.currency}`,
-    '',
-    'Customer:',
-    [data.customer.name, data.customer.email, data.customer.phone].filter(Boolean).join(' · ') || 'Guest',
-    o.shipTo ? ['', 'Ship to:', o.shipTo.name, ...o.shipTo.lines, o.shipTo.phone].filter(Boolean).join('\n') : null,
-    data.courier ? `Courier: ${data.courier}` : null,
-    data.discountCode ? `Discount code: ${data.discountCode}` : null,
-    '',
-    `View invoice: ${data.invoiceUrl}`,
-  ];
-  return out.filter((l) => l !== null).join('\n');
+  return renderOrderConfirmationText(data.order);
 }

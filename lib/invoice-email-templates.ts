@@ -36,7 +36,7 @@ export const MERGE_VARS: MergeVar[] = [
   { token: 'customer_first_name', description: "Customer's first name", sample: 'Jane' },
   { token: 'customer_last_name', description: "Customer's last name", sample: 'Doe' },
   { token: 'customer_email', description: "Customer's email address", sample: 'jane@example.com' },
-  { token: 'invoice_number', description: 'Invoice number', sample: 'INV-2026-0042' },
+  { token: 'invoice_number', description: 'Invoice number', sample: 'VYTA-1042' },
   { token: 'invoice_total', description: 'Invoice grand total', sample: '$320.00' },
   { token: 'amount_due', description: 'Outstanding balance', sample: '$120.00' },
   { token: 'amount_paid', description: 'Amount already paid', sample: '$200.00' },

@@ -114,7 +114,7 @@ CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START 1000;
 -- Invoices
 CREATE TABLE IF NOT EXISTS invoices (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  invoice_number text NOT NULL UNIQUE DEFAULT ('INV-' || nextval('invoice_number_seq')),
+  invoice_number text NOT NULL UNIQUE DEFAULT ('VYTA-' || nextval('invoice_number_seq')),
   order_id       uuid REFERENCES orders(id) ON DELETE SET NULL,
   customer_id    uuid REFERENCES customers(id) ON DELETE SET NULL,
   issue_date     date NOT NULL DEFAULT CURRENT_DATE,
