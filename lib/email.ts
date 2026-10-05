@@ -1017,11 +1017,11 @@ export async function sendAbandonedRegistrationAlert(data: {
 }
 
 /**
- * Tell the admins a Stealth Health order has been paid, to the operational
- * list from `getAdminAlertEmails`. Sent once per order by
- * lib/admin/stealth-health-paid-alert.ts — whether the checkout or an admin
- * marked the invoice paid. Never throws; `subject` is returned on every branch
- * so the caller can log it.
+ * Tell the admins an order has been paid, to the operational list from
+ * `getAdminAlertEmails`. Sent once per Stealth Health order automatically by
+ * lib/admin/stealth-health-paid-alert.ts, and by hand from the invoice page for
+ * Stealth Health and manual invoices (`source: 'manual'`). Never throws;
+ * `subject` is returned on every branch so the caller can log it.
  */
 export async function sendStealthHealthOrderAlert(data: {
   to: string | string[];
@@ -1042,16 +1042,19 @@ export async function sendStealthHealthOrderAlert(data: {
   stockWarnings?: string[];
   /** 'admin' when an admin marked the invoice paid rather than the checkout. */
   paidVia?: 'checkout' | 'admin';
+  /** 'manual' for a manual invoice (no Stealth Health checkout behind it). */
+  source?: 'stealth_health' | 'manual';
 }): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
   const { to, invoiceId, invoiceNumber, customerName, customerEmail, items } = data;
   if (!to || (Array.isArray(to) && to.length === 0)) {
     return { success: false, error: "no admin recipients", subject: "" };
   }
   const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
-  const label = invoiceNumber || "Stealth Health order";
+  const manual = data.source === "manual";
+  const label = invoiceNumber || (manual ? "Invoice" : "Stealth Health order");
   const who = customerName || customerEmail || "Guest";
   const currency = escapeHtml(data.currency || "CAD");
-  const subject = `New order: ${label} · ${who} · ${money(data.total)} ${data.currency || "CAD"}`;
+  const subject = `${manual ? "Invoice paid" : "New order"}: ${label} · ${who} · ${money(data.total)} ${data.currency || "CAD"}`;
 
   const row = (k: string, v: string, strong = false) => `
     <tr><td style="padding:6px 0; font-size:13px; color:#56707F; width:140px; vertical-align:top;">${k}</td>
@@ -1068,7 +1071,7 @@ export async function sendStealthHealthOrderAlert(data: {
   const html = vytaShell(`
     <div style="padding: 32px 24px;">
       <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
-        <h2 style="font-size: 18px; font-weight: 600; color: #065F46; margin: 0;">New Stealth Health order paid</h2>
+        <h2 style="font-size: 18px; font-weight: 600; color: #065F46; margin: 0;">${manual ? "Invoice paid" : "New Stealth Health order paid"}</h2>
         <p style="font-size: 13px; color: #065F46; margin: 6px 0 0;">${escapeHtml(label)} · ${money(data.total)} ${currency}</p>
       </div>
 
@@ -1076,7 +1079,9 @@ export async function sendStealthHealthOrderAlert(data: {
         ${row("Customer", escapeHtml(who), true)}
         ${customerEmail && customerName ? row("Email", escapeHtml(customerEmail)) : ""}
         ${data.shipTo ? row("Ship to", escapeHtml(data.shipTo)) : ""}
-        ${row("Courier", escapeHtml(data.shippingCourier || "Flat-rate shipping"))}
+        ${manual
+          ? data.shippingCourier ? row("Courier", escapeHtml(data.shippingCourier)) : ""
+          : row("Courier", escapeHtml(data.shippingCourier || "Flat-rate shipping"))}
         ${data.discountCode ? row("Discount code", escapeHtml(data.discountCode)) : ""}
       </tbody></table>
 
@@ -1091,9 +1096,11 @@ export async function sendStealthHealthOrderAlert(data: {
       </tbody></table>
 
       <p style="font-size: 13px; color: #56707F; margin: 16px 0 20px; text-align:center;">
-        ${data.paidVia === "admin"
-          ? "The invoice was marked paid by an admin. The order is now in the fulfillment queue."
-          : "Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue."}
+        ${manual
+          ? "This manual invoice is marked paid."
+          : data.paidVia === "admin"
+            ? "The invoice was marked paid by an admin. The order is now in the fulfillment queue."
+            : "Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue."}
       </p>
 
       ${

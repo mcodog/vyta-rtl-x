@@ -25,7 +25,7 @@ type StatusResponse =
   | { applicable: false }
   | {
       applicable: true;
-      kind: 'storefront' | 'stealth_health';
+      kind: 'storefront' | 'stealth_health' | 'manual';
       summary: ConfirmationSummary;
       history: ConfirmationLogRow[];
       recipient: string | null;
