@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon, AlertCircle, AlertTriangle, Check, CreditCard, Send, Mail, Plus,
   Trash2, FileText, ChevronRight, MapPin, Users, ToggleRight, ToggleLeft,
   Truck, KeyRound, Bell, Clock, ShieldCheck, RefreshCw, Megaphone, Droplets,
-  ShoppingCart,
+  ShoppingCart, BadgeCheck,
 } from 'lucide-react';
 import { supabase, type SiteSettings } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
@@ -203,6 +203,7 @@ export default function SettingsPage() {
       | 'product_specs_enabled'
       | 'product_benefits_enabled'
       | 'product_certifications_enabled'
+      | 'product_cta_badges_enabled'
       | 'cart_trust_strip_enabled'
       | 'cart_similar_enabled'
       | 'checkout_addons_enabled'
@@ -708,6 +709,12 @@ export default function SettingsPage() {
             icon={<Check className="w-4 h-4" />}
             label="Key Research Benefits"
             description="The bulleted benefits list above the pack picker." />
+          <ToggleSwitch
+            checked={settings.product_cta_badges_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_cta_badges_enabled', v)}
+            icon={<BadgeCheck className="w-4 h-4" />}
+            label="Add to Cart badges"
+            description={'"99% Purity", "Third-Party Tested", "COA Available" and "Ships from Canada" with their icons, under the Add to Cart button.'} />
           <ToggleSwitch
             checked={settings.product_certifications_enabled !== false} disabled={isReadOnly}
             onChange={(v) => handleSectionToggle('product_certifications_enabled', v)}

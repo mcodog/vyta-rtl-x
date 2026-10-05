@@ -147,6 +147,7 @@ function shape(data: Record<string, any> | null | undefined) {
     product_specs_enabled: d.product_specs_enabled ?? true,
     product_benefits_enabled: d.product_benefits_enabled ?? true,
     product_certifications_enabled: d.product_certifications_enabled ?? true,
+    product_cta_badges_enabled: d.product_cta_badges_enabled ?? true,
     easyship_enabled: d.easyship_enabled ?? false,
     easyship_api_key_set: Boolean(d.easyship_api_key),
     shipping_origin: d.shipping_origin ?? {},
@@ -254,6 +255,7 @@ export async function PUT(req: NextRequest) {
     'product_specs_enabled',
     'product_benefits_enabled',
     'product_certifications_enabled',
+    'product_cta_badges_enabled',
     'klaviyo_enabled',
     'klaviyo_onsite_enabled',
     'klaviyo_server_events_enabled',
@@ -460,7 +462,8 @@ export async function PUT(req: NextRequest) {
     'product_reviews_enabled' in body ||
     'product_specs_enabled' in body ||
     'product_benefits_enabled' in body ||
-    'product_certifications_enabled' in body
+    'product_certifications_enabled' in body ||
+    'product_cta_badges_enabled' in body
   ) {
     revalidatePath('/products/[slug]', 'page');
   }

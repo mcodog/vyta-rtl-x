@@ -132,6 +132,8 @@ export interface ProductDetailClientProps {
   showBenefits?: boolean;
   /** Admin → Settings: the Quality Certifications panel. */
   showCertifications?: boolean;
+  /** Admin → Settings: the badge row under Add to Cart. */
+  showCtaBadges?: boolean;
 }
 
 export default function ProductDetailClient({
@@ -143,6 +145,7 @@ export default function ProductDetailClient({
   showSpecs = true,
   showBenefits = true,
   showCertifications = true,
+  showCtaBadges = true,
 }: ProductDetailClientProps) {
   // Everything below reads `product`; the server render is the first paint and
   // the volatile fields are refreshed in place. See useLiveProduct above.
@@ -676,18 +679,20 @@ export default function ProductDetailClient({
 
                 {/* What every order carries, right under the button that
                     places it. Separated from the CTA by a hairline. */}
-                <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-line">
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4">
-                    {CTA_ASSURANCES.map(({ icon: Icon, label }) => (
-                      <div key={label} className="flex items-center gap-1.5">
-                        <Icon className="h-4 w-4 flex-shrink-0 text-teal-dark" />
-                        <span className="text-[11px] sm:text-xs font-medium leading-tight text-ink">
-                          {label}
-                        </span>
-                      </div>
-                    ))}
+                {showCtaBadges && (
+                  <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-line">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4">
+                      {CTA_ASSURANCES.map(({ icon: Icon, label }) => (
+                        <div key={label} className="flex items-center gap-1.5">
+                          <Icon className="h-4 w-4 flex-shrink-0 text-teal-dark" />
+                          <span className="text-[11px] sm:text-xs font-medium leading-tight text-ink">
+                            {label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
           </div>
