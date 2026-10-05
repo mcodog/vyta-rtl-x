@@ -368,6 +368,7 @@ function renderShell(o: ShellOptions): string {
     .hero-title { font-size: 32px !important; line-height: 36px !important; }
     /* Narrow screens: show the photo's light left side behind the text. */
     .hero { background-position: left center !important; }
+    .hero-copy { padding: 14px 14px 20px !important; }
     .thumb { width: 52px !important; padding-right: 8px !important; }
     .thumb img, .thumb td { width: 44px !important; height: 44px !important; }
   }
@@ -406,15 +407,21 @@ function renderShell(o: ShellOptions): string {
               <tr>
                 <td>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;"><tr>
-                    <td class="stack" width="54%" valign="top" style="padding: 26px 8px 32px 32px;">
-                      <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: ${NAVY};">${esc(o.eyebrow)}</p>
-                      <h1 class="hero-title" style="margin: 0 0 14px; font-size: 38px; line-height: 42px; font-weight: 800; letter-spacing: -0.02em; color: ${NAVY};">${o.titleHtml}</h1>
-                      <p style="margin: 0; font-size: 14px; line-height: 22px; color: #34495A;">
-                        ${o.introHtml}
-                      </p>
+                    <td class="stack hero-copy" width="53%" valign="top" style="padding: 18px 10px 24px 20px;">
+                      <!-- A soft white panel keeps the text legible over the photo
+                           (solid fallback first for clients without rgba). -->
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate;"><tr>
+                        <td style="padding: 18px 20px 20px; border-radius: 16px; background-color: #F4F9FC; background-color: rgba(255,255,255,0.82); box-shadow: 0 8px 24px rgba(7,32,58,0.10);">
+                          <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: ${NAVY};">${esc(o.eyebrow)}</p>
+                          <h1 class="hero-title" style="margin: 0 0 14px; font-size: 38px; line-height: 42px; font-weight: 800; letter-spacing: -0.02em; color: ${NAVY};">${o.titleHtml}</h1>
+                          <p style="margin: 0; font-size: 14px; line-height: 22px; color: #34495A;">
+                            ${o.introHtml}
+                          </p>
+                        </td>
+                      </tr></table>
                     </td>
                     <!-- The vials in the photo sit here. -->
-                    <td class="hide-sm" width="46%">&nbsp;</td>
+                    <td class="hide-sm" width="47%">&nbsp;</td>
                   </tr></table>
                 </td>
               </tr>
@@ -534,7 +541,7 @@ export function adminOrderPaidSubject(data: AdminOrderPaidEmailData): string {
 }
 
 function adminPaidLine(data: AdminOrderPaidEmailData): string {
-  if (data.source === 'manual') return 'This manual invoice is marked paid.';
+  if (data.source === 'manual') return 'The invoice is marked paid.';
   return data.paidVia === 'admin'
     ? 'The invoice was marked paid by an admin. The order is now in the fulfillment queue.'
     : 'Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue.';
@@ -586,7 +593,7 @@ function adminDetails(site: string, data: AdminOrderPaidEmailData): string {
 
   const courier = data.courier || (data.source === 'stealth_health' ? 'Flat-rate shipping' : null);
   const fulfillmentRows = [
-    detailRow('Source', data.source === 'manual' ? 'Manual invoice' : 'Stealth Health checkout'),
+    detailRow('Source', data.source === 'manual' ? 'Created in admin' : 'Stealth Health checkout'),
     courier ? detailRow('Courier', esc(courier)) : '',
     data.discountCode ? detailRow('Discount code', esc(data.discountCode)) : '',
   ].filter(Boolean);
@@ -624,7 +631,7 @@ export function renderAdminOrderPaidHtml(data: AdminOrderPaidEmailData, siteUrl:
     site,
     title: adminOrderPaidSubject(data),
     preheader: `${adminWho(data)} · ${money(o.total)} ${o.currency} · ${o.orderNumber}`,
-    eyebrow: manual ? 'Manual invoice' : 'Stealth Health order',
+    eyebrow: manual ? 'Order confirmed' : 'Stealth Health order',
     titleHtml: manual
       ? `Invoice<br><span style="color: ${BLUE};">paid.</span>`
       : `New order<br><span style="color: ${BLUE};">paid.</span>`,
