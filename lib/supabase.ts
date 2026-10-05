@@ -342,6 +342,8 @@ export interface SiteSettings {
   cart_fbt_enabled: boolean;
   /** Show the computed "You may also like" block on the cart. */
   cart_similar_enabled: boolean;
+  /** Show the "Complete your order" box (reconstitution help + add-ons) on the checkout. */
+  checkout_addons_enabled: boolean;
   // Easyship shipping config
   easyship_enabled: boolean;
   easyship_api_key_set: boolean; // never the key itself

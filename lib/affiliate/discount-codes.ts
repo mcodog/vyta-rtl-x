@@ -235,7 +235,6 @@ export type DiscountCodeRejection =
   | 'below-minimum'
   | 'own-code'
   | 'first-order-only'
-  | 'first-order-pending'
   | 'first-order-unverified'
   | 'nothing-eligible';
 
@@ -248,9 +247,6 @@ export const REJECTION_MESSAGES: Record<DiscountCodeRejection, string> = {
   'below-minimum': 'Your order is below the minimum for that code.',
   'own-code': "You can't use your own affiliate code.",
   'first-order-only': 'That code is for first orders only.',
-  'first-order-pending':
-    'Your first-order discount is already on a checkout that is awaiting payment. ' +
-    'Complete that checkout, or it becomes available again once that checkout expires.',
   'first-order-unverified': "We couldn't check that code right now. Please try again.",
   'nothing-eligible': "That code doesn't apply to the items in your cart.",
 };
@@ -262,8 +258,6 @@ export function firstOrderRejection(status: FirstOrderStatus): DiscountCodeRejec
       return null;
     case 'ordered':
       return 'first-order-only';
-    case 'pending':
-      return 'first-order-pending';
     default:
       return 'first-order-unverified';
   }

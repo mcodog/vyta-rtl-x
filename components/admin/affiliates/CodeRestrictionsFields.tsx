@@ -100,8 +100,8 @@ export default function CodeRestrictionsFields({
         <span>
           First order only
           <span className="block text-[11px] text-ink-muted">
-            Refused to anyone who already has a paid order, or a checkout awaiting payment —
-            checked by account and by email, so guest checkouts count too.
+            Refused to anyone who already has a paid order — checked by account and by
+            email, so guest checkouts count too. An unpaid checkout does not use it up.
           </span>
         </span>
       </label>

@@ -309,6 +309,7 @@ function readReferralCode(): string {
 export default function PuramassCheckoutContent({
   guestCheckoutEnabled,
   shippingRatesEnabled,
+  addonsEnabled = true,
   flatShipping,
   freeShippingActive,
   freeShippingThreshold,
@@ -316,6 +317,8 @@ export default function PuramassCheckoutContent({
   guestCheckoutEnabled: boolean;
   /** Admin toggle: buyer picks a live courier rate, or everyone pays the flat fee. */
   shippingRatesEnabled: boolean;
+  /** Admin toggle: show the "Complete your order" box (reconstitution help + add-ons). */
+  addonsEnabled?: boolean;
   /** Flat fee (CAD) charged when live rates are off or unavailable. */
   flatShipping: number;
   /** A free-shipping promo is running. */
@@ -469,8 +472,13 @@ export default function PuramassCheckoutContent({
 
   // Checkout upsell — products flagged is_checkout_addon. Only forms Stealth
   // Health can fulfil are offered (a case and/or vial SKU); store stock is
-  // ignored. Products with neither valid form are dropped.
+  // ignored. Products with neither valid form are dropped. Not loaded at all
+  // when the admin has hidden the "Complete your order" box.
   useEffect(() => {
+    if (!addonsEnabled) {
+      setAddonsLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -531,7 +539,7 @@ export default function PuramassCheckoutContent({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [addonsEnabled]);
 
   const openAddon = (p: AddonProduct) => {
     openPurchaseModal({
@@ -1001,7 +1009,9 @@ export default function PuramassCheckoutContent({
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div
+            className={`grid grid-cols-1 gap-6 ${addonsEnabled ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
+          >
             {/* ---- Column 1 · Contact ---- */}
             <motion.section variants={itemVariants}>
               <div className="h-full rounded-2xl border border-line bg-white p-5">
@@ -1243,6 +1253,7 @@ export default function PuramassCheckoutContent({
             </motion.section>
 
             {/* ---- Column 2 · Complete your order (reconstitution) ---- */}
+            {addonsEnabled && (
             <motion.section variants={itemVariants}>
               <div className="h-full rounded-2xl border border-line bg-white p-5">
                 <div className="flex items-center gap-3 mb-4">
@@ -1332,6 +1343,7 @@ export default function PuramassCheckoutContent({
                 )}
               </div>
             </motion.section>
+            )}
 
             {/* ---- Column 3 · Order summary + CTA ---- */}
             <motion.section variants={itemVariants}>
