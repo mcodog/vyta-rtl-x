@@ -69,6 +69,7 @@ test('html carries every section, escaped', () => {
   assert.match(html, /View Order Details/);
   assert.ok(html.includes('href="https://www.vytabio.com/login?redirect=%2Faccount%2Forders%2Fabc%3Fclaim%3Dx&amp;email=m%40buyer.ca"'));
   assert.ok(html.includes('src="https://www.vytabio.com/images/vyta-mark.png"'));
+  assert.ok(html.includes("url('https://www.vytabio.com/images/email/order-hero.jpg')"));
   assert.ok(html.includes('Marguerite &lt;b&gt;'));
   assert.ok(!html.includes('Marguerite <b>'));
   assert.match(html, /For research purposes only/);

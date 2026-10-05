@@ -4,7 +4,9 @@
  *
  * Email-client safe: table layout, inline styles, no SVG, no web fonts, no
  * CSS the big clients strip (Gmail, Outlook, Apple Mail). Images are absolute
- * URLs.
+ * URLs. The hero photo (public/images/email/order-hero.jpg) is a background,
+ * with the light-blue colour as the fallback where backgrounds are dropped
+ * (Outlook desktop); its left side is lightened so the headline stays legible.
  *
  * Icons are Lucide (lucide-static 0.546.0, the version lucide-react is on)
  * plus Font Awesome's canadian-maple-leaf (react-icons' FaCanadianMapleLeaf;
@@ -297,14 +299,8 @@ export function orderConfirmationSubject(data: Pick<ConfirmationEmailData, 'orde
 
 export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl: string): string {
   const site = siteUrl.replace(/\/$/, '');
-  const heroImage = data.items.find((i) => i.imageUrl)?.imageUrl ?? null;
   const preheader = `Your payment has been received — order ${data.orderNumber}.`;
 
-  const heroRight = heroImage
-    ? `<td class="hide-sm" width="190" align="center" valign="bottom" style="padding: 0 24px 26px 0;">
-        <img src="${esc(heroImage)}" width="170" alt="" style="display: block; width: 170px; height: 170px; object-fit: cover; border-radius: 18px; box-shadow: 0 12px 28px rgba(7,32,58,0.18);">
-      </td>`
-    : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -321,6 +317,8 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
     .stack-gap { padding-top: 12px !important; text-align: left !important; }
     .hide-sm { display: none !important; }
     .hero-title { font-size: 32px !important; line-height: 36px !important; }
+    /* Narrow screens: show the photo's light left side behind the text. */
+    .hero { background-position: left center !important; }
     .thumb { width: 52px !important; padding-right: 8px !important; }
     .thumb img, .thumb td { width: 44px !important; height: 44px !important; }
   }
@@ -335,7 +333,7 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
 
         <!-- Hero -->
         <tr>
-          <td style="background-color: #E6F0F6; background-image: linear-gradient(160deg, #F7FBFD 0%, #E6F0F6 55%, #D3E5EF 100%); border-radius: 20px 20px 0 0;">
+          <td class="hero" background="${site}/images/email/order-hero.jpg" style="background-color: #E6F0F6; background-image: url('${site}/images/email/order-hero.jpg'); background-position: right bottom; background-size: cover; background-repeat: no-repeat; border-radius: 20px 20px 0 0;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 26px 32px 0;">
@@ -359,14 +357,15 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
               <tr>
                 <td>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;"><tr>
-                    <td valign="top" style="padding: 34px 24px 34px 32px;">
+                    <td class="stack" width="54%" valign="top" style="padding: 26px 8px 32px 32px;">
                       <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: ${NAVY};">Order confirmed</p>
-                      <h1 class="hero-title" style="margin: 0 0 16px; font-size: 40px; line-height: 44px; font-weight: 800; letter-spacing: -0.02em; color: ${NAVY};">Thank you<br>for <span style="color: ${BLUE};">your order.</span></h1>
+                      <h1 class="hero-title" style="margin: 0 0 14px; font-size: 38px; line-height: 42px; font-weight: 800; letter-spacing: -0.02em; color: ${NAVY};">Thank you<br>for <span style="color: ${BLUE};">your order.</span></h1>
                       <p style="margin: 0; font-size: 14px; line-height: 22px; color: #34495A;">
                         Hi ${esc(data.customerName)}, your payment has been received and your order is being processed. We’ll send you another email with tracking information once your order ships.
                       </p>
                     </td>
-                    ${heroRight}
+                    <!-- The vials in the photo sit here. -->
+                    <td class="hide-sm" width="46%">&nbsp;</td>
                   </tr></table>
                 </td>
               </tr>
