@@ -29,7 +29,12 @@ import { buildViewOrderUrl } from '@/lib/customer/order-link';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import {
   isStorefrontCheckoutSource,
+  manualEmailCandidates,
   manualInvoiceConfirmationData,
+  noEmailReason,
+  pickDeliverableEmail,
+  stealthHealthEmailCandidates,
+  storefrontEmailCandidates,
   stealthHealthConfirmationData,
   storefrontConfirmationData,
   summarizeConfirmationLog,
@@ -84,7 +89,6 @@ const MIGRATION_WARNING =
 
 const NOT_PAID_REASON = 'Not paid yet — the confirmation goes out once the order is paid.';
 const MANUAL_NOT_PAID_REASON = 'Mark the invoice paid first — this email tells the customer their payment was received.';
-const NO_EMAIL_REASON = 'No real email address on this order.';
 
 // ---------------------------------------------------------------------------
 //  Loading
@@ -93,6 +97,8 @@ const NO_EMAIL_REASON = 'No real email address on this order.';
 interface LoadedStorefront {
   order: Record<string, any>;
   data: ConfirmationEmailData | null;
+  /** Every address on file, best first — explains a missing `data`. */
+  emails: unknown[];
 }
 
 interface LoadedStealthHealth {
@@ -100,6 +106,15 @@ interface LoadedStealthHealth {
   invoice: Record<string, any> | null;
   paid: boolean;
   data: ConfirmationEmailData | null;
+  emails: unknown[];
+}
+
+/** The linked `customers` row (the account the admin screens show), or null. */
+async function loadCustomer(db: SupabaseClient, id: unknown): Promise<Record<string, any> | null> {
+  if (typeof id !== 'string' || !id) return null;
+  const { data, error } = await db.from('customers').select('*').eq('id', id).maybeSingle();
+  if (error) console.error(`[order-confirmation] reading customer ${id} failed:`, error);
+  return (data as Record<string, any> | null) ?? null;
 }
 
 async function loadStorefront(db: SupabaseClient, orderId: string): Promise<LoadedStorefront | null> {
@@ -121,29 +136,26 @@ async function loadStorefront(db: SupabaseClient, orderId: string): Promise<Load
     }));
   }
 
-  // …and usually no email of their own: fall back to the customer account.
-  if (!String(order.email ?? '').trim() && order.customer_id) {
-    const { data: customer } = await db
-      .from('customers')
-      .select('email, first_name, last_name')
-      .eq('id', order.customer_id)
-      .maybeSingle();
-    if (customer) {
-      filled.email = customer.email;
-      const addr = order.shipping_address && typeof order.shipping_address === 'object'
-        ? order.shipping_address
-        : {};
-      if (!addr.firstName && !addr.first_name) {
-        filled.shipping_address = {
-          ...addr,
-          firstName: customer.first_name ?? '',
-          lastName: customer.last_name ?? '',
-        };
-      }
+  // The recipient is chosen the way the admin order page shows it: the linked
+  // customer account's email first, then the order's own (admin-created orders
+  // often have none, or a placeholder).
+  const customer = await loadCustomer(db, order.customer_id);
+  const emails = storefrontEmailCandidates(order, customer);
+  filled.email = pickDeliverableEmail(...emails) ?? order.email;
+  if (customer) {
+    const addr = order.shipping_address && typeof order.shipping_address === 'object'
+      ? order.shipping_address
+      : {};
+    if (!addr.firstName && !addr.first_name) {
+      filled.shipping_address = {
+        ...addr,
+        firstName: customer.first_name ?? '',
+        lastName: customer.last_name ?? '',
+      };
     }
   }
 
-  return { order, data: storefrontConfirmationData(filled) };
+  return { order, data: storefrontConfirmationData(filled), emails };
 }
 
 async function loadStealthHealth(
@@ -177,11 +189,13 @@ async function loadStealthHealth(
   // The hand-off's invoice is written at checkout (pending_payment), so its
   // existence alone doesn't mean paid — the ledger or the invoice must say so.
   const paid = !!invoice && (ledger.status === 'paid' || invoice.status === 'paid');
+  const customer = await loadCustomer(db, invoice?.customer_id ?? ledger.customer_id);
   return {
     ledger,
     invoice,
     paid,
-    data: invoice ? stealthHealthConfirmationData(ledger, invoice, lines) : null,
+    data: invoice ? stealthHealthConfirmationData(ledger, invoice, lines, customer) : null,
+    emails: stealthHealthEmailCandidates(ledger, invoice, customer),
   };
 }
 
@@ -189,6 +203,7 @@ interface LoadedManual {
   invoice: Record<string, any>;
   paid: boolean;
   data: ConfirmationEmailData | null;
+  emails: unknown[];
 }
 
 /** A manual invoice with its lines, customer and drop-ship client. */
@@ -197,11 +212,9 @@ async function loadManual(db: SupabaseClient, invoiceId: string): Promise<Loaded
   if (error) throw error;
   if (!invoice) return null;
 
-  const [{ data: lines }, customerRes, clientRes] = await Promise.all([
+  const [{ data: lines }, customer, clientRes] = await Promise.all([
     db.from('invoice_line_items').select('*').eq('invoice_id', invoiceId),
-    invoice.customer_id
-      ? db.from('customers').select('*').eq('id', invoice.customer_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+    loadCustomer(db, invoice.customer_id),
     invoice.ships_to_client && invoice.client_id
       ? db.from('customer_clients').select('*').eq('id', invoice.client_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -209,7 +222,8 @@ async function loadManual(db: SupabaseClient, invoiceId: string): Promise<Loaded
   return {
     invoice,
     paid: invoice.status === 'paid',
-    data: manualInvoiceConfirmationData(invoice, lines ?? [], customerRes.data ?? null, clientRes.data ?? null),
+    data: manualInvoiceConfirmationData(invoice, lines ?? [], customer, clientRes.data ?? null),
+    emails: manualEmailCandidates(invoice, customer),
   };
 }
 
@@ -266,6 +280,25 @@ async function enrichForEmail(
   db: SupabaseClient,
   data: ConfirmationEmailData,
 ): Promise<ConfirmationEmailData> {
+  const out = await withProductImages(db, data);
+  if (out.accountOrderId) {
+    try {
+      out.viewOrderUrl = await buildViewOrderUrl(db, SITE_URL, out.accountOrderId, out.to);
+    } catch (err) {
+      console.error('[order-confirmation] building the order link failed:', err);
+    }
+  }
+  return out;
+}
+
+/**
+ * A copy of `data` with each line's catalog image filled in (absolute URL).
+ * Best-effort — shared with the admin "order paid" email.
+ */
+export async function withProductImages(
+  db: SupabaseClient,
+  data: ConfirmationEmailData,
+): Promise<ConfirmationEmailData> {
   const out: ConfirmationEmailData = { ...data, items: data.items.map((i) => ({ ...i })) };
 
   const ids = [...new Set(out.items.map((i) => i.productId).filter((id): id is string => !!id))];
@@ -281,14 +314,6 @@ async function enrichForEmail(
       }
     } catch (err) {
       console.error('[order-confirmation] product image lookup failed:', err);
-    }
-  }
-
-  if (out.accountOrderId) {
-    try {
-      out.viewOrderUrl = await buildViewOrderUrl(db, SITE_URL, out.accountOrderId, out.to);
-    } catch (err) {
-      console.error('[order-confirmation] building the order link failed:', err);
     }
   }
   return out;
@@ -531,19 +556,24 @@ export async function getConfirmationStatus(
   if (!target) return null;
 
   let data: ConfirmationEmailData | null = null;
+  let emails: unknown[] = [];
   let blockedReason: string | null = null;
   if (target.kind === 'storefront') {
-    data = (await loadStorefront(db, target.orderId))?.data ?? null;
+    const loaded = await loadStorefront(db, target.orderId);
+    data = loaded?.data ?? null;
+    emails = loaded?.emails ?? [];
   } else if (target.kind === 'manual') {
     const loaded = await loadManual(db, target.invoiceId);
     data = loaded?.data ?? null;
+    emails = loaded?.emails ?? [];
     if (!loaded?.paid) blockedReason = MANUAL_NOT_PAID_REASON;
   } else {
     const loaded = await loadStealthHealth(db, target.puramassOrderId);
     data = loaded?.data ?? null;
+    emails = loaded?.emails ?? [];
     if (!loaded?.paid) blockedReason = NOT_PAID_REASON;
   }
-  if (!blockedReason && !data) blockedReason = NO_EMAIL_REASON;
+  if (!blockedReason && !data) blockedReason = noEmailReason(emails);
 
   const history = await readLog(db, target);
   return {
@@ -572,6 +602,7 @@ export async function sendConfirmationManually(
   }
 
   let data: ConfirmationEmailData | null;
+  let emails: unknown[];
   // Where the send is stamped so the automatic send won't repeat it; manual
   // invoices have no automatic send, so nothing to stamp.
   let stamp: { table: ClaimTable; rowId: string } | null = null;
@@ -582,11 +613,13 @@ export async function sendConfirmationManually(
     if (!loaded) return { ok: false, status: 404, error: 'Invoice not found.' };
     if (!loaded.paid) return { ok: false, status: 422, error: MANUAL_NOT_PAID_REASON };
     data = loaded.data;
+    emails = loaded.emails;
     link = { order_id: null, invoice_id: target.invoiceId };
   } else if (target.kind === 'storefront') {
     const loaded = await loadStorefront(db, target.orderId);
     if (!loaded) return { ok: false, status: 404, error: 'Order not found.' };
     data = loaded.data;
+    emails = loaded.emails;
     stamp = { table: 'orders', rowId: target.orderId };
     link = { order_id: target.orderId, invoice_id: target.invoiceId };
   } else {
@@ -600,20 +633,12 @@ export async function sendConfirmationManually(
       };
     }
     data = loaded.data;
+    emails = loaded.emails;
     stamp = { table: 'puramass_orders', rowId: target.puramassOrderId };
     link = { order_id: null, invoice_id: loaded.invoice.id };
   }
 
-  if (!data) {
-    return {
-      ok: false,
-      status: 422,
-      error:
-        target.kind === 'manual'
-          ? 'This invoice has no customer email address to send to.'
-          : 'This order has no real email address to send to.',
-    };
-  }
+  if (!data) return { ok: false, status: 422, error: noEmailReason(emails) };
 
   const res = await deliver(db, data);
   await logAttempt(db, {

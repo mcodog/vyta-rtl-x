@@ -28,11 +28,15 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import { SITE_URL } from '@/lib/config';
 import {
+  manualInvoiceOrderSummary,
+  stealthHealthOrderSummary,
   summarizeConfirmationLog,
   type ConfirmationLogRow,
   type ConfirmationSummary,
 } from '@/lib/order-confirmation-data';
+import type { AdminOrderPaidEmailData } from '@/lib/order-confirmation-email';
 
 const SENT_COLUMN = 'admin_paid_alert_sent_at';
 const LOG_KIND = 'admin_paid_alert';
@@ -65,15 +69,6 @@ export interface PaidAlertOptions {
 
 function trimOrNull(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
-}
-
-function formatShipTo(addr: unknown): string | null {
-  if (!addr || typeof addr !== 'object') return null;
-  const a = addr as Record<string, unknown>;
-  const parts = [a.address, a.address2, a.city, a.state, a.zip, a.country]
-    .map((v) => (typeof v === 'string' ? v.trim() : ''))
-    .filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 async function claim(db: SupabaseClient, id: string): Promise<'won' | 'lost' | 'not_migrated'> {
@@ -149,7 +144,7 @@ export async function sendStealthHealthPaidAlertOnce(
       db.from('invoices').select('*').eq('id', ledger.invoice_id).maybeSingle(),
       db
         .from('invoice_line_items')
-        .select('product_id, description, qty, line_total')
+        .select('*')
         .eq('invoice_id', ledger.invoice_id),
     ]);
     if (!invoice) return { sent: false, reason: 'not_found' };
@@ -182,12 +177,15 @@ export async function sendStealthHealthPaidAlertOnce(
       if (claimed === 'not_migrated' && !opts.transition) return { sent: false, reason: 'not_migrated' };
     }
 
-    const { sendStealthHealthOrderAlert } = await import('@/lib/email');
-    const res = await sendStealthHealthOrderAlert({
-      to,
-      ...stealthHealthAlertPayload(ledger, invoice, lines ?? []),
+    const email = await buildAdminEmail(db, {
+      kind: 'stealth_health',
+      invoice,
+      ledger,
+      lines: lines ?? [],
       paidVia: opts.paidVia,
     });
+    const { sendAdminOrderPaidAlert } = await import('@/lib/email');
+    const res = await sendAdminOrderPaidAlert(to, email);
 
     await logAttempt(db, {
       invoice_id: invoice.id,
@@ -235,85 +233,60 @@ export async function sendStealthHealthPaidAlertForInvoice(
 //  Shared payload, manual send and status
 // ---------------------------------------------------------------------------
 
-type AlertPayload = Omit<Parameters<typeof import('@/lib/email').sendStealthHealthOrderAlert>[0], 'to' | 'paidVia'>;
-
-function alertLines(lines: Array<Record<string, any>>) {
-  return {
-    items: lines.map((l) => ({
-      description: String(l.description ?? ''),
-      qty: Number(l.qty) || 0,
-      lineTotal: Number(l.line_total) || 0,
-    })),
-    // Lines with no product took no stock and need linking by hand.
-    stockWarnings: lines
-      .filter((l) => !l.product_id)
-      .map((l) => `${String(l.description ?? 'Item')} × ${Number(l.qty) || 0}`),
-  };
+/** Lines with no product took no stock and need linking by hand. */
+function stockWarnings(lines: Array<Record<string, any>>): string[] {
+  return lines
+    .filter((l) => !l.product_id)
+    .map((l) => `${String(l.description ?? 'Item')} × ${Number(l.qty) || 0}`);
 }
 
-function stealthHealthAlertPayload(
-  ledger: Record<string, any>,
-  invoice: Record<string, any>,
-  lines: Array<Record<string, any>>,
-): AlertPayload {
-  return {
-    invoiceId: invoice.id,
-    invoiceNumber: trimOrNull(invoice.invoice_number),
-    customerName: trimOrNull(invoice.customer_name) ?? trimOrNull(ledger.customer_name),
-    customerEmail: trimOrNull(invoice.customer_email) ?? trimOrNull(ledger.customer_email),
-    ...alertLines(lines),
-    subtotal: Number(invoice.subtotal) || 0,
-    shipping: Number(invoice.shipping_cost) || 0,
-    shippingCourier: trimOrNull(ledger.shipping_courier),
-    total: Number(invoice.total) || 0,
-    currency: trimOrNull(invoice.currency) ?? 'CAD',
-    discountCode: trimOrNull(ledger.discount_code),
-    shipTo: formatShipTo(ledger.shipping_address),
-    source: 'stealth_health',
-  };
+async function loadRow(db: SupabaseClient, table: string, id: unknown): Promise<Record<string, any> | null> {
+  if (typeof id !== 'string' || !id) return null;
+  const { data, error } = await db.from(table).select('*').eq('id', id).maybeSingle();
+  if (error) console.error(`[stealth-health-alert] reading ${table} ${id} failed:`, error);
+  return (data as Record<string, any> | null) ?? null;
 }
 
-async function manualAlertPayload(
+/**
+ * The admin email's data: the order exactly as the customer confirmation
+ * shows it (line items with images, totals with the discount row, ship-to),
+ * plus the customer's contact details, courier, discount code and any lines
+ * that took no stock.
+ */
+async function buildAdminEmail(
   db: SupabaseClient,
-  invoice: Record<string, any>,
-  lines: Array<Record<string, any>>,
-): Promise<AlertPayload> {
-  const [customerRes, clientRes] = await Promise.all([
-    invoice.customer_id
-      ? db.from('customers').select('*').eq('id', invoice.customer_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    invoice.ships_to_client && invoice.client_id
-      ? db.from('customer_clients').select('*').eq('id', invoice.client_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-  const customer = (customerRes.data ?? null) as Record<string, any> | null;
-  const client = (clientRes.data ?? null) as Record<string, any> | null;
-  const shipTo = client
-    ? formatShipTo({ ...client, zip: client.postal_code })
-    : customer
-      ? formatShipTo({
-          address: customer.shipping_address,
-          city: customer.shipping_city,
-          state: customer.shipping_state,
-          zip: customer.shipping_postal_code,
-          country: customer.shipping_country,
-        })
-      : null;
-  const customerName =
+  src:
+    | { kind: 'stealth_health'; invoice: Record<string, any>; ledger: Record<string, any>; lines: Array<Record<string, any>>; paidVia: 'checkout' | 'admin' }
+    | { kind: 'manual'; invoice: Record<string, any>; lines: Array<Record<string, any>>; paidVia: 'checkout' | 'admin' },
+): Promise<AdminOrderPaidEmailData> {
+  const { invoice, lines } = src;
+  const ledger = src.kind === 'stealth_health' ? src.ledger : null;
+  const customer = await loadRow(db, 'customers', invoice.customer_id ?? ledger?.customer_id);
+  const client =
+    src.kind === 'manual' && invoice.ships_to_client ? await loadRow(db, 'customer_clients', invoice.client_id) : null;
+
+  const summary =
+    src.kind === 'stealth_health'
+      ? stealthHealthOrderSummary(src.ledger, invoice, lines, customer)
+      : manualInvoiceOrderSummary(invoice, lines, customer, client);
+  const { withProductImages } = await import('@/lib/order-confirmation');
+  const order = await withProductImages(db, summary);
+
+  const accountName =
     [trimOrNull(customer?.first_name), trimOrNull(customer?.last_name)].filter(Boolean).join(' ') || null;
   return {
-    invoiceId: invoice.id,
-    invoiceNumber: trimOrNull(invoice.invoice_number),
-    customerName: customerName ?? trimOrNull(invoice.customer_name),
-    customerEmail: trimOrNull(customer?.email) ?? trimOrNull(invoice.customer_email),
-    ...alertLines(lines),
-    subtotal: Number(invoice.subtotal) || 0,
-    shipping: Number(invoice.shipping_cost) || 0,
-    shippingCourier: trimOrNull(invoice.carrier),
-    total: Number(invoice.total) || 0,
-    currency: trimOrNull(invoice.currency) ?? 'CAD',
-    shipTo,
-    source: 'manual',
+    order,
+    source: src.kind,
+    paidVia: src.paidVia,
+    customer: {
+      name: accountName ?? trimOrNull(invoice.customer_name) ?? trimOrNull(ledger?.customer_name),
+      email: trimOrNull(customer?.email) ?? trimOrNull(invoice.customer_email) ?? trimOrNull(ledger?.customer_email),
+      phone: trimOrNull(customer?.phone) ?? trimOrNull(invoice.customer_phone) ?? trimOrNull(ledger?.customer_phone),
+    },
+    courier: trimOrNull(ledger ? ledger.shipping_courier : invoice.carrier),
+    discountCode: trimOrNull(ledger?.discount_code),
+    stockWarnings: stockWarnings(lines),
+    invoiceUrl: `${SITE_URL}/admin/invoices/${invoice.id}`,
   };
 }
 
@@ -403,13 +376,9 @@ export async function sendAdminPaidAlertManually(
   const to = await getAdminAlertEmails(db);
   if (to.length === 0) return { ok: false, status: 422, error: NO_RECIPIENTS_REASON };
 
-  const payload =
-    loaded.kind === 'stealth_health'
-      ? stealthHealthAlertPayload(loaded.ledger, loaded.invoice, loaded.lines)
-      : await manualAlertPayload(db, loaded.invoice, loaded.lines);
-
-  const { sendStealthHealthOrderAlert } = await import('@/lib/email');
-  const res = await sendStealthHealthOrderAlert({ to, ...payload, paidVia: 'admin' });
+  const email = await buildAdminEmail(db, { ...loaded, paidVia: 'admin' });
+  const { sendAdminOrderPaidAlert } = await import('@/lib/email');
+  const res = await sendAdminOrderPaidAlert(to, email);
   await logAttempt(db, {
     invoice_id: invoiceId,
     to_email: to.join(', '),

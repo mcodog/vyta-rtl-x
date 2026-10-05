@@ -3,9 +3,13 @@ import { productPath } from '@/lib/products/url';
 import { SITE_URL } from '@/lib/config';
 import type { ConfirmationEmailData } from '@/lib/order-confirmation-data';
 import {
+  adminOrderPaidSubject,
   orderConfirmationSubject,
+  renderAdminOrderPaidHtml,
+  renderAdminOrderPaidText,
   renderOrderConfirmationHtml,
   renderOrderConfirmationText,
+  type AdminOrderPaidEmailData,
 } from '@/lib/order-confirmation-email';
 
 /**
@@ -1020,117 +1024,32 @@ export async function sendAbandonedRegistrationAlert(data: {
  * Tell the admins an order has been paid, to the operational list from
  * `getAdminAlertEmails`. Sent once per Stealth Health order automatically by
  * lib/admin/stealth-health-paid-alert.ts, and by hand from the invoice page for
- * Stealth Health and manual invoices (`source: 'manual'`). Never throws;
- * `subject` is returned on every branch so the caller can log it.
+ * Stealth Health and manual invoices. Same design as the customer
+ * confirmation (lib/order-confirmation-email.ts). Never throws; `subject` is
+ * returned on every branch so the caller can log it.
  */
-export async function sendStealthHealthOrderAlert(data: {
-  to: string | string[];
-  invoiceId: string;
-  invoiceNumber: string | null;
-  customerName: string | null;
-  customerEmail: string | null;
-  items: Array<{ description: string; qty: number; lineTotal: number }>;
-  subtotal: number;
-  shipping: number;
-  shippingCourier: string | null;
-  total: number;
-  /** ISO code shown next to the money; defaults to CAD. */
-  currency?: string;
-  discountCode?: string | null;
-  shipTo?: string | null;
-  /** Lines that took no stock (no product linked) — shown as a warning. */
-  stockWarnings?: string[];
-  /** 'admin' when an admin marked the invoice paid rather than the checkout. */
-  paidVia?: 'checkout' | 'admin';
-  /** 'manual' for a manual invoice (no Stealth Health checkout behind it). */
-  source?: 'stealth_health' | 'manual';
-}): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
-  const { to, invoiceId, invoiceNumber, customerName, customerEmail, items } = data;
-  if (!to || (Array.isArray(to) && to.length === 0)) {
-    return { success: false, error: "no admin recipients", subject: "" };
-  }
-  const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
-  const manual = data.source === "manual";
-  const label = invoiceNumber || (manual ? "Invoice" : "Stealth Health order");
-  const who = customerName || customerEmail || "Guest";
-  const currency = escapeHtml(data.currency || "CAD");
-  const subject = `${manual ? "Invoice paid" : "New order"}: ${label} · ${who} · ${money(data.total)} ${data.currency || "CAD"}`;
-
-  const row = (k: string, v: string, strong = false) => `
-    <tr><td style="padding:6px 0; font-size:13px; color:#56707F; width:140px; vertical-align:top;">${k}</td>
-        <td style="padding:6px 0; font-size:14px; color:#07203A;${strong ? " font-weight:600;" : ""}">${v}</td></tr>`;
-
-  const itemRows = items
-    .map(
-      (i) => `
-    <tr><td style="padding:6px 0; font-size:14px; color:#07203A; border-bottom:1px solid #EDF3F5;">${escapeHtml(i.description)} &times; ${i.qty}</td>
-        <td style="padding:6px 0; font-size:14px; color:#07203A; text-align:right; border-bottom:1px solid #EDF3F5;">${money(i.lineTotal)}</td></tr>`,
-    )
-    .join("");
-
-  const html = vytaShell(`
-    <div style="padding: 32px 24px;">
-      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
-        <h2 style="font-size: 18px; font-weight: 600; color: #065F46; margin: 0;">${manual ? "Invoice paid" : "New Stealth Health order paid"}</h2>
-        <p style="font-size: 13px; color: #065F46; margin: 6px 0 0;">${escapeHtml(label)} · ${money(data.total)} ${currency}</p>
-      </div>
-
-      <table style="width:100%; border-collapse:collapse; margin-bottom: 20px;"><tbody>
-        ${row("Customer", escapeHtml(who), true)}
-        ${customerEmail && customerName ? row("Email", escapeHtml(customerEmail)) : ""}
-        ${data.shipTo ? row("Ship to", escapeHtml(data.shipTo)) : ""}
-        ${manual
-          ? data.shippingCourier ? row("Courier", escapeHtml(data.shippingCourier)) : ""
-          : row("Courier", escapeHtml(data.shippingCourier || "Flat-rate shipping"))}
-        ${data.discountCode ? row("Discount code", escapeHtml(data.discountCode)) : ""}
-      </tbody></table>
-
-      <table style="width:100%; border-collapse:collapse; margin-bottom: 8px;"><tbody>
-        ${itemRows}
-        <tr><td style="padding:8px 0 2px; font-size:13px; color:#56707F;">Subtotal</td>
-            <td style="padding:8px 0 2px; font-size:13px; color:#07203A; text-align:right;">${money(data.subtotal)}</td></tr>
-        <tr><td style="padding:2px 0; font-size:13px; color:#56707F;">Shipping</td>
-            <td style="padding:2px 0; font-size:13px; color:#07203A; text-align:right;">${money(data.shipping)}</td></tr>
-        <tr><td style="padding:6px 0; font-size:15px; font-weight:700; color:#07203A;">Total (${currency})</td>
-            <td style="padding:6px 0; font-size:15px; font-weight:700; color:#07203A; text-align:right;">${money(data.total)}</td></tr>
-      </tbody></table>
-
-      <p style="font-size: 13px; color: #56707F; margin: 16px 0 20px; text-align:center;">
-        ${manual
-          ? "This manual invoice is marked paid."
-          : data.paidVia === "admin"
-            ? "The invoice was marked paid by an admin. The order is now in the fulfillment queue."
-            : "Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue."}
-      </p>
-
-      ${
-        data.stockWarnings && data.stockWarnings.length > 0
-          ? `<div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:12px 16px; margin-bottom:20px;">
-        <p style="font-size:13px; font-weight:600; color:#92400E; margin:0 0 6px;">Stock was not taken for:</p>
-        <p style="font-size:13px; color:#92400E; margin:0;">${data.stockWarnings.map((w) => escapeHtml(w)).join("<br>")}</p>
-        <p style="font-size:12px; color:#92400E; margin:8px 0 0;">Link them under Admin → Stock Ledger → Needs attention.</p>
-      </div>`
-          : ""
-      }
-
-      ${insightsButton(`${SITE_URL}/admin/invoices/${invoiceId}`, "View invoice")}
-    </div>
-  `);
+export async function sendAdminOrderPaidAlert(
+  to: string[],
+  data: AdminOrderPaidEmailData,
+): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
+  const subject = adminOrderPaidSubject(data);
+  if (to.length === 0) return { success: false, error: "no admin recipients", subject };
 
   try {
     const { data: result, error } = await getResend().emails.send({
       from: fromEmail,
       to,
       subject,
-      html,
+      html: renderAdminOrderPaidHtml(data, SITE_URL),
+      text: renderAdminOrderPaidText(data),
     });
     if (error) {
-      console.error("Error sending Stealth Health order alert:", error);
+      console.error("Error sending admin order-paid alert:", error);
       return { success: false, error: error.message, subject };
     }
     return { success: true, id: result?.id, subject };
   } catch (error) {
-    console.error("Error sending Stealth Health order alert:", error);
+    console.error("Error sending admin order-paid alert:", error);
     return { success: false, error: "Failed to send email", subject };
   }
 }
