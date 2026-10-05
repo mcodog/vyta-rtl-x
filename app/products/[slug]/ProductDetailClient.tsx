@@ -122,12 +122,18 @@ export interface ProductDetailClientProps {
   product: Product;
   relatedProducts: Product[];
   batWater: Product | null;
+  /** Admin → Settings: the assurance strip under the hero image. */
+  showTrustBadges?: boolean;
+  /** Admin → Settings: the Customer Reviews section. */
+  showReviews?: boolean;
 }
 
 export default function ProductDetailClient({
   product: serverProduct,
   relatedProducts,
   batWater,
+  showTrustBadges = true,
+  showReviews = true,
 }: ProductDetailClientProps) {
   // Everything below reads `product`; the server render is the first paint and
   // the volatile fields are refreshed in place. See useLiveProduct above.
@@ -340,21 +346,23 @@ export default function ProductDetailClient({
               {/* Assurance strip under the hero shot. The lucide glyphs are
                   drawn without a ring of their own, so the ring here is ours:
                   Vital Blue on the border and on the icon. */}
-              <div className="mt-4 sm:mt-6 grid grid-cols-4 gap-2 sm:gap-3">
-                {HERO_ASSURANCES.map(({ icon: Icon, title, subtitle }) => (
-                  <div key={title} className="flex flex-col items-center text-center">
-                    <span className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full border border-teal-dark/40 text-teal-dark">
-                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </span>
-                    <p className="mt-2 text-[11px] sm:text-xs font-semibold leading-tight text-ink">
-                      {title}
-                    </p>
-                    <p className="mt-0.5 text-[10px] sm:text-[11px] font-light leading-tight text-ink-muted">
-                      {subtitle}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {showTrustBadges && (
+                <div className="mt-4 sm:mt-6 grid grid-cols-4 gap-2 sm:gap-3">
+                  {HERO_ASSURANCES.map(({ icon: Icon, title, subtitle }) => (
+                    <div key={title} className="flex flex-col items-center text-center">
+                      <span className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full border border-teal-dark/40 text-teal-dark">
+                        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </span>
+                      <p className="mt-2 text-[11px] sm:text-xs font-semibold leading-tight text-ink">
+                        {title}
+                      </p>
+                      <p className="mt-0.5 text-[10px] sm:text-[11px] font-light leading-tight text-ink-muted">
+                        {subtitle}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
 
             {/* Product Info */}
@@ -691,7 +699,9 @@ export default function ProductDetailClient({
           {/* What other buyers made of it. Only customers with this product
               on a paid order can write here — /api/reviews checks the orders
               before it will take one. */}
-          <ProductReviews productId={product.id} productName={product.name} />
+          {showReviews && (
+            <ProductReviews productId={product.id} productName={product.name} />
+          )}
 
           {/* Essential Add-on - Bacteriostatic Water */}
           {product.slug !== 'bacteriostatic-water-30ml' && batWater && (

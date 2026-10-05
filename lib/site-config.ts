@@ -32,6 +32,11 @@ export interface SiteConfig {
    */
   klaviyo_public_key: string | null;
   tracking_consent_required: boolean;
+  /** Product page: the 99% Purity / GMP / COA / Ships from Canada strip
+   *  under the hero image. Admin → Settings → Cart & Checkout Sections. */
+  product_trust_badges_enabled: boolean;
+  /** Product page: the Customer Reviews section. */
+  product_reviews_enabled: boolean;
 }
 
 function cleanString(v: unknown): string | null {
@@ -80,6 +85,8 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   meta_pixel_id: null,
   klaviyo_public_key: FALLBACK_KLAVIYO_SITE_ID,
   tracking_consent_required: true,
+  product_trust_badges_enabled: true,
+  product_reviews_enabled: true,
 };
 
 /**
@@ -114,6 +121,8 @@ export function shapeSiteConfig(row: Record<string, any> | null | undefined): Si
         ? klaviyoOnsiteKey(d, FALLBACK_KLAVIYO_SITE_ID)
         : cleanString(d.klaviyo_public_key),
     tracking_consent_required: d.tracking_consent_required === false ? false : true,
+    product_trust_badges_enabled: d.product_trust_badges_enabled !== false,
+    product_reviews_enabled: d.product_reviews_enabled !== false,
   };
 }
 

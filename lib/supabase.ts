@@ -348,6 +348,10 @@ export interface SiteSettings {
   cart_trust_strip_enabled: boolean;
   /** Show the "A few quick questions first" notice under the checkout's pay button. */
   checkout_verify_notice_enabled: boolean;
+  /** Show the 99% Purity / GMP / COA / Ships from Canada strip on product pages. */
+  product_trust_badges_enabled: boolean;
+  /** Show the Customer Reviews section on product pages. */
+  product_reviews_enabled: boolean;
   // Easyship shipping config
   easyship_enabled: boolean;
   easyship_api_key_set: boolean; // never the key itself

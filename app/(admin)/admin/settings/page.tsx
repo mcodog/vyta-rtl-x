@@ -193,10 +193,13 @@ export default function SettingsPage() {
     saveSettings({ guest_checkout_enabled: enabled });
   };
 
-  // Show/hide switches for the optional sections on the cart and checkout.
+  // Show/hide switches for the optional sections on the product, cart and
+  // checkout pages.
   // cart_similar_enabled is the same switch as Promotions → Cart suggestions.
   const handleSectionToggle = (
     key:
+      | 'product_trust_badges_enabled'
+      | 'product_reviews_enabled'
       | 'cart_trust_strip_enabled'
       | 'cart_similar_enabled'
       | 'checkout_addons_enabled'
@@ -679,9 +682,24 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* 7a. Cart & Checkout Sections — show/hide the optional blocks */}
-      <Card icon={<ShoppingCart className="w-4 h-4 text-teal-dark" />} title="Cart & Checkout Sections"
-        subtitle="Show or hide the optional sections on the cart and checkout pages.">
+      {/* 7a. Storefront Sections — show/hide the optional blocks */}
+      <Card icon={<ShoppingCart className="w-4 h-4 text-teal-dark" />} title="Storefront Sections"
+        subtitle="Show or hide the optional sections on the product, cart and checkout pages.">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Product page</p>
+        <div className="space-y-3 mb-5">
+          <ToggleSwitch
+            checked={settings.product_trust_badges_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_trust_badges_enabled', v)}
+            icon={<ShieldCheck className="w-4 h-4" />}
+            label="Trust badges"
+            description={'"99% Purity", "GMP Certified", "COA Available" and "Ships from Canada" with their icons, under the product image.'} />
+          <ToggleSwitch
+            checked={settings.product_reviews_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_reviews_enabled', v)}
+            icon={<Users className="w-4 h-4" />}
+            label="Customer reviews"
+            description="The Customer Reviews section — ratings, the review list and the write-a-review form." />
+        </div>
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Cart page</p>
         <div className="space-y-3 mb-5">
           <ToggleSwitch
@@ -689,7 +707,7 @@ export default function SettingsPage() {
             onChange={(v) => handleSectionToggle('cart_trust_strip_enabled', v)}
             icon={<ShieldCheck className="w-4 h-4" />}
             label="Trust badges"
-            description={'"Free, Fast & Discreet Shipping", "Secure Checkout" and "Carefully Packaged" at the top of the cart.'} />
+            description={'"Free, Fast & Discreet Shipping", "Secure Checkout" and "Carefully Packaged" with their icons, at the top of the cart.'} />
           <ToggleSwitch
             checked={settings.cart_similar_enabled !== false} disabled={isReadOnly}
             onChange={(v) => handleSectionToggle('cart_similar_enabled', v)}
