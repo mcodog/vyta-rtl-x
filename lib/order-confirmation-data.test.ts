@@ -15,7 +15,10 @@ import {
   deliverableEmail,
   isStorefrontCheckoutSource,
   manualInvoiceConfirmationData,
+  noEmailReason,
+  pickDeliverableEmail,
   shipToFrom,
+  storefrontEmailCandidates,
   stealthHealthConfirmationData,
   storefrontConfirmationData,
   summarizeConfirmationLog,
@@ -282,6 +285,30 @@ test('manual invoice: drop-ship client wins; unreconciled discounts show charged
 
 test('manual invoice without a usable email has nothing to send', () => {
   assert.equal(manualInvoiceConfirmationData({ id: 'x', customer_email: '' }, [], null), null);
+});
+
+test('the recipient follows the admin page: account email, then the record, then Stealth Health', () => {
+  // Admin-created order with a placeholder in orders.email: the account wins.
+  assert.equal(
+    pickDeliverableEmail(...storefrontEmailCandidates({ email: 'n/a' }, { email: 'codogmjo@gmail.com' })),
+    'codogmjo@gmail.com',
+  );
+  assert.equal(pickDeliverableEmail(...storefrontEmailCandidates({ email: 'buyer@x.ca' }, null)), 'buyer@x.ca');
+  assert.equal(pickDeliverableEmail(null, '  ', 'guest+1@vyta.local', 'ok@b.co'), 'ok@b.co');
+
+  // Stealth Health: a linked account with the only real address still sends.
+  const data = stealthHealthConfirmationData(
+    { id: 'p9', status: 'paid', customer_email: null },
+    { id: 'i9', invoice_number: 'INV-9', status: 'paid', customer_email: '', subtotal: 10, total: 10 },
+    [{ description: 'X', qty: 1, unit_price: 10 }],
+    { email: 'codogmjo@gmail.com' },
+  );
+  assert.equal(data?.to, 'codogmjo@gmail.com');
+});
+
+test('the locked-button message says what was wrong', () => {
+  assert.match(noEmailReason([null, '', undefined]), /No email address on this order or its customer account/);
+  assert.match(noEmailReason([null, 'n/a', 'x@y.local']), /“n\/a” can’t receive email/);
 });
 
 test('shipToFrom handles blanks and JSON strings', () => {

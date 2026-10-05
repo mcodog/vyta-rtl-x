@@ -98,6 +98,31 @@ export function deliverableEmail(raw: unknown): string | null {
 }
 
 /**
+ * The first deliverable address among `candidates`, in order. Callers list
+ * them the way the admin screens show them: the linked customer account
+ * first, then the order / invoice's own copy, then what Stealth Health
+ * captured — so the button is never locked while a good address is on screen.
+ */
+export function pickDeliverableEmail(...candidates: unknown[]): string | null {
+  for (const c of candidates) {
+    const email = deliverableEmail(c);
+    if (email) return email;
+  }
+  return null;
+}
+
+/** Why none of `candidates` can be sent to — shown under the Send button. */
+export function noEmailReason(candidates: unknown[]): string {
+  const seen = candidates
+    .filter((c): c is string => typeof c === 'string' && c.trim() !== '')
+    .map((c) => c.trim());
+  if (seen.length === 0) {
+    return 'No email address on this order or its customer account — add one to send the confirmation.';
+  }
+  return `“${seen[0]}” can’t receive email — update the customer’s email address to send the confirmation.`;
+}
+
+/**
  * Orders placed through a storefront checkout that the admin marks paid. VYTA
  * has none today — its storefront sells through the Stealth Health hosted
  * checkout (`puramass_orders`), admin-created orders are invoiced by hand and
@@ -262,8 +287,9 @@ export function stealthHealthConfirmationData(
   ledger: Record<string, any>,
   invoice: Record<string, any>,
   lines: Array<Record<string, any>>,
+  customer: Record<string, any> | null = null,
 ): ConfirmationEmailData | null {
-  const to = deliverableEmail(ledger?.customer_email) ?? deliverableEmail(invoice?.customer_email);
+  const to = pickDeliverableEmail(...stealthHealthEmailCandidates(ledger, invoice, customer));
   if (!to) return null;
 
   const items: ConfirmationLine[] = (lines ?? []).map((l) => {
@@ -332,6 +358,32 @@ export function stealthHealthConfirmationData(
   return data;
 }
 
+/** Where a Stealth Health order's address can be, in the admin page's order. */
+export function stealthHealthEmailCandidates(
+  ledger: Record<string, any> | null,
+  invoice: Record<string, any> | null,
+  customer: Record<string, any> | null = null,
+): unknown[] {
+  return [customer?.email, invoice?.customer_email, ledger?.customer_email];
+}
+
+/** Where a manual invoice's address can be, in the admin page's order. */
+export function manualEmailCandidates(
+  invoice: Record<string, any> | null,
+  customer: Record<string, any> | null = null,
+): unknown[] {
+  return [customer?.email, invoice?.customer_email];
+}
+
+/** Where a storefront order's address can be, in the admin page's order. */
+export function storefrontEmailCandidates(
+  order: Record<string, any> | null,
+  customer: Record<string, any> | null = null,
+): unknown[] {
+  const addr = order?.shipping_address && typeof order.shipping_address === 'object' ? order.shipping_address : {};
+  return [customer?.email, order?.email, addr.email];
+}
+
 /**
  * Payload for a manual invoice (no storefront order, no Stealth Health
  * hand-off). Only ever sent by an admin. Line discounts (`discount_pct`) show
@@ -348,7 +400,7 @@ export function manualInvoiceConfirmationData(
   customer: Record<string, any> | null = null,
   client: Record<string, any> | null = null,
 ): ConfirmationEmailData | null {
-  const to = deliverableEmail(customer?.email) ?? deliverableEmail(invoice?.customer_email);
+  const to = pickDeliverableEmail(...manualEmailCandidates(invoice, customer));
   if (!to) return null;
 
   const rows = (lines ?? []).map((l) => {
