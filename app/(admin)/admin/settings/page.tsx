@@ -200,6 +200,9 @@ export default function SettingsPage() {
     key:
       | 'product_trust_badges_enabled'
       | 'product_reviews_enabled'
+      | 'product_specs_enabled'
+      | 'product_benefits_enabled'
+      | 'product_certifications_enabled'
       | 'cart_trust_strip_enabled'
       | 'cart_similar_enabled'
       | 'checkout_addons_enabled'
@@ -693,6 +696,24 @@ export default function SettingsPage() {
             icon={<ShieldCheck className="w-4 h-4" />}
             label="Trust badges"
             description={'"99% Purity", "GMP Certified", "COA Available" and "Ships from Canada" with their icons, under the product image.'} />
+          <ToggleSwitch
+            checked={settings.product_specs_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_specs_enabled', v)}
+            icon={<FileText className="w-4 h-4" />}
+            label="Purity / Strength / Form"
+            description="The three spec tiles under the product name." />
+          <ToggleSwitch
+            checked={settings.product_benefits_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_benefits_enabled', v)}
+            icon={<Check className="w-4 h-4" />}
+            label="Key Research Benefits"
+            description="The bulleted benefits list above the pack picker." />
+          <ToggleSwitch
+            checked={settings.product_certifications_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_certifications_enabled', v)}
+            icon={<ShieldCheck className="w-4 h-4" />}
+            label="Quality Certifications"
+            description={'The dark panel lower on the page — 99%+ Purity, GMP Certified, ISO Compliant, COA Available and the "For Research Purposes Only" line.'} />
           <ToggleSwitch
             checked={settings.product_reviews_enabled !== false} disabled={isReadOnly}
             onChange={(v) => handleSectionToggle('product_reviews_enabled', v)}

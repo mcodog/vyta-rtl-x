@@ -139,6 +139,9 @@ export default async function ProductPage(
         batWater={batWater}
         showTrustBadges={cfg.product_trust_badges_enabled}
         showReviews={cfg.product_reviews_enabled}
+        showSpecs={cfg.product_specs_enabled}
+        showBenefits={cfg.product_benefits_enabled}
+        showCertifications={cfg.product_certifications_enabled}
       />
     </>
   );
