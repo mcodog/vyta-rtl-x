@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createInvoiceForOrder } from '@/lib/admin/order-invoice-server';
 import { logAuditServer } from '@/lib/admin/audit';
 import { adjustStockForConfirmedOrder, restoreStockForCancelledOrder } from '@/lib/order-stock';
 import { trackOrderStatusById } from '@/lib/klaviyo/events';
+import { sendStorefrontOrderConfirmationOnce } from '@/lib/order-confirmation';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -272,6 +273,12 @@ export async function PATCH(
   // delivered / cancelled / refunded). Best-effort, never throws.
   if (newStatus && newStatus !== order.status) {
     await trackOrderStatusById(db, params.id, newStatus);
+  }
+
+  // Confirmed = paid: email the customer their order confirmation, once, after
+  // the response. Only storefront-checkout orders qualify; never throws.
+  if (newStatus === 'confirmed' && newStatus !== order.status) {
+    after(() => sendStorefrontOrderConfirmationOnce(db, params.id));
   }
 
   return NextResponse.json({ success: true });

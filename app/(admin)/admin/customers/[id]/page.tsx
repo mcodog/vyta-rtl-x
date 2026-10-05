@@ -26,6 +26,8 @@ import type { Customer } from '@/lib/supabase';
 import EditUserModal from '../../users/_components/EditUserModal';
 import LeadPanel from '../../_components/LeadPanel';
 import EmailComposer from '../../_components/EmailComposer';
+import { OrderConfirmationCell } from '@/components/admin/OrderConfirmationEmailCard';
+import type { ConfirmationSummary } from '@/lib/order-confirmation-data';
 import {
   emptyLead,
   type ContactMethod,
@@ -113,6 +115,8 @@ interface OrderRow {
   shipped_at: string | null;
   delivered_at: string | null;
   refunded_at: string | null;
+  /** Order-confirmation email state; null = never sent. */
+  confirmation?: ConfirmationSummary | null;
 }
 
 interface PuramassRow {
@@ -130,6 +134,8 @@ interface PuramassRow {
   invoice_id: string | null;
   paid_at: string | null;
   created_at: string;
+  /** Order-confirmation email state (keyed by the hand-off's invoice). */
+  confirmation?: ConfirmationSummary | null;
 }
 
 interface Stats {
@@ -957,6 +963,7 @@ export default function CustomerDetailPage() {
               <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-ink-muted">
                 <th className="px-4 py-2 font-semibold">Order</th>
                 <th className="px-4 py-2 font-semibold">Status</th>
+                <th className="px-4 py-2 font-semibold">Confirmation</th>
                 <th className="px-4 py-2 font-semibold">Items</th>
                 <th className="px-4 py-2 font-semibold">Placed</th>
                 <th className="px-4 py-2 text-right font-semibold">Total</th>
@@ -980,6 +987,13 @@ export default function CustomerDetailPage() {
                     <span className={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium capitalize ${statusBadge(o.status)}`}>
                       {statusLabel(o.status)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <OrderConfirmationCell
+                      summary={o.confirmation}
+                      target={{ orderId: o.id }}
+                      canSend={editable}
+                    />
                   </td>
                   <td className="px-4 py-3 text-sm text-ink-muted">
                     {(o.items ?? []).reduce((n, it) => n + (Number(it.quantity) || 0), 0) || '—'}
@@ -1008,6 +1022,7 @@ export default function CustomerDetailPage() {
               <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-ink-muted">
                 <th className="px-4 py-2 font-semibold">Reference</th>
                 <th className="px-4 py-2 font-semibold">Status</th>
+                <th className="px-4 py-2 font-semibold">Confirmation</th>
                 <th className="px-4 py-2 font-semibold">Items</th>
                 <th className="px-4 py-2 font-semibold">Placed</th>
                 <th className="px-4 py-2 text-right font-semibold">Subtotal</th>
@@ -1035,6 +1050,17 @@ export default function CustomerDetailPage() {
                     <span className={`inline-flex rounded px-2 py-0.5 text-[11px] font-medium capitalize ${statusBadge(p.status)}`}>
                       {statusLabel(p.status)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.status === 'paid' && p.invoice_id ? (
+                      <OrderConfirmationCell
+                        summary={p.confirmation}
+                        target={{ puramassOrderId: p.id }}
+                        canSend={editable}
+                      />
+                    ) : (
+                      <span className="text-[11px] text-ink-light">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-ink-muted">
                     {p.items.reduce((n, it) => n + (Number(it.quantity) || 0), 0) || '—'}

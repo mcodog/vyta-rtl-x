@@ -488,6 +488,9 @@ export async function materializeStealthHealthFulfillment(
     // Retried on every pass so a shipment that failed to book once is picked
     // up by the next webhook or poll; a no-op once the invoice carries one.
     await bookShipment(db, invoiceId, trimOrNull(stored.shipping_courier_id));
+    // Every pass too: the buyer's order confirmation goes out once (claimed on
+    // the ledger row), and a send that failed is retried by the next pass.
+    await sendConfirmation(db, ledger.id);
 
     // `created` reads as "this call put the order into the fulfillment queue".
     return { created: firstPaid, invoiceId };
@@ -792,6 +795,22 @@ async function bookShipment(
     );
   } catch (err) {
     console.error('[stealth-health] shipment booking failed:', err);
+  }
+}
+
+/**
+ * Email the buyer their paid-order confirmation, once. Imported lazily for the
+ * same reason as `bookShipment`; best-effort, never breaks a webhook ACK.
+ */
+async function sendConfirmation(db: SupabaseClient, ledgerId: string): Promise<void> {
+  try {
+    const { sendStealthHealthOrderConfirmationOnce } = await import('@/lib/order-confirmation');
+    const res = await sendStealthHealthOrderConfirmationOnce(db, ledgerId);
+    if (!res.sent && res.reason === 'send_failed') {
+      console.error(`[stealth-health] order confirmation email for ${ledgerId} failed; will retry`);
+    }
+  } catch (err) {
+    console.error('[stealth-health] order confirmation email failed:', err);
   }
 }
 

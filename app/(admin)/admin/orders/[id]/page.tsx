@@ -16,6 +16,9 @@ import {
 } from '@/lib/admin/api';
 import { apiFetch } from '@/lib/api-fetch';
 import { printPdfBlob } from '@/lib/print-pdf';
+import { canEdit } from '@/lib/permissions';
+import { useUserRole } from '../../layout';
+import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
 import { channelLabel as acquisitionLabel } from '@/lib/admin/attribution';
 import InfoTip from '@/components/admin/InfoTip';
 import { OrderAcquisitionTip } from '@/components/admin/AttributionTips';
@@ -52,6 +55,7 @@ const statusSteps = ['pending', 'received', 'confirmed', 'processing', 'shipped'
 
 export default function OrderDetailPage() {
   const { id } = useParams();
+  const userRole = useUserRole();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -194,42 +198,6 @@ export default function OrderDetailPage() {
         }),
       });
       setEmailSent('shipping');
-      setTimeout(() => setEmailSent(''), 3000);
-    } catch (err) {
-      console.error('Failed to send email:', err);
-    }
-    setEmailSending(false);
-  };
-
-  const sendOrderConfirmationEmail = async () => {
-    if (!data || !order.customer_email) return;
-    setEmailSending(true);
-    try {
-      await apiFetch('/api/email', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'order_confirmation',
-          to: order.customer_email,
-          customerName: order.customer_name || 'Customer',
-          orderNumber: order.order_number,
-          items: items.map((item: any) => ({
-            name: item.product_name || 'Product',
-            quantity: item.quantity,
-            price: item.price_at_time,
-            strength: item.product_strength,
-          })),
-          subtotal: Number(
-            order.subtotal ??
-              (Number(order.total || 0) -
-                Number(order.shipping_cost || 0) +
-                Number(order.discount_total || 0)),
-          ),
-          shipping: Number(order.shipping_cost || 0),
-          total: order.total || 0,
-          currency: order.currency || 'CAD',
-        }),
-      });
-      setEmailSent('confirmation');
       setTimeout(() => setEmailSent(''), 3000);
     } catch (err) {
       console.error('Failed to send email:', err);
@@ -758,6 +726,14 @@ export default function OrderDetailPage() {
             </select>
           </div>
 
+          {/* Paid-order confirmation email — status, history, send / resend.
+              Keyed on status so confirming re-reads the automatic send. */}
+          <OrderConfirmationEmailCard
+            key={order.status}
+            target={{ orderId: order.id }}
+            canSend={canEdit(userRole)}
+          />
+
           {/* Email Notifications */}
           {order.customer_email && (
             <div className="bg-white rounded-xl border border-line p-5">
@@ -766,17 +742,6 @@ export default function OrderDetailPage() {
                 <h2 className="font-semibold text-ink">Email Customer</h2>
               </div>
               <div className="space-y-2">
-                <button
-                  onClick={sendOrderConfirmationEmail}
-                  disabled={emailSending}
-                  className="w-full px-3 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {emailSent === 'confirmation' ? (
-                    <><Check className="w-3.5 h-3.5" /> Sent!</>
-                  ) : (
-                    <><Mail className="w-3.5 h-3.5" /> Send Order Confirmation</>
-                  )}
-                </button>
                 <button
                   onClick={sendShippingEmail}
                   disabled={emailSending || !trackingInput}

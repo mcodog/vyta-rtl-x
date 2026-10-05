@@ -10,6 +10,7 @@ import {
   normalizeCourierPreference,
 } from '@/lib/shipping/auto-shipment';
 import { fetchPuramassContext, isPuramassInvoice } from '@/lib/admin/puramass-invoice';
+import { sendConfirmationForPaidInvoice } from '@/lib/order-confirmation';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -221,6 +222,9 @@ export async function PATCH(
       .eq('invoice_id', params.id);
     const productIds = (lines ?? []).map((l: any) => l.product_id).filter(Boolean);
     if (productIds.length) await checkLowStockForProducts(db, productIds);
+
+    // Email the customer their order confirmation (once, after the response).
+    after(() => sendConfirmationForPaidInvoice(db, params.id));
   }
 
   // Cancelling an invoice that had already decremented stock restores it.

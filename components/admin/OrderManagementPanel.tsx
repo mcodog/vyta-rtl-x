@@ -19,6 +19,7 @@ import {
 import { processRefund } from '@/lib/admin/orders-extended';
 import { apiFetch } from '@/lib/api-fetch';
 import { printPdfBlob } from '@/lib/print-pdf';
+import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
 
 // Order lifecycle status → badge styling. Mirrors the standalone orders detail
 // page so the merged surface reads identically.
@@ -234,42 +235,6 @@ export default function OrderManagementPanel({ orderId, editable, onOrderChange 
         }),
       });
       setEmailSent('shipping');
-      setTimeout(() => setEmailSent(''), 3000);
-    } catch (err) {
-      console.error('Failed to send email:', err);
-    }
-    setEmailSending(false);
-  };
-
-  const sendOrderConfirmationEmail = async () => {
-    if (!data || !data.order.customer_email) return;
-    const order = data.order;
-    const items = data.items;
-    setEmailSending(true);
-    try {
-      await apiFetch('/api/email', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'order_confirmation',
-          to: order.customer_email,
-          customerName: order.customer_name || 'Customer',
-          orderNumber: order.order_number,
-          items: items.map((item: any) => ({
-            name: item.product_name || 'Product',
-            quantity: item.quantity,
-            price: item.price_at_time,
-            strength: item.product_strength,
-          })),
-          subtotal: Number(
-            order.subtotal ??
-              (Number(order.total || 0) - Number(order.shipping_cost || 0) + Number(order.discount_total || 0)),
-          ),
-          shipping: Number(order.shipping_cost || 0),
-          total: order.total || 0,
-          currency: order.currency || 'CAD',
-        }),
-      });
-      setEmailSent('confirmation');
       setTimeout(() => setEmailSent(''), 3000);
     } catch (err) {
       console.error('Failed to send email:', err);
@@ -691,6 +656,10 @@ export default function OrderManagementPanel({ orderId, editable, onOrderChange 
             </div>
           )}
 
+          {/* Paid-order confirmation email — status, history, send / resend.
+              Keyed on status so confirming re-reads the automatic send. */}
+          <OrderConfirmationEmailCard key={order.status} target={{ orderId }} canSend={editable} />
+
           {/* Email Notifications */}
           {editable && order.customer_email && (
             <div className="bg-white rounded-xl border border-line p-5">
@@ -699,17 +668,6 @@ export default function OrderManagementPanel({ orderId, editable, onOrderChange 
                 <h3 className="font-semibold text-ink">Email Customer</h3>
               </div>
               <div className="space-y-2">
-                <button
-                  onClick={sendOrderConfirmationEmail}
-                  disabled={emailSending}
-                  className="w-full px-3 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-600 rounded-lg text-sm hover:bg-blue-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {emailSent === 'confirmation' ? (
-                    <><Check className="w-3.5 h-3.5" /> Sent!</>
-                  ) : (
-                    <><Mail className="w-3.5 h-3.5" /> Send Order Confirmation</>
-                  )}
-                </button>
                 <button
                   onClick={sendShippingEmail}
                   disabled={emailSending || !trackingInput}

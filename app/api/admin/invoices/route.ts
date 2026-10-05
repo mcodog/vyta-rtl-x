@@ -7,6 +7,7 @@ import { effectiveStatus } from '@/lib/admin/invoice-status';
 import { computeStockSplit, type SplitLine, type ComputedLine } from '@/lib/admin/invoice-split';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
 import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
+import { sendConfirmationForPaidInvoice } from '@/lib/order-confirmation';
 import {
   autoCreateShipmentForOrder,
   autoCreateShipmentForInvoice,
@@ -253,6 +254,12 @@ async function insertInvoice(
     if (!stock.ok) console.error('adjust_stock_for_invoice failed:', stock.error);
     const productIds = args.lines.map((l) => l.product_id).filter(Boolean) as string[];
     if (productIds.length) await checkLowStockForProducts(db, productIds);
+
+    // Created already paid against an order: confirm it to the customer
+    // (once, after the response). A manual invoice has no order and is skipped.
+    if (args.base.order_id) {
+      after(() => sendConfirmationForPaidInvoice(db, invoice.id));
+    }
   }
 
   await logAuditServer(db, { actor_id: caller.actor_id, actor_email: caller.actor_email }, {
