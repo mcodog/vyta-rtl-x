@@ -1,6 +1,11 @@
 /**
- * The paid-order confirmation email ("Thank you for your order.") — HTML and
- * plain-text bodies built from a `ConfirmationEmailData`.
+ * The paid-order emails, in one design:
+ *   • the customer's confirmation ("Thank you for your order.") from a
+ *     `ConfirmationEmailData` — `renderOrderConfirmationHtml/Text`;
+ *   • the team's "New order paid" notification from an
+ *     `AdminOrderPaidEmailData` — `renderAdminOrderPaidHtml/Text`.
+ * Both share the shell (hero, footer), the info strip, the line items and the
+ * order summary.
  *
  * Email-client safe: table layout, inline styles, no SVG, no web fonts, no
  * CSS the big clients strip (Gmail, Outlook, Apple Mail). Images are absolute
@@ -16,7 +21,8 @@
  * clients.
  *
  * Pure (type-only imports), so it renders under `node --test` and in a
- * preview script. The mailer is `sendOrderConfirmation` in lib/email.ts.
+ * preview script. The mailers are `sendOrderConfirmation` and
+ * `sendAdminOrderPaidAlert` in lib/email.ts.
  */
 import type { ConfirmationEmailData, ConfirmationLine } from './order-confirmation-data';
 
@@ -30,6 +36,7 @@ const MUTED = '#56707F';
 const LINE = '#DCE7EB';
 const SOFT = '#F3F8FB';
 const GREEN = '#047857';
+const AMBER = '#92400E';
 
 const FONT = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
 
@@ -84,7 +91,11 @@ type IconName =
   | 'shield-check-white'
   | 'canadian-maple-leaf-white'
   | 'arrow-right-white'
-  | 'arrow-right-muted';
+  | 'arrow-right-muted'
+  | 'user-blue'
+  | 'phone-blue'
+  | 'tag-blue'
+  | 'triangle-alert-amber';
 
 /** One pre-rendered icon (see the header comment), shown at `px`. */
 function icon(site: string, name: IconName, px: number, alt = ''): string {
@@ -103,18 +114,25 @@ function iconCircle(
   </tr></table>`;
 }
 
+type StripCell = { icon: string; label: string; value: string };
+
 function headerStrip(site: string, data: ConfirmationEmailData): string {
   const date = formatOrderDate(data.orderDate);
-  const cells = [
-    { icon: iconCircle(icon(site, 'file-text-blue', 22)), label: 'Order Number', value: esc(data.orderNumber) },
-    date ? { icon: iconCircle(icon(site, 'calendar-blue', 22)), label: 'Order Date', value: esc(date) } : null,
-    {
-      icon: iconCircle(icon(site, 'check-teal', 22), { bg: '#DDF3EC' }),
-      label: 'Payment Status',
-      value: esc(data.paymentStatus || 'Paid'),
-    },
-  ].filter(Boolean) as Array<{ icon: string; label: string; value: string }>;
+  return infoStrip(
+    [
+      { icon: iconCircle(icon(site, 'file-text-blue', 22)), label: 'Order Number', value: esc(data.orderNumber) },
+      date ? { icon: iconCircle(icon(site, 'calendar-blue', 22)), label: 'Order Date', value: esc(date) } : null,
+      {
+        icon: iconCircle(icon(site, 'check-teal', 22), { bg: '#DDF3EC' }),
+        label: 'Payment Status',
+        value: esc(data.paymentStatus || 'Paid'),
+      },
+    ].filter(Boolean) as StripCell[],
+  );
+}
 
+/** The white card of label/value cells under the hero. */
+function infoStrip(cells: StripCell[]): string {
   const width = Math.floor(100 / cells.length);
   const tds = cells
     .map(
@@ -292,23 +310,54 @@ function footer(siteUrl: string): string {
     </tr>`;
 }
 
-/** Subject line — kept identical to the previous template. */
-export function orderConfirmationSubject(data: Pick<ConfirmationEmailData, 'orderNumber'>): string {
-  return `Order Confirmed - ${data.orderNumber}`;
+/** One rounded light-blue card around a row of cells. */
+function card(cellsHtml: string, opts: { last?: boolean } = {}): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin: 16px 0 ${opts.last ? 20 : 0}px; background: ${SOFT}; border-radius: 16px;">
+              <tr>${cellsHtml}</tr>
+            </table>`;
 }
 
-export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl: string): string {
-  const site = siteUrl.replace(/\/$/, '');
-  const preheader = `Your payment has been received — order ${data.orderNumber}.`;
+/** The line-items table with its column headings. */
+function itemsSection(site: string, heading: string, items: ConfirmationLine[]): string {
+  const th = (label: string, align: string, extra = '') =>
+    `<td${extra} align="${align}" style="padding: 0 ${align === 'right' && label === 'Total' ? 0 : 4}px 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED}; white-space: nowrap;">${label}</td>`;
+  return `<div style="padding: 26px 12px 8px;">
+              <p style="margin: 0 0 12px; font-size: 22px; font-weight: 700; color: ${NAVY};">${esc(heading)}</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td colspan="2" style="padding: 0 0 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED};">Product</td>
+                  ${th('Qty', 'center')}
+                  ${th('Unit price', 'right', ' class="hide-sm"')}
+                  ${th('Total', 'right')}
+                </tr>
+                ${itemRows(site, items)}
+              </table>
+            </div>`;
+}
 
+interface ShellOptions {
+  site: string;
+  title: string;
+  preheader: string;
+  eyebrow: string;
+  /** Trusted HTML — callers escape any data in it. */
+  titleHtml: string;
+  /** Trusted HTML — callers escape any data in it. */
+  introHtml: string;
+  /** The white body between the hero and the footer. */
+  bodyHtml: string;
+}
 
+/** The whole document: head, hero, body, footer. */
+function renderShell(o: ShellOptions): string {
+  const site = o.site;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light only">
-<title>${esc(orderConfirmationSubject(data))}</title>
+<title>${esc(o.title)}</title>
 <style>
   /* Phones: stack the columns. Clients that drop <style> get the desktop layout. */
   @media only screen and (max-width: 600px) {
@@ -325,7 +374,7 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
 </style>
 </head>
 <body style="margin: 0; padding: 0; background: #EEF4F7;">
-<div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">${esc(preheader)}</div>
+<div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">${esc(o.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; background: #EEF4F7;">
   <tr>
     <td align="center" style="padding: 28px 10px; font-family: ${FONT};">
@@ -358,10 +407,10 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
                 <td>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;"><tr>
                     <td class="stack" width="54%" valign="top" style="padding: 26px 8px 32px 32px;">
-                      <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: ${NAVY};">Order confirmed</p>
-                      <h1 class="hero-title" style="margin: 0 0 14px; font-size: 38px; line-height: 42px; font-weight: 800; letter-spacing: -0.02em; color: ${NAVY};">Thank you<br>for <span style="color: ${BLUE};">your order.</span></h1>
+                      <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: ${NAVY};">${esc(o.eyebrow)}</p>
+                      <h1 class="hero-title" style="margin: 0 0 14px; font-size: 38px; line-height: 42px; font-weight: 800; letter-spacing: -0.02em; color: ${NAVY};">${o.titleHtml}</h1>
                       <p style="margin: 0; font-size: 14px; line-height: 22px; color: #34495A;">
-                        Hi ${esc(data.customerName)}, your payment has been received and your order is being processed. We’ll send you another email with tracking information once your order ships.
+                        ${o.introHtml}
                       </p>
                     </td>
                     <!-- The vials in the photo sit here. -->
@@ -373,39 +422,7 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
           </td>
         </tr>
 
-        <!-- Body -->
-        <tr>
-          <td style="background: #FFFFFF; padding: 0 20px 4px;">
-            <div style="height: 20px; line-height: 20px;">&nbsp;</div>
-            ${headerStrip(site, data)}
-
-            <div style="padding: 26px 12px 8px;">
-              <p style="margin: 0 0 12px; font-size: 22px; font-weight: 700; color: ${NAVY};">Your Order</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td colspan="2" style="padding: 0 0 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED};">Product</td>
-                  <td align="center" style="padding: 0 4px 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED};">Qty</td>
-                  <td class="hide-sm" align="right" style="padding: 0 4px 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED}; white-space: nowrap;">Unit price</td>
-                  <td align="right" style="padding: 0 0 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED};">Total</td>
-                </tr>
-                ${itemRows(site, data.items)}
-              </table>
-            </div>
-
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: 16px; background: ${SOFT}; border-radius: 16px;">
-              <tr>${orderSummary(site, data)}</tr>
-            </table>
-
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: 16px; background: ${SOFT}; border-radius: 16px;">
-              <tr><td style="padding: 22px 20px 24px 24px;">${nextSteps(site)}</td></tr>
-            </table>
-
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin: 16px 0 20px; background: ${SOFT}; border-radius: 16px;">
-              <tr><td style="padding: 22px 24px;">${help(site, data)}</td></tr>
-            </table>
-          </td>
-        </tr>
-
+${o.bodyHtml}
         ${footer(site)}
       </table>
     </td>
@@ -413,6 +430,39 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
 </table>
 </body>
 </html>`;
+}
+
+/** Subject line — kept identical to the previous template. */
+export function orderConfirmationSubject(data: Pick<ConfirmationEmailData, 'orderNumber'>): string {
+  return `Order Confirmed - ${data.orderNumber}`;
+}
+
+export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl: string): string {
+  const site = siteUrl.replace(/\/$/, '');
+  return renderShell({
+    site,
+    title: orderConfirmationSubject(data),
+    preheader: `Your payment has been received — order ${data.orderNumber}.`,
+    eyebrow: 'Order confirmed',
+    titleHtml: `Thank you<br>for <span style="color: ${BLUE};">your order.</span>`,
+    introHtml: `Hi ${esc(data.customerName)}, your payment has been received and your order is being processed. We’ll send you another email with tracking information once your order ships.`,
+    bodyHtml: `        <!-- Body -->
+        <tr>
+          <td style="background: #FFFFFF; padding: 0 20px 4px;">
+            <div style="height: 20px; line-height: 20px;">&nbsp;</div>
+            ${headerStrip(site, data)}
+
+            ${itemsSection(site, 'Your Order', data.items)}
+
+            ${card(orderSummary(site, data))}
+
+            ${card(`<td style="padding: 22px 20px 24px 24px;">${nextSteps(site)}</td>`)}
+
+            ${card(`<td style="padding: 22px 24px;">${help(site, data)}</td>`, { last: true })}
+          </td>
+        </tr>
+`,
+  });
 }
 
 export function renderOrderConfirmationText(data: ConfirmationEmailData): string {
@@ -450,6 +500,189 @@ export function renderOrderConfirmationText(data: ConfirmationEmailData): string
     `Questions? Reply to this email or write to ${SUPPORT_EMAIL}.`,
     '',
     'For research purposes only. Not for human or veterinary use.',
+  ];
+  return out.filter((l) => l !== null).join('\n');
+}
+
+// ---------------------------------------------------------------------------
+//  Admin "New order paid" notification
+// ---------------------------------------------------------------------------
+
+export interface AdminOrderPaidEmailData {
+  /** The order as the customer email sees it (`to` is unused here). */
+  order: ConfirmationEmailData;
+  source: 'stealth_health' | 'manual';
+  /** 'admin' when an admin marked the invoice paid or sent this by hand. */
+  paidVia: 'checkout' | 'admin';
+  customer: { name: string | null; email: string | null; phone: string | null };
+  courier: string | null;
+  discountCode: string | null;
+  /** Lines that took no stock (no product linked). */
+  stockWarnings: string[];
+  /** Admin invoice page. */
+  invoiceUrl: string;
+}
+
+function adminWho(data: AdminOrderPaidEmailData): string {
+  return data.customer.name || data.customer.email || 'Guest';
+}
+
+export function adminOrderPaidSubject(data: AdminOrderPaidEmailData): string {
+  const o = data.order;
+  const label = o.orderNumber || (data.source === 'manual' ? 'Invoice' : 'Stealth Health order');
+  return `${data.source === 'manual' ? 'Invoice paid' : 'New order'}: ${label} · ${adminWho(data)} · ${money(o.total)} ${o.currency}`;
+}
+
+function adminPaidLine(data: AdminOrderPaidEmailData): string {
+  if (data.source === 'manual') return 'This manual invoice is marked paid.';
+  return data.paidVia === 'admin'
+    ? 'The invoice was marked paid by an admin. The order is now in the fulfillment queue.'
+    : 'Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue.';
+}
+
+function stockWarningCard(site: string, warnings: string[]): string {
+  if (warnings.length === 0) return '';
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: 16px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 16px;">
+              <tr><td style="padding: 18px 22px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
+                  <td valign="top" style="padding-right: 12px;">${iconCircle(icon(site, 'triangle-alert-amber', 18), { size: 34, bg: '#FEF3C7' })}</td>
+                  <td valign="top">
+                    <p style="margin: 6px 0 6px; font-size: 14px; font-weight: 700; color: ${AMBER};">Stock was not taken for:</p>
+                    ${warnings.map((w) => `<p style="margin: 0; font-size: 13px; line-height: 20px; color: ${AMBER};">${esc(w)}</p>`).join('')}
+                    <p style="margin: 8px 0 0; font-size: 12px; color: ${AMBER};">Link them under Admin → Stock Ledger → Needs attention.</p>
+                  </td>
+                </tr></table>
+              </td></tr>
+            </table>`;
+}
+
+function detailBlock(site: string, iconName: IconName, heading: string, rows: string[]): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
+      <td valign="top" style="padding-right: 10px;">${iconCircle(icon(site, iconName, 18), { size: 34 })}</td>
+      <td valign="top">
+        <p style="margin: 6px 0 8px; font-size: 14px; font-weight: 700; color: ${NAVY};">${heading}</p>
+        ${rows.join('')}
+      </td>
+    </tr></table>`;
+}
+
+function detailRow(label: string, valueHtml: string): string {
+  return `<p style="margin: 0 0 4px; font-size: 13px; line-height: 20px; color: ${MUTED};"><span style="color: ${MUTED};">${label}</span>&nbsp; <span style="color: ${NAVY};">${valueHtml}</span></p>`;
+}
+
+/** Customer contact and fulfillment details — the admin-only card. */
+function adminDetails(site: string, data: AdminOrderPaidEmailData): string {
+  const c = data.customer;
+  const customerRows = [
+    c.name ? `<p style="margin: 0 0 4px; font-size: 14px; font-weight: 700; color: ${NAVY};">${esc(c.name)}</p>` : '',
+    c.email
+      ? `<p style="margin: 0 0 4px; font-size: 13px; line-height: 20px;"><a href="mailto:${esc(c.email)}" style="color: ${BLUE}; text-decoration: none;">${esc(c.email)}</a></p>`
+      : '',
+    c.phone ? `<p style="margin: 0; font-size: 13px; line-height: 20px; color: ${MUTED};">${esc(c.phone)}</p>` : '',
+  ].filter(Boolean);
+  if (customerRows.length === 0) {
+    customerRows.push(`<p style="margin: 0; font-size: 13px; color: ${MUTED};">Guest — no contact details.</p>`);
+  }
+
+  const courier = data.courier || (data.source === 'stealth_health' ? 'Flat-rate shipping' : null);
+  const fulfillmentRows = [
+    detailRow('Source', data.source === 'manual' ? 'Manual invoice' : 'Stealth Health checkout'),
+    courier ? detailRow('Courier', esc(courier)) : '',
+    data.discountCode ? detailRow('Discount code', esc(data.discountCode)) : '',
+  ].filter(Boolean);
+
+  return `
+    <td class="stack" width="50%" valign="top" style="padding: 22px 16px 22px 24px;">${detailBlock(site, 'user-blue', 'Customer', customerRows)}</td>
+    <td class="stack stack-rule" width="50%" valign="top" style="padding: 22px 24px 22px 16px; border-left: 1px solid ${LINE};">${detailBlock(site, data.discountCode ? 'tag-blue' : 'truck-blue', 'Fulfillment', fulfillmentRows)}</td>`;
+}
+
+function adminButton(site: string, url: string): string {
+  return `<td align="center" style="padding: 24px;">
+      <a href="${esc(url)}" style="display: inline-block; padding: 14px 30px; border-radius: 999px; background: ${BLUE}; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;">View invoice&nbsp;&nbsp;${icon(site, 'arrow-right-white', 16)}</a>
+      <p style="margin: 10px 0 0; font-size: 11px; color: ${MUTED};">You'll be asked to sign in as an admin.</p>
+    </td>`;
+}
+
+export function renderAdminOrderPaidHtml(data: AdminOrderPaidEmailData, siteUrl: string): string {
+  const site = siteUrl.replace(/\/$/, '');
+  const o = data.order;
+  const manual = data.source === 'manual';
+  const date = formatOrderDate(o.orderDate);
+  const strip = infoStrip(
+    [
+      { icon: iconCircle(icon(site, 'file-text-blue', 22)), label: 'Invoice', value: esc(o.orderNumber) },
+      date ? { icon: iconCircle(icon(site, 'calendar-blue', 22)), label: 'Order Date', value: esc(date) } : null,
+      {
+        icon: iconCircle(icon(site, 'check-teal', 22), { bg: '#DDF3EC' }),
+        label: 'Paid',
+        value: `${money(o.total)} ${esc(o.currency)}`,
+      },
+    ].filter(Boolean) as StripCell[],
+  );
+
+  return renderShell({
+    site,
+    title: adminOrderPaidSubject(data),
+    preheader: `${adminWho(data)} · ${money(o.total)} ${o.currency} · ${o.orderNumber}`,
+    eyebrow: manual ? 'Manual invoice' : 'Stealth Health order',
+    titleHtml: manual
+      ? `Invoice<br><span style="color: ${BLUE};">paid.</span>`
+      : `New order<br><span style="color: ${BLUE};">paid.</span>`,
+    introHtml: `<strong>${esc(adminWho(data))}</strong> paid <strong>${money(o.total)} ${esc(o.currency)}</strong> for ${esc(o.orderNumber)}. ${esc(adminPaidLine(data))}`,
+    bodyHtml: `
+        <tr>
+          <td style="background: #FFFFFF; padding: 0 20px 4px;">
+            <div style="height: 20px; line-height: 20px;">&nbsp;</div>
+            ${strip}
+            ${stockWarningCard(site, data.stockWarnings)}
+
+            ${itemsSection(site, 'Order', o.items)}
+
+            ${card(orderSummary(site, o))}
+
+            ${card(adminDetails(site, data))}
+
+            ${card(adminButton(site, data.invoiceUrl), { last: true })}
+          </td>
+        </tr>
+`,
+  });
+}
+
+export function renderAdminOrderPaidText(data: AdminOrderPaidEmailData): string {
+  const o = data.order;
+  const date = formatOrderDate(o.orderDate);
+  const lines = o.items.map((i) => {
+    const pack = packLabel(i);
+    const qty = Number(i.quantity) || 0;
+    return `  ${i.name}${pack ? ` (${pack})` : ''} × ${qty} — ${money((Number(i.price) || 0) * qty)}`;
+  });
+  const out = [
+    data.source === 'manual' ? 'INVOICE PAID' : 'NEW STEALTH HEALTH ORDER PAID',
+    `${adminWho(data)} paid ${money(o.total)} ${o.currency} for ${o.orderNumber}.`,
+    adminPaidLine(data),
+    '',
+    date ? `Order date: ${date}` : null,
+    '',
+    data.stockWarnings.length
+      ? ['Stock was not taken for:', ...data.stockWarnings.map((w) => `  ${w}`), 'Link them under Admin → Stock Ledger → Needs attention.', ''].join('\n')
+      : null,
+    'Order:',
+    ...lines,
+    '',
+    `Subtotal: ${money(o.subtotal)}`,
+    Number(o.discount) > 0 ? `Discount${o.discountLabel ? ` (${o.discountLabel})` : ''}: -${money(o.discount)}` : null,
+    `Shipping: ${Number(o.shipping) > 0 ? money(o.shipping) : 'Free'}`,
+    o.tax != null ? `Tax: ${money(o.tax)}` : null,
+    `Total: ${money(o.total)} ${o.currency}`,
+    '',
+    'Customer:',
+    [data.customer.name, data.customer.email, data.customer.phone].filter(Boolean).join(' · ') || 'Guest',
+    o.shipTo ? ['', 'Ship to:', o.shipTo.name, ...o.shipTo.lines, o.shipTo.phone].filter(Boolean).join('\n') : null,
+    data.courier ? `Courier: ${data.courier}` : null,
+    data.discountCode ? `Discount code: ${data.discountCode}` : null,
+    '',
+    `View invoice: ${data.invoiceUrl}`,
   ];
   return out.filter((l) => l !== null).join('\n');
 }

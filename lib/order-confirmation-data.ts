@@ -289,8 +289,21 @@ export function stealthHealthConfirmationData(
   lines: Array<Record<string, any>>,
   customer: Record<string, any> | null = null,
 ): ConfirmationEmailData | null {
-  const to = pickDeliverableEmail(...stealthHealthEmailCandidates(ledger, invoice, customer));
-  if (!to) return null;
+  const data = stealthHealthOrderSummary(ledger, invoice, lines, customer);
+  return data.to ? data : null;
+}
+
+/**
+ * The same order data without needing a deliverable address (`to` is '' when
+ * there is none) — for the admin notification, which goes to the team.
+ */
+export function stealthHealthOrderSummary(
+  ledger: Record<string, any>,
+  invoice: Record<string, any>,
+  lines: Array<Record<string, any>>,
+  customer: Record<string, any> | null = null,
+): ConfirmationEmailData {
+  const to = pickDeliverableEmail(...stealthHealthEmailCandidates(ledger, invoice, customer)) ?? '';
 
   const items: ConfirmationLine[] = (lines ?? []).map((l) => {
     const description = str(l.description) || 'Item';
@@ -400,8 +413,18 @@ export function manualInvoiceConfirmationData(
   customer: Record<string, any> | null = null,
   client: Record<string, any> | null = null,
 ): ConfirmationEmailData | null {
-  const to = pickDeliverableEmail(...manualEmailCandidates(invoice, customer));
-  if (!to) return null;
+  const data = manualInvoiceOrderSummary(invoice, lines, customer, client);
+  return data.to ? data : null;
+}
+
+/** `manualInvoiceConfirmationData` without needing a deliverable address. */
+export function manualInvoiceOrderSummary(
+  invoice: Record<string, any>,
+  lines: Array<Record<string, any>>,
+  customer: Record<string, any> | null = null,
+  client: Record<string, any> | null = null,
+): ConfirmationEmailData {
+  const to = pickDeliverableEmail(...manualEmailCandidates(invoice, customer)) ?? '';
 
   const rows = (lines ?? []).map((l) => {
     const quantity = qty(l.qty);

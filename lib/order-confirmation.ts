@@ -280,6 +280,25 @@ async function enrichForEmail(
   db: SupabaseClient,
   data: ConfirmationEmailData,
 ): Promise<ConfirmationEmailData> {
+  const out = await withProductImages(db, data);
+  if (out.accountOrderId) {
+    try {
+      out.viewOrderUrl = await buildViewOrderUrl(db, SITE_URL, out.accountOrderId, out.to);
+    } catch (err) {
+      console.error('[order-confirmation] building the order link failed:', err);
+    }
+  }
+  return out;
+}
+
+/**
+ * A copy of `data` with each line's catalog image filled in (absolute URL).
+ * Best-effort — shared with the admin "order paid" email.
+ */
+export async function withProductImages(
+  db: SupabaseClient,
+  data: ConfirmationEmailData,
+): Promise<ConfirmationEmailData> {
   const out: ConfirmationEmailData = { ...data, items: data.items.map((i) => ({ ...i })) };
 
   const ids = [...new Set(out.items.map((i) => i.productId).filter((id): id is string => !!id))];
@@ -295,14 +314,6 @@ async function enrichForEmail(
       }
     } catch (err) {
       console.error('[order-confirmation] product image lookup failed:', err);
-    }
-  }
-
-  if (out.accountOrderId) {
-    try {
-      out.viewOrderUrl = await buildViewOrderUrl(db, SITE_URL, out.accountOrderId, out.to);
-    } catch (err) {
-      console.error('[order-confirmation] building the order link failed:', err);
     }
   }
   return out;
