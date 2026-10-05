@@ -29,7 +29,6 @@ const base: ConfirmationEmailData = {
   orderDate: '2026-10-04T18:00:00Z',
   paymentStatus: 'Paid',
   tax: 0,
-  savings: { amount: 115.2, label: 'VYTA20 + 5% limited-time offer' },
   shipTo: { name: 'Marguerite P', lines: ['322 Locheed Dr', 'Hamilton, ON L8T 4Z6', 'Canada'], phone: '289-489-1471' },
   viewOrderUrl: 'https://www.vytabio.com/login?redirect=%2Faccount%2Forders%2Fabc%3Fclaim%3Dx&email=m%40buyer.ca',
 };
@@ -56,7 +55,13 @@ test('html carries every section, escaped', () => {
   assert.match(html, /Pack of 5/);
   assert.match(html, /Single vial/);
   assert.match(html, /\$364\.80 CAD/);
-  assert.match(html, /You saved <strong>\$115\.20<\/strong> with VYTA20 \+ 5% limited-time offer/);
+  assert.ok(!html.includes('You saved'));
+  // Lucide / Font Awesome icons as hosted PNGs, never emoji or inline SVG.
+  for (const name of ['file-text-blue', 'calendar-blue', 'check-teal', 'map-pin-blue', 'package-blue', 'truck-blue', 'package-open-blue', 'mail-blue', 'shield-check-white', 'canadian-maple-leaf-white', 'arrow-right-white']) {
+    assert.ok(html.includes(`src="https://www.vytabio.com/images/email/${name}.png"`), name);
+  }
+  assert.ok(!/<svg/i.test(html));
+  assert.ok(!/&#1\d{5};/.test(html), 'no emoji entities');
   assert.match(html, /322 Locheed Dr/);
   assert.match(html, /View Order Details/);
   assert.ok(html.includes('href="https://www.vytabio.com/login?redirect=%2Faccount%2Forders%2Fabc%3Fclaim%3Dx&amp;email=m%40buyer.ca"'));
@@ -67,11 +72,10 @@ test('html carries every section, escaped', () => {
 });
 
 test('optional sections drop out cleanly', () => {
-  const { viewOrderUrl: _u, shipTo: _s, savings: _v, orderDate: _d, tax: _t, ...rest } = base;
+  const { viewOrderUrl: _u, shipTo: _s, orderDate: _d, tax: _t, ...rest } = base;
   const html = renderOrderConfirmationHtml({ ...rest, discount: 10 }, 'https://www.vytabio.com');
   assert.ok(!html.includes('View Order Details'));
   assert.ok(!html.includes('Shipping Address'));
-  assert.ok(!html.includes('You saved'));
   assert.ok(!html.includes('Order Date'));
   assert.match(html, /-\$10\.00/);
   assert.match(html, /Free/);

@@ -119,11 +119,6 @@ test('Stealth Health payload carries what the email shows', () => {
       customer_name: 'Marguerite P',
       customer_phone: '289-489-1471',
       shipping_address: { address: '322 Locheed Dr', city: 'Hamilton', state: 'ON', zip: 'L8T 4Z6', country: 'CA' },
-      ad_discount_cents: 11520,
-      discount_code: 'VYTA20',
-      discount_code_percent: 20,
-      ad_discount_percent: 0,
-      cart_offer_percent: 5,
     },
     {
       id: '11111111-2222-4333-8444-555555555555',
@@ -155,7 +150,6 @@ test('Stealth Health payload carries what the email shows', () => {
   ]);
   assert.equal(data.orderDate, '2026-10-04T18:00:00Z');
   assert.equal(data.paymentStatus, 'Paid');
-  assert.deepEqual(data.savings, { amount: 115.2, label: 'VYTA20 + 5% limited-time offer' });
   assert.deepEqual(data.shipTo, {
     name: 'Marguerite P',
     lines: ['322 Locheed Dr', 'Hamilton, ON L8T 4Z6', 'Canada'],

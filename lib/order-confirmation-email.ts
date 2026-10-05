@@ -4,7 +4,14 @@
  *
  * Email-client safe: table layout, inline styles, no SVG, no web fonts, no
  * CSS the big clients strip (Gmail, Outlook, Apple Mail). Images are absolute
- * URLs; icons are emoji / text glyphs so nothing breaks when images are off.
+ * URLs.
+ *
+ * Icons are Lucide (lucide-static 0.546.0, the version lucide-react is on)
+ * plus Font Awesome's canadian-maple-leaf (react-icons' FaCanadianMapleLeaf;
+ * Lucide has no maple leaf), pre-rendered to 96px transparent PNGs in
+ * public/images/email/<icon>-<colour>.png — Gmail and Outlook don't render
+ * SVG. Lucide strokes are drawn at 1.75. Each has alt text for image-off
+ * clients.
  *
  * Pure (type-only imports), so it renders under `node --test` and in a
  * preview script. The mailer is `sendOrderConfirmation` in lib/email.ts.
@@ -61,24 +68,46 @@ function packLabel(item: ConfirmationLine): string {
   return '';
 }
 
+type IconName =
+  | 'file-text-blue'
+  | 'calendar-blue'
+  | 'check-teal'
+  | 'map-pin-blue'
+  | 'package-blue'
+  | 'truck-blue'
+  | 'package-open-blue'
+  | 'mail-blue'
+  | 'flask-conical-blue'
+  | 'flask-conical-white'
+  | 'shield-check-white'
+  | 'canadian-maple-leaf-white'
+  | 'arrow-right-white'
+  | 'arrow-right-muted';
+
+/** One pre-rendered icon (see the header comment), shown at `px`. */
+function icon(site: string, name: IconName, px: number, alt = ''): string {
+  return `<img src="${site}/images/email/${name}.png" width="${px}" height="${px}" alt="${esc(alt)}" style="display: inline-block; width: ${px}px; height: ${px}px; border: 0; vertical-align: middle;">`;
+}
+
+/** An icon centred in a filled (or outlined) circle. */
 function iconCircle(
-  glyph: string,
-  opts: { bg?: string; color?: string; size?: number; border?: string } = {},
+  content: string,
+  opts: { bg?: string; size?: number; border?: string } = {},
 ): string {
   const size = opts.size ?? 44;
   // `separate`: a collapsed table ignores border-radius on a bordered cell.
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate;"><tr>
-    <td width="${size}" height="${size}" align="center" valign="middle" style="width: ${size}px; height: ${size}px; border-radius: ${size / 2}px; background: ${opts.bg ?? '#E3EFF6'};${opts.border ? ` border: ${opts.border};` : ''} color: ${opts.color ?? BLUE}; font-size: ${Math.round(size * 0.45)}px; line-height: ${size}px; font-weight: 700; text-align: center; mso-line-height-rule: exactly;">${glyph}</td>
+    <td width="${size}" height="${size}" align="center" valign="middle" style="width: ${size}px; height: ${size}px; border-radius: ${size / 2}px; background: ${opts.bg ?? '#E3EFF6'};${opts.border ? ` border: ${opts.border};` : ''} line-height: 0; text-align: center;">${content}</td>
   </tr></table>`;
 }
 
-function headerStrip(data: ConfirmationEmailData): string {
+function headerStrip(site: string, data: ConfirmationEmailData): string {
   const date = formatOrderDate(data.orderDate);
   const cells = [
-    { icon: iconCircle('&#129534;'), label: 'Order Number', value: esc(data.orderNumber) },
-    date ? { icon: iconCircle('&#128197;'), label: 'Order Date', value: esc(date) } : null,
+    { icon: iconCircle(icon(site, 'file-text-blue', 22)), label: 'Order Number', value: esc(data.orderNumber) },
+    date ? { icon: iconCircle(icon(site, 'calendar-blue', 22)), label: 'Order Date', value: esc(date) } : null,
     {
-      icon: iconCircle('&#10003;', { bg: '#DDF3EC', color: TEAL }),
+      icon: iconCircle(icon(site, 'check-teal', 22), { bg: '#DDF3EC' }),
       label: 'Payment Status',
       value: esc(data.paymentStatus || 'Paid'),
     },
@@ -106,7 +135,7 @@ function headerStrip(data: ConfirmationEmailData): string {
   </table>`;
 }
 
-function itemRows(items: ConfirmationLine[]): string {
+function itemRows(site: string, items: ConfirmationLine[]): string {
   return items
     .map((item) => {
       const qty = Number(item.quantity) || 0;
@@ -114,7 +143,7 @@ function itemRows(items: ConfirmationLine[]): string {
       const pack = packLabel(item);
       const image = item.imageUrl
         ? `<img src="${esc(item.imageUrl)}" width="64" height="64" alt="${esc(item.name)}" style="display: block; width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid ${LINE}; background: ${SOFT};">`
-        : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr><td width="64" height="64" align="center" valign="middle" style="width: 64px; height: 64px; border-radius: 10px; border: 1px solid ${LINE}; background: ${SOFT}; font-size: 24px;">&#129514;</td></tr></table>`;
+        : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr><td width="64" height="64" align="center" valign="middle" style="width: 64px; height: 64px; border-radius: 10px; border: 1px solid ${LINE}; background: ${SOFT}; line-height: 0;">${icon(site, 'flask-conical-blue', 26)}</td></tr></table>`;
       const sub = [pack, item.strength].filter(Boolean).map(esc).join(' · ');
       return `
       <tr>
@@ -139,7 +168,7 @@ function summaryRow(label: string, value: string, opts: { color?: string } = {})
   </tr>`;
 }
 
-function orderSummary(data: ConfirmationEmailData): string {
+function orderSummary(site: string, data: ConfirmationEmailData): string {
   const discount = Number(data.discount) || 0;
   const shipping = Number(data.shipping) || 0;
   const rows = [
@@ -149,13 +178,6 @@ function orderSummary(data: ConfirmationEmailData): string {
     data.tax != null ? summaryRow('Tax', money(data.tax)) : '',
   ].join('');
 
-  const savings =
-    data.savings && data.savings.amount > 0
-      ? `<p style="margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: #E7F6EF; font-size: 13px; color: ${GREEN};">
-          You saved <strong>${money(data.savings.amount)}</strong>${data.savings.label ? ` with ${esc(data.savings.label)}` : ''} — already reflected in the prices above.
-        </p>`
-      : '';
-
   const totals = `
     <p style="margin: 0 0 10px; font-size: 20px; font-weight: 700; color: ${NAVY};">Order Summary</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
@@ -164,8 +186,7 @@ function orderSummary(data: ConfirmationEmailData): string {
         <td style="padding: 14px 0 0; border-top: 1px solid ${LINE}; font-size: 18px; font-weight: 700; color: ${NAVY};">Total</td>
         <td align="right" style="padding: 14px 0 0; border-top: 1px solid ${LINE}; font-size: 20px; font-weight: 800; color: ${NAVY};">${money(data.total)} ${esc(data.currency)}</td>
       </tr>
-    </table>
-    ${savings}`;
+    </table>`;
 
   const ship = data.shipTo;
   if (!ship) {
@@ -173,7 +194,7 @@ function orderSummary(data: ConfirmationEmailData): string {
   }
   const address = `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
-      <td valign="top" style="padding-right: 10px;">${iconCircle('&#128205;', { size: 34 })}</td>
+      <td valign="top" style="padding-right: 10px;">${iconCircle(icon(site, 'map-pin-blue', 18), { size: 34 })}</td>
       <td valign="top">
         <p style="margin: 6px 0 10px; font-size: 14px; font-weight: 700; color: ${NAVY};">Shipping Address</p>
         ${ship.name ? `<p style="margin: 0 0 4px; font-size: 14px; font-weight: 700; color: ${NAVY};">${esc(ship.name)}</p>` : ''}
@@ -186,19 +207,19 @@ function orderSummary(data: ConfirmationEmailData): string {
     <td class="stack stack-rule" width="42%" valign="top" style="padding: 24px 24px 24px 20px; border-left: 1px solid ${LINE};">${address}</td>`;
 }
 
-function nextSteps(): string {
-  const steps = [
-    { icon: '&#128230;', title: '1. Order Processing', body: 'We’re preparing your order.' },
-    { icon: '&#128666;', title: '2. Order Ships', body: 'You’ll receive a tracking email once it ships.' },
-    { icon: '&#127968;', title: '3. Delivery', body: 'Your order will be on its way to you soon.' },
+function nextSteps(site: string): string {
+  const steps: Array<{ icon: IconName; title: string; body: string }> = [
+    { icon: 'package-blue', title: '1. Order Processing', body: 'We’re preparing your order.' },
+    { icon: 'truck-blue', title: '2. Order Ships', body: 'You’ll receive a tracking email once it ships.' },
+    { icon: 'package-open-blue', title: '3. Delivery', body: 'Your order will be on its way to you soon.' },
   ];
-  const arrow = `<td class="hide-sm" width="16" align="center" valign="middle" style="font-size: 16px; color: #9DB3BF;">&rarr;</td>`;
+  const arrow = `<td class="hide-sm" width="18" align="center" valign="middle" style="line-height: 0;">${icon(site, 'arrow-right-muted', 16)}</td>`;
   const cells = steps
     .map(
       (s) => `
       <td class="stack stack-gap" width="31%" valign="top" style="padding: 0 4px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
-          <td valign="top" style="padding-right: 10px;">${iconCircle(s.icon, { size: 40 })}</td>
+          <td valign="top" style="padding-right: 10px;">${iconCircle(icon(site, s.icon, 20), { size: 40 })}</td>
           <td valign="top">
             <p style="margin: 2px 0 4px; font-size: 13px; font-weight: 700; color: ${NAVY};">${s.title}</p>
             <p style="margin: 0; font-size: 12px; line-height: 17px; color: ${MUTED};">${s.body}</p>
@@ -212,16 +233,16 @@ function nextSteps(): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;"><tr>${cells}</tr></table>`;
 }
 
-function help(data: ConfirmationEmailData): string {
+function help(site: string, data: ConfirmationEmailData): string {
   const button = data.viewOrderUrl
     ? `<td class="stack stack-gap" width="210" align="right" valign="middle" style="padding-left: 12px;">
-        <a href="${esc(data.viewOrderUrl)}" style="display: inline-block; padding: 14px 26px; border-radius: 999px; background: ${BLUE}; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;">View Order Details &rarr;</a>
+        <a href="${esc(data.viewOrderUrl)}" style="display: inline-block; padding: 14px 26px; border-radius: 999px; background: ${BLUE}; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;">View Order Details&nbsp;&nbsp;${icon(site, 'arrow-right-white', 16)}</a>
         <p style="margin: 8px 0 0; font-size: 11px; color: ${MUTED}; text-align: center;">Sign in or create an account to view it.</p>
       </td>`
     : '';
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;"><tr>
-      <td class="hide-sm" width="56" valign="middle" style="padding-right: 14px;">${iconCircle('&#9993;', { size: 52 })}</td>
+      <td class="hide-sm" width="56" valign="middle" style="padding-right: 14px;">${iconCircle(icon(site, 'mail-blue', 24), { size: 52 })}</td>
       <td class="stack" valign="middle">
         <p style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: ${NAVY};">Need Help?</p>
         <p style="margin: 0; font-size: 13px; line-height: 19px; color: ${MUTED};">
@@ -234,10 +255,10 @@ function help(data: ConfirmationEmailData): string {
 }
 
 function footer(siteUrl: string): string {
-  const badge = (glyph: string, text: string) => `
+  const badge = (name: IconName, text: string) => `
     <td class="stack stack-gap" valign="middle" style="padding: 0 6px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
-        <td valign="middle" style="padding-right: 8px;">${iconCircle(glyph, { size: 36, bg: 'transparent', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.55)' })}</td>
+        <td valign="middle" style="padding-right: 8px;">${iconCircle(icon(siteUrl, name, 18), { size: 36, bg: 'transparent', border: '1px solid rgba(255,255,255,0.55)' })}</td>
         <td valign="middle" style="font-size: 10px; font-weight: 600; letter-spacing: 0.08em; line-height: 14px; text-transform: uppercase; color: #E6EEF3;">${text}</td>
       </tr></table>
     </td>`;
@@ -254,9 +275,9 @@ function footer(siteUrl: string): string {
               </td>
             </tr></table>
           </td>
-          ${badge('&#9879;', 'Third-party<br>lab tested')}
-          ${badge('&#10004;', 'High purity<br>&amp; quality')}
-          ${badge('&#127809;', 'Canadian<br>owned &amp; operated')}
+          ${badge('flask-conical-white', 'Third-party<br>lab tested')}
+          ${badge('shield-check-white', 'High purity<br>&amp; quality')}
+          ${badge('canadian-maple-leaf-white', 'Canadian<br>owned &amp; operated')}
         </tr></table>
         <p style="margin: 22px 0 0; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.18); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; text-align: center; color: #9DB3BF;">For research purposes only. Not for human or veterinary use.</p>
       </td>
@@ -351,7 +372,7 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
         <tr>
           <td style="background: #FFFFFF; padding: 0 20px 4px;">
             <div style="height: 20px; line-height: 20px;">&nbsp;</div>
-            ${headerStrip(data)}
+            ${headerStrip(site, data)}
 
             <div style="padding: 26px 12px 8px;">
               <p style="margin: 0 0 12px; font-size: 22px; font-weight: 700; color: ${NAVY};">Your Order</p>
@@ -362,20 +383,20 @@ export function renderOrderConfirmationHtml(data: ConfirmationEmailData, siteUrl
                   <td class="hide-sm" align="right" style="padding: 0 4px 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED}; white-space: nowrap;">Unit price</td>
                   <td align="right" style="padding: 0 0 8px; border-bottom: 2px solid ${LINE}; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: ${MUTED};">Total</td>
                 </tr>
-                ${itemRows(data.items)}
+                ${itemRows(site, data.items)}
               </table>
             </div>
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: 16px; background: ${SOFT}; border-radius: 16px;">
-              <tr>${orderSummary(data)}</tr>
+              <tr>${orderSummary(site, data)}</tr>
             </table>
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: 16px; background: ${SOFT}; border-radius: 16px;">
-              <tr><td style="padding: 22px 20px 24px 24px;">${nextSteps()}</td></tr>
+              <tr><td style="padding: 22px 20px 24px 24px;">${nextSteps(site)}</td></tr>
             </table>
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin: 16px 0 20px; background: ${SOFT}; border-radius: 16px;">
-              <tr><td style="padding: 22px 24px;">${help(data)}</td></tr>
+              <tr><td style="padding: 22px 24px;">${help(site, data)}</td></tr>
             </table>
           </td>
         </tr>
@@ -414,9 +435,6 @@ export function renderOrderConfirmationText(data: ConfirmationEmailData): string
     `Shipping: ${Number(data.shipping) > 0 ? money(data.shipping) : 'Free'}`,
     data.tax != null ? `Tax: ${money(data.tax)}` : null,
     `Total: ${money(data.total)} ${data.currency}`,
-    data.savings && data.savings.amount > 0
-      ? `You saved ${money(data.savings.amount)}${data.savings.label ? ` with ${data.savings.label}` : ''} (already reflected in the prices above).`
-      : null,
     data.shipTo
       ? ['', 'Shipping address:', data.shipTo.name, ...data.shipTo.lines, data.shipTo.phone].filter(Boolean).join('\n')
       : null,

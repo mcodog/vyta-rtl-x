@@ -45,11 +45,6 @@ export interface ConfirmationEmailData {
   /** Shown in the header strip; the email is only sent for paid orders. */
   paymentStatus?: string;
   tax?: number;
-  /**
-   * What discounts took off when they are already baked into the line prices
-   * (Stealth Health) — shown as a note, not subtracted again.
-   */
-  savings?: { amount: number; label: string | null };
   shipTo?: ConfirmationShipTo;
   /** Id the customer order page is keyed by (orders.id or the invoice id). */
   accountOrderId?: string;
@@ -255,8 +250,7 @@ export function storefrontConfirmationData(order: Record<string, any>): Confirma
 /**
  * Payload for a Stealth Health hand-off. The invoice carries the number the
  * buyer sees and the money; prices on its lines already have any discount
- * applied, so there is no separate discount row — what the discounts saved is
- * reported as `savings` instead.
+ * applied, so there is no separate discount row.
  */
 export function stealthHealthConfirmationData(
   ledger: Record<string, any>,
@@ -304,16 +298,6 @@ export function stealthHealthConfirmationData(
   if (orderDate) data.orderDate = orderDate;
   if (invoice.status === 'paid' || ledger.status === 'paid') data.paymentStatus = 'Paid';
   data.tax = round2(tax);
-
-  const saved = num(ledger.ad_discount_cents) / 100;
-  if (saved > 0) {
-    const parts = [
-      str(ledger.discount_code) && num(ledger.discount_code_percent) > 0 ? str(ledger.discount_code) : '',
-      num(ledger.ad_discount_percent) > 0 ? `${num(ledger.ad_discount_percent)}% first-order discount` : '',
-      num(ledger.cart_offer_percent) > 0 ? `${num(ledger.cart_offer_percent)}% limited-time offer` : '',
-    ].filter(Boolean);
-    data.savings = { amount: round2(saved), label: parts.length ? parts.join(' + ') : null };
-  }
 
   const shipTo = shipToFrom(ledger.shipping_address, {
     name: ledger.customer_name || invoice.customer_name,
