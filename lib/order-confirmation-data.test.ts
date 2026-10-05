@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import {
   deliverableEmail,
   isStorefrontCheckoutSource,
+  shipToFrom,
   stealthHealthConfirmationData,
   storefrontConfirmationData,
   summarizeConfirmationLog,
@@ -65,6 +66,7 @@ test('builds a storefront payload', () => {
     shipping: 0,
     total: 102.5,
     currency: 'CAD',
+    accountOrderId: 'o1',
   });
 });
 
@@ -98,12 +100,122 @@ test('builds a Stealth Health payload from the ledger and invoice', () => {
     to: 'sh@buyer.ca',
     customerName: 'Sam',
     orderNumber: 'INV-0042',
-    items: [{ name: 'TB-500 — Pack of 5', quantity: 2, price: 45 }],
+    items: [{ name: 'TB-500', quantity: 2, price: 45, unit: 'case', vialsPerBox: 5 }],
     subtotal: 90,
     discount: 0,
     shipping: 15,
     total: 105,
     currency: 'CAD',
+    tax: 0,
+  });
+});
+
+test('Stealth Health payload carries what the email shows', () => {
+  const data = stealthHealthConfirmationData(
+    {
+      id: 'p2',
+      status: 'paid',
+      customer_email: 'm@buyer.ca',
+      customer_name: 'Marguerite P',
+      customer_phone: '289-489-1471',
+      shipping_address: { address: '322 Locheed Dr', city: 'Hamilton', state: 'ON', zip: 'L8T 4Z6', country: 'CA' },
+    },
+    {
+      id: '11111111-2222-4333-8444-555555555555',
+      invoice_number: 'INV-1016',
+      status: 'paid',
+      paid_at: '2026-10-04T18:00:00Z',
+      subtotal: 364.8,
+      shipping_cost: 0,
+      tax_total: 0,
+      total: 364.8,
+      currency: 'CAD',
+    },
+    [
+      {
+        description: 'GLP-3 20mg — Single vial',
+        qty: 2,
+        unit_price: 133,
+        price_type: 'vial',
+        vials_per_unit: 1,
+        product_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      },
+      { description: 'Custom blend', qty: 1, unit_price: 98.8, product_id: 'not-a-uuid' },
+    ],
+  );
+  assert.ok(data);
+  assert.deepEqual(data.items, [
+    { name: 'GLP-3 20mg', quantity: 2, price: 133, unit: 'vial', productId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' },
+    { name: 'Custom blend', quantity: 1, price: 98.8 },
+  ]);
+  assert.equal(data.orderDate, '2026-10-04T18:00:00Z');
+  assert.equal(data.paymentStatus, 'Paid');
+  assert.deepEqual(data.shipTo, {
+    name: 'Marguerite P',
+    lines: ['322 Locheed Dr', 'Hamilton, ON L8T 4Z6', 'Canada'],
+    phone: '289-489-1471',
+  });
+  assert.equal(data.accountOrderId, '11111111-2222-4333-8444-555555555555');
+});
+
+const P1 = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const P2 = 'ffffffff-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+test('discounted Stealth Health order shows list prices and a Discount row', () => {
+  const ledger = {
+    id: 'p3',
+    status: 'paid',
+    customer_email: 'm@buyer.ca',
+    discount_code: 'VYTA20',
+    discount_code_percent: 20,
+    ad_discount_percent: 0,
+    cart_offer_percent: 5,
+    items: [
+      { product_id: P1, pack_size: 1, quantity: 2, unit_price_cents: 10108, list_unit_price_cents: 13300 },
+      { product_id: P2, pack_size: 5, quantity: 1, unit_price_cents: 37544, list_unit_price_cents: 49400 },
+    ],
+  };
+  const invoice = { id: 'i3', invoice_number: 'INV-1016', status: 'paid', subtotal: 577.6, shipping_cost: 0, tax_total: 0, total: 577.6 };
+  const lines = [
+    { description: 'GLP-3 20mg — Single vial', qty: 2, unit_price: 101.08, price_type: 'vial', vials_per_unit: 1, product_id: P1 },
+    { description: 'MOTS C 40mg — Pack of 5', qty: 1, unit_price: 375.44, price_type: 'box', vials_per_unit: 5, product_id: P2 },
+  ];
+  const data = stealthHealthConfirmationData(ledger, invoice, lines);
+  assert.ok(data);
+  assert.deepEqual(data.items.map((i) => i.price), [133, 494]);
+  assert.equal(data.subtotal, 760);
+  assert.equal(data.discount, 182.4);
+  assert.equal(data.discountLabel, 'VYTA20 + 5% limited-time offer');
+  // The rows still add up to what was charged.
+  assert.equal(Math.round((data.subtotal - data.discount + data.shipping + (data.tax ?? 0)) * 100), Math.round(data.total * 100));
+});
+
+test('without list prices for every line, charged prices and no discount row', () => {
+  const ledger = {
+    id: 'p4',
+    customer_email: 'm@buyer.ca',
+    items: [{ product_id: P1, pack_size: 1, quantity: 2, unit_price_cents: 10108, list_unit_price_cents: 13300 }],
+  };
+  const invoice = { id: 'i4', subtotal: 577.6, total: 577.6 };
+  const lines = [
+    { description: 'GLP-3 20mg — Single vial', qty: 2, unit_price: 101.08, vials_per_unit: 1, product_id: P1 },
+    { description: 'MOTS C 40mg — Pack of 5', qty: 1, unit_price: 375.44, vials_per_unit: 5, product_id: P2 },
+  ];
+  const data = stealthHealthConfirmationData(ledger, invoice, lines);
+  assert.ok(data);
+  assert.deepEqual(data.items.map((i) => i.price), [101.08, 375.44]);
+  assert.equal(data.subtotal, 577.6);
+  assert.equal(data.discount, 0);
+  assert.equal(data.discountLabel, undefined);
+});
+
+test('shipToFrom handles blanks and JSON strings', () => {
+  assert.equal(shipToFrom(null), undefined);
+  assert.equal(shipToFrom({ address: '  ' }), undefined);
+  assert.deepEqual(shipToFrom('{"address1":"1 Main","city":"Toronto","country":"Canada"}'), {
+    name: null,
+    lines: ['1 Main', 'Toronto', 'Canada'],
+    phone: null,
   });
 });
 

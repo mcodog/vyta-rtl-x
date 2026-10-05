@@ -4,6 +4,7 @@ import { logAuditServer } from '@/lib/admin/audit';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
 import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
 import { sendConfirmationForPaidInvoice } from '@/lib/order-confirmation';
+import { sendStealthHealthPaidAlertForInvoice } from '@/lib/admin/stealth-health-paid-alert';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,9 +101,11 @@ export async function POST(
   // First transition into `paid` decrements stock (idempotent in the DB).
   if (newStatus === 'paid' && !wasPaid) {
     await settlePaidStock(params.id, actor_email);
-    // Fully paid: email the customer their order confirmation (once, after
-    // the response).
+    // Fully paid: email the customer their order confirmation, and the admins
+    // the "new order paid" alert for a Stealth Health hand-off (each once,
+    // after the response).
     after(() => sendConfirmationForPaidInvoice(db, params.id));
+    after(() => sendStealthHealthPaidAlertForInvoice(db, params.id));
   }
 
   await logAuditServer(db, { actor_id: userId, actor_email }, {

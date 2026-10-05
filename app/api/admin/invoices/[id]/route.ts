@@ -11,6 +11,7 @@ import {
 } from '@/lib/shipping/auto-shipment';
 import { fetchPuramassContext, isPuramassInvoice } from '@/lib/admin/puramass-invoice';
 import { sendConfirmationForPaidInvoice } from '@/lib/order-confirmation';
+import { sendStealthHealthPaidAlertForInvoice } from '@/lib/admin/stealth-health-paid-alert';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -223,8 +224,11 @@ export async function PATCH(
     const productIds = (lines ?? []).map((l: any) => l.product_id).filter(Boolean);
     if (productIds.length) await checkLowStockForProducts(db, productIds);
 
-    // Email the customer their order confirmation (once, after the response).
+    // Email the customer their order confirmation, and the admins the
+    // "new order paid" alert for a Stealth Health hand-off (each once, after
+    // the response).
     after(() => sendConfirmationForPaidInvoice(db, params.id));
+    after(() => sendStealthHealthPaidAlertForInvoice(db, params.id));
   }
 
   // Cancelling an invoice that had already decremented stock restores it.

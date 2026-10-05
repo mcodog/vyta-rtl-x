@@ -75,9 +75,18 @@ export async function POST(request: NextRequest) {
 
     let result;
     switch (type) {
-      case 'order_confirmation':
-        result = await sendOrderConfirmation(data);
+      case 'order_confirmation': {
+        // Links and images in this email are built server-side only; never
+        // take them from the request body.
+        const { viewOrderUrl: _url, ...rest } = data;
+        result = await sendOrderConfirmation({
+          ...rest,
+          items: (Array.isArray(rest.items) ? rest.items : []).map(
+            ({ imageUrl: _img, ...item }: Record<string, unknown>) => item,
+          ),
+        });
         break;
+      }
       case 'shipping_notification':
         result = await sendShippingNotification(data);
         break;
