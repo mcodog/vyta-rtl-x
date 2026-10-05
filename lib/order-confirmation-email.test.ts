@@ -20,7 +20,7 @@ import type { ConfirmationEmailData } from './order-confirmation-data';
 const base: ConfirmationEmailData = {
   to: 'm@buyer.ca',
   customerName: 'Marguerite <b>',
-  orderNumber: 'INV-1016',
+  orderNumber: 'VYTA-1016',
   items: [
     { name: 'GLP-3 20mg', quantity: 2, price: 133, unit: 'vial', imageUrl: 'https://www.vytabio.com/images/products/GLP-3%2020mg.png' },
     { name: 'MOTS C 40mg', quantity: 1, price: 214, unit: 'case', vialsPerBox: 5 },
@@ -48,13 +48,13 @@ test('dates render as the store-local long date', () => {
 });
 
 test('subject is unchanged', () => {
-  assert.equal(orderConfirmationSubject(base), 'Order Confirmed - INV-1016');
+  assert.equal(orderConfirmationSubject(base), 'Order Confirmed - VYTA-1016');
 });
 
 test('html carries every section, escaped', () => {
   const html = renderOrderConfirmationHtml(base, 'https://www.vytabio.com/');
   assert.match(html, /Thank you<br>for <span[^>]*>your order\.<\/span>/);
-  assert.match(html, /INV-1016/);
+  assert.match(html, /VYTA-1016/);
   assert.match(html, /October 4, 2026/);
   assert.match(html, /\$266\.00/); // 2 × 133
   assert.match(html, /Pack of 5/);
@@ -93,7 +93,7 @@ test('optional sections drop out cleanly', () => {
 
 test('plain-text body mirrors the html', () => {
   const text = renderOrderConfirmationText(base);
-  assert.match(text, /Order number: INV-1016/);
+  assert.match(text, /Order number: VYTA-1016/);
   assert.match(text, /GLP-3 20mg \(Single vial\) × 2 — \$266\.00/);
   assert.match(text, /Discount \(VYTA20 \+ 5% limited-time offer\): -\$115\.20/);
   assert.match(text, /Total: \$364\.80 CAD/);
@@ -111,23 +111,11 @@ const admin: AdminOrderPaidEmailData = {
   invoiceUrl: 'https://www.vytabio.com/admin/invoices/abc',
 };
 
-test('admin email: same design, admin details, no customer-only sections', () => {
-  const html = renderAdminOrderPaidHtml(admin, 'https://www.vytabio.com');
-  assert.equal(adminOrderPaidSubject(admin), 'New order: INV-1016 · Marguerite P · $364.80 CAD');
-  assert.match(html, /New order<br><span[^>]*>paid\.<\/span>/);
-  assert.ok(html.includes("url('https://www.vytabio.com/images/email/order-hero.jpg')"));
-  assert.match(html, /Payment was collected on the Stealth Health checkout/);
-  assert.match(html, /\$266\.00/);
-  assert.match(html, /Discount <span[^>]*>\(VYTA20 \+ 5% limited-time offer\)<\/span>/);
-  assert.match(html, /322 Locheed Dr/);
-  assert.match(html, /mailto:m@buyer\.ca/);
-  assert.match(html, /Canada Post Expedited/);
-  assert.match(html, /Stock was not taken for:/);
-  assert.match(html, /Custom blend × 1/);
-  assert.ok(html.includes('href="https://www.vytabio.com/admin/invoices/abc"'));
-  assert.ok(!html.includes('View Order Details'));
-  assert.ok(!html.includes('What Happens Next'));
-  assert.ok(!/<svg/i.test(html));
+test('admin email: identical to the customer confirmation, admin subject', () => {
+  const site = 'https://www.vytabio.com';
+  assert.equal(renderAdminOrderPaidHtml(admin, site), renderOrderConfirmationHtml(admin.order, site));
+  assert.equal(renderAdminOrderPaidText(admin), renderOrderConfirmationText(admin.order));
+  assert.equal(adminOrderPaidSubject(admin), 'New order: VYTA-1016 · Marguerite P · $364.80 CAD');
 });
 
 test('admin email for a manual invoice', () => {
@@ -135,19 +123,8 @@ test('admin email for a manual invoice', () => {
     ...admin,
     source: 'manual',
     paidVia: 'admin',
-    courier: null,
-    discountCode: null,
-    stockWarnings: [],
     customer: { name: null, email: null, phone: null },
   };
-  const html = renderAdminOrderPaidHtml(manual, 'https://www.vytabio.com');
-  assert.equal(adminOrderPaidSubject(manual), 'Invoice paid: INV-1016 · Guest · $364.80 CAD');
-  assert.match(html, /Invoice<br><span[^>]*>paid\.<\/span>/);
-  assert.match(html, /This manual invoice is marked paid\./);
-  assert.match(html, /Guest — no contact details\./);
-  assert.ok(!html.includes('Stock was not taken'));
-  assert.ok(!html.includes('Flat-rate shipping'));
-  const text = renderAdminOrderPaidText(manual);
-  assert.match(text, /^INVOICE PAID/);
-  assert.match(text, /View invoice: https:\/\/www\.vytabio\.com\/admin\/invoices\/abc/);
+  assert.equal(adminOrderPaidSubject(manual), 'Invoice paid: VYTA-1016 · Guest · $364.80 CAD');
+  assert.equal(renderAdminOrderPaidHtml(manual, 'https://www.vytabio.com'), renderOrderConfirmationHtml(manual.order, 'https://www.vytabio.com'));
 });
