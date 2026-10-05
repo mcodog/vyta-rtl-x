@@ -695,12 +695,14 @@ export async function POST(req: NextRequest) {
   }));
   // The ledger keeps the same lines plus the product and pack size behind
   // each, so an invoice first built at payment (because the one below could
-  // not be written) still takes the right stock. Only `items` goes to Stealth
-  // Health.
+  // not be written) still takes the right stock — and the list price before
+  // any discount, so the order confirmation can show Subtotal − Discount.
+  // Only `items` goes to Stealth Health.
   const ledgerItems = [...linesBySku.entries()].map(([key, line]) => ({
     sku: line.sku,
     quantity: line.quantity,
     unit_price_cents: discountedBySku.get(key) ?? line.unitPriceCents,
+    list_unit_price_cents: line.unitPriceCents,
     product_id: line.productId,
     pack_size: line.packSize,
   }));

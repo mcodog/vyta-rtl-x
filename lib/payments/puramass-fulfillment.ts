@@ -53,6 +53,8 @@ export interface StealthHealthLedgerItem {
   /** Product and pack size the line was sold as — hand-offs since the stock ledger. */
   product_id?: string | null;
   pack_size?: number | null;
+  /** Price of one unit before any discount — hand-offs since the confirmation redesign. */
+  list_unit_price_cents?: number | null;
 }
 
 export interface StealthHealthPaidItem {

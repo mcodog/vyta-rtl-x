@@ -19,10 +19,11 @@ const base: ConfirmationEmailData = {
   orderNumber: 'INV-1016',
   items: [
     { name: 'GLP-3 20mg', quantity: 2, price: 133, unit: 'vial', imageUrl: 'https://www.vytabio.com/images/products/GLP-3%2020mg.png' },
-    { name: 'MOTS C 40mg', quantity: 1, price: 98.8, unit: 'case', vialsPerBox: 5 },
+    { name: 'MOTS C 40mg', quantity: 1, price: 214, unit: 'case', vialsPerBox: 5 },
   ],
-  subtotal: 364.8,
-  discount: 0,
+  subtotal: 480,
+  discount: 115.2,
+  discountLabel: 'VYTA20 + 5% limited-time offer',
   shipping: 0,
   total: 364.8,
   currency: 'CAD',
@@ -56,6 +57,8 @@ test('html carries every section, escaped', () => {
   assert.match(html, /Single vial/);
   assert.match(html, /\$364\.80 CAD/);
   assert.ok(!html.includes('You saved'));
+  assert.match(html, /Discount <span[^>]*>\(VYTA20 \+ 5% limited-time offer\)<\/span>/);
+  assert.match(html, /-\$115\.20/);
   // Lucide / Font Awesome icons as hosted PNGs, never emoji or inline SVG.
   for (const name of ['file-text-blue', 'calendar-blue', 'check-teal', 'map-pin-blue', 'package-blue', 'truck-blue', 'package-open-blue', 'mail-blue', 'shield-check-white', 'canadian-maple-leaf-white', 'arrow-right-white']) {
     assert.ok(html.includes(`src="https://www.vytabio.com/images/email/${name}.png"`), name);
@@ -73,11 +76,13 @@ test('html carries every section, escaped', () => {
 
 test('optional sections drop out cleanly', () => {
   const { viewOrderUrl: _u, shipTo: _s, orderDate: _d, tax: _t, ...rest } = base;
-  const html = renderOrderConfirmationHtml({ ...rest, discount: 10 }, 'https://www.vytabio.com');
+  const { discountLabel: _l, ...noLabel } = rest;
+  const html = renderOrderConfirmationHtml({ ...noLabel, discount: 10 }, 'https://www.vytabio.com');
   assert.ok(!html.includes('View Order Details'));
   assert.ok(!html.includes('Shipping Address'));
   assert.ok(!html.includes('Order Date'));
   assert.match(html, /-\$10\.00/);
+  assert.ok(!html.includes('(VYTA20'));
   assert.match(html, /Free/);
 });
 
@@ -85,6 +90,7 @@ test('plain-text body mirrors the html', () => {
   const text = renderOrderConfirmationText(base);
   assert.match(text, /Order number: INV-1016/);
   assert.match(text, /GLP-3 20mg \(Single vial\) × 2 — \$266\.00/);
+  assert.match(text, /Discount \(VYTA20 \+ 5% limited-time offer\): -\$115\.20/);
   assert.match(text, /Total: \$364\.80 CAD/);
   assert.match(text, /View your order/);
 });

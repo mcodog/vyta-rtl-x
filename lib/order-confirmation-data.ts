@@ -37,6 +37,8 @@ export interface ConfirmationEmailData {
   items: ConfirmationLine[];
   subtotal: number;
   discount: number;
+  /** What the discount was, e.g. "VYTA20 + 5% limited-time offer". */
+  discountLabel?: string;
   shipping: number;
   total: number;
   currency: string;
@@ -249,8 +251,12 @@ export function storefrontConfirmationData(order: Record<string, any>): Confirma
 
 /**
  * Payload for a Stealth Health hand-off. The invoice carries the number the
- * buyer sees and the money; prices on its lines already have any discount
- * applied, so there is no separate discount row.
+ * buyer sees and the money. Its line prices already have any discount
+ * applied; when the hand-off recorded each line's list price, the lines are
+ * shown at list price with the difference as a Discount row, so Subtotal −
+ * Discount + Shipping + Tax is still exactly the invoice total. Without list
+ * prices (older hand-offs, or lines an admin changed) the charged prices are
+ * shown with no discount row.
  */
 export function stealthHealthConfirmationData(
   ledger: Record<string, any>,
@@ -279,8 +285,22 @@ export function stealthHealthConfirmationData(
   const lineSum = items.reduce((s, l) => s + l.price * l.quantity, 0);
   const shipping = num(invoice.shipping_cost);
   const tax = num(invoice.tax_total);
-  const subtotal = invoice.subtotal != null ? num(invoice.subtotal) : lineSum;
-  const total = invoice.total != null ? num(invoice.total) : subtotal + shipping + tax;
+  const chargedSubtotal = invoice.subtotal != null ? num(invoice.subtotal) : lineSum;
+  const total = invoice.total != null ? num(invoice.total) : chargedSubtotal + shipping + tax;
+
+  let subtotal = chargedSubtotal;
+  let discount = 0;
+  const listPrices = listUnitPrices(ledger.items, lines ?? []);
+  if (listPrices) {
+    const listSum = round2(listPrices.reduce((s, p, i) => s + p * items[i].quantity, 0));
+    if (listSum - chargedSubtotal >= 0.01) {
+      listPrices.forEach((p, i) => {
+        items[i].price = p;
+      });
+      subtotal = listSum;
+      discount = listSum - chargedSubtotal;
+    }
+  }
 
   const data: ConfirmationEmailData = {
     to,
@@ -288,7 +308,7 @@ export function stealthHealthConfirmationData(
     orderNumber: str(invoice.invoice_number) || str(ledger.partner_reference) || String(ledger.id ?? ''),
     items,
     subtotal: round2(subtotal),
-    discount: 0,
+    discount: round2(discount),
     shipping: round2(shipping),
     total: round2(total),
     currency: currencyCode(invoice.currency, ledger.currency),
@@ -298,6 +318,10 @@ export function stealthHealthConfirmationData(
   if (orderDate) data.orderDate = orderDate;
   if (invoice.status === 'paid' || ledger.status === 'paid') data.paymentStatus = 'Paid';
   data.tax = round2(tax);
+  if (discount > 0) {
+    const label = discountLabelFor(ledger);
+    if (label) data.discountLabel = label;
+  }
 
   const shipTo = shipToFrom(ledger.shipping_address, {
     name: ledger.customer_name || invoice.customer_name,
@@ -306,6 +330,45 @@ export function stealthHealthConfirmationData(
   if (shipTo) data.shipTo = shipTo;
   if (invoice.id) data.accountOrderId = String(invoice.id);
   return data;
+}
+
+/**
+ * Each invoice line's list unit price (CAD), matched to the hand-off's lines by
+ * product and pack size — or null unless every line has one.
+ */
+function listUnitPrices(
+  ledgerItems: unknown,
+  lines: Array<Record<string, any>>,
+): number[] | null {
+  if (!Array.isArray(ledgerItems) || lines.length === 0) return null;
+  const byKey = new Map<string, number>();
+  for (const it of ledgerItems) {
+    if (!it || typeof it !== 'object') continue;
+    const cents = num((it as any).list_unit_price_cents);
+    const productId = productIdOf((it as any).product_id);
+    if (!productId || cents <= 0) continue;
+    byKey.set(`${productId.toLowerCase()}|${Math.max(1, num((it as any).pack_size) || 1)}`, cents / 100);
+  }
+  const out: number[] = [];
+  for (const l of lines) {
+    const productId = productIdOf(l.product_id);
+    const pack = Math.max(1, num(l.vials_per_unit) || splitPackSuffix(str(l.description)).pack || 1);
+    const price = productId ? byKey.get(`${productId.toLowerCase()}|${pack}`) : undefined;
+    // A list price below what was charged means the line was repriced since.
+    if (price == null || price + 0.005 < num(l.unit_price)) return null;
+    out.push(round2(price));
+  }
+  return out;
+}
+
+/** "VYTA20 + 5% limited-time offer" — the promos the checkout recorded. */
+function discountLabelFor(ledger: Record<string, any>): string | null {
+  const parts = [
+    str(ledger.discount_code) && num(ledger.discount_code_percent) > 0 ? str(ledger.discount_code) : '',
+    num(ledger.ad_discount_percent) > 0 ? `${num(ledger.ad_discount_percent)}% first-order discount` : '',
+    num(ledger.cart_offer_percent) > 0 ? `${num(ledger.cart_offer_percent)}% limited-time offer` : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' + ') : null;
 }
 
 /** Fold a send history (any order) into the summary the admin screens show. */

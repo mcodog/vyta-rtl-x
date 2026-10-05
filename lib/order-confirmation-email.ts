@@ -163,8 +163,8 @@ function itemRows(site: string, items: ConfirmationLine[]): string {
 function summaryRow(label: string, value: string, opts: { color?: string } = {}): string {
   const color = opts.color ?? NAVY;
   return `<tr>
-    <td style="padding: 5px 0; font-size: 14px; color: ${opts.color ?? MUTED};">${label}</td>
-    <td align="right" style="padding: 5px 0; font-size: 14px; color: ${color};">${value}</td>
+    <td style="padding: 5px 0; font-size: 14px; color: ${MUTED};">${label}</td>
+    <td align="right" valign="top" style="padding: 5px 0 5px 12px; font-size: 14px; color: ${color}; white-space: nowrap;">${value}</td>
   </tr>`;
 }
 
@@ -173,7 +173,13 @@ function orderSummary(site: string, data: ConfirmationEmailData): string {
   const shipping = Number(data.shipping) || 0;
   const rows = [
     summaryRow('Subtotal', money(data.subtotal)),
-    discount > 0 ? summaryRow('Discount', `-${money(discount)}`, { color: GREEN }) : '',
+    discount > 0
+      ? summaryRow(
+          `Discount${data.discountLabel ? ` <span style="color: ${MUTED};">(${esc(data.discountLabel)})</span>` : ''}`,
+          `-${money(discount)}`,
+          { color: GREEN },
+        )
+      : '',
     summaryRow('Shipping', shipping > 0 ? money(shipping) : 'Free'),
     data.tax != null ? summaryRow('Tax', money(data.tax)) : '',
   ].join('');
@@ -184,7 +190,7 @@ function orderSummary(site: string, data: ConfirmationEmailData): string {
       ${rows}
       <tr>
         <td style="padding: 14px 0 0; border-top: 1px solid ${LINE}; font-size: 18px; font-weight: 700; color: ${NAVY};">Total</td>
-        <td align="right" style="padding: 14px 0 0; border-top: 1px solid ${LINE}; font-size: 20px; font-weight: 800; color: ${NAVY};">${money(data.total)} ${esc(data.currency)}</td>
+        <td align="right" style="padding: 14px 0 0; border-top: 1px solid ${LINE}; font-size: 20px; font-weight: 800; color: ${NAVY}; white-space: nowrap;">${money(data.total)} ${esc(data.currency)}</td>
       </tr>
     </table>`;
 
@@ -431,7 +437,9 @@ export function renderOrderConfirmationText(data: ConfirmationEmailData): string
     ...lines,
     '',
     `Subtotal: ${money(data.subtotal)}`,
-    Number(data.discount) > 0 ? `Discount: -${money(data.discount)}` : null,
+    Number(data.discount) > 0
+      ? `Discount${data.discountLabel ? ` (${data.discountLabel})` : ''}: -${money(data.discount)}`
+      : null,
     `Shipping: ${Number(data.shipping) > 0 ? money(data.shipping) : 'Free'}`,
     data.tax != null ? `Tax: ${money(data.tax)}` : null,
     `Total: ${money(data.total)} ${data.currency}`,
