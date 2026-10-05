@@ -34,6 +34,7 @@ import OrderManagementPanel from '@/components/admin/OrderManagementPanel';
 import LiveShipmentTracking from '@/components/admin/LiveShipmentTracking';
 import InvoiceEasyshipPanel from '@/components/admin/InvoiceEasyshipPanel';
 import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
+import AdminPaidAlertEmailCard from '@/components/admin/AdminPaidAlertEmailCard';
 import { formatAppDate } from '@/lib/datetime';
 
 const statusColors: Record<InvoiceStatus, string> = {
@@ -761,15 +762,24 @@ export default function InvoiceDetailPage() {
           {puramass && <PuramassShipToPanel puramass={puramass} />}
           {puramass && <PuramassOrderPanel puramass={puramass} />}
 
-          {/* Paid-order confirmation email for a Stealth Health hand-off. An
-              invoice with an order shows it in the order panel below instead;
-              a manual invoice has nothing to confirm. */}
-          {!invoice.order_id && isPuramassInvoice(invoice) && (
-            <OrderConfirmationEmailCard
-              key={invoice.status}
-              target={{ invoiceId: invoice.id }}
-              canSend={editable}
-            />
+          {/* Paid-order emails for a Stealth Health hand-off or a manual
+              invoice: the customer's confirmation and the team's "order paid"
+              notification. Stealth Health sends both on payment; a manual
+              invoice only ever sends them from these buttons. An invoice with
+              an order shows the confirmation in the order panel instead. */}
+          {!invoice.order_id && (
+            <>
+              <OrderConfirmationEmailCard
+                key={`confirmation-${invoice.status}`}
+                target={{ invoiceId: invoice.id }}
+                canSend={editable}
+              />
+              <AdminPaidAlertEmailCard
+                key={`admin-alert-${invoice.status}`}
+                invoiceId={invoice.id}
+                canSend={editable}
+              />
+            </>
           )}
 
           {/* Easyship — set up, follow and print the shipment for this

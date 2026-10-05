@@ -18,11 +18,21 @@
  * column; the alert then goes out only on the call that saw the invoice turn
  * paid (`transition`), unclaimed — the behaviour before this module existed.
  *
+ * Admins can also send it by hand from the invoice page
+ * (`sendAdminPaidAlertManually`): for a Stealth Health invoice (a resend) and
+ * for a manual invoice — no order, no hand-off — which is never sent
+ * automatically. Manual sends are logged with the admin who sent them.
+ *
  * Nothing here throws: a payment webhook or an admin's status change must never
  * fail because an email couldn't be sent. Callers pass the service-role client.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import {
+  summarizeConfirmationLog,
+  type ConfirmationLogRow,
+  type ConfirmationSummary,
+} from '@/lib/order-confirmation-data';
 
 const SENT_COLUMN = 'admin_paid_alert_sent_at';
 const LOG_KIND = 'admin_paid_alert';
@@ -91,15 +101,23 @@ async function release(db: SupabaseClient, id: string): Promise<void> {
 
 async function logAttempt(
   db: SupabaseClient,
-  row: { invoice_id: string; to_email: string; subject: string; success: boolean; error: string | null },
+  row: {
+    invoice_id: string;
+    to_email: string;
+    subject: string;
+    success: boolean;
+    error: string | null;
+    sent_by?: string | null;
+    sent_by_email?: string | null;
+  },
 ): Promise<void> {
   try {
     const { error } = await db.from('fulfillment_email_log').insert({
+      sent_by: null,
+      sent_by_email: null,
       ...row,
       order_id: null,
       message_id: null,
-      sent_by: null,
-      sent_by_email: null,
       kind: LOG_KIND,
     });
     if (error) console.error('[stealth-health-alert] logging the send failed:', error);
@@ -164,31 +182,11 @@ export async function sendStealthHealthPaidAlertOnce(
       if (claimed === 'not_migrated' && !opts.transition) return { sent: false, reason: 'not_migrated' };
     }
 
-    const allLines = (lines ?? []) as Array<Record<string, any>>;
     const { sendStealthHealthOrderAlert } = await import('@/lib/email');
     const res = await sendStealthHealthOrderAlert({
       to,
-      invoiceId: invoice.id,
-      invoiceNumber: trimOrNull(invoice.invoice_number),
-      customerName: trimOrNull(invoice.customer_name) ?? trimOrNull(ledger.customer_name),
-      customerEmail: trimOrNull(invoice.customer_email) ?? trimOrNull(ledger.customer_email),
-      items: allLines.map((l) => ({
-        description: String(l.description ?? ''),
-        qty: Number(l.qty) || 0,
-        lineTotal: Number(l.line_total) || 0,
-      })),
-      subtotal: Number(invoice.subtotal) || 0,
-      shipping: Number(invoice.shipping_cost) || 0,
-      shippingCourier: trimOrNull(ledger.shipping_courier),
-      total: Number(invoice.total) || 0,
-      currency: trimOrNull(invoice.currency) ?? 'CAD',
-      discountCode: trimOrNull(ledger.discount_code),
-      shipTo: formatShipTo(ledger.shipping_address),
+      ...stealthHealthAlertPayload(ledger, invoice, lines ?? []),
       paidVia: opts.paidVia,
-      // Lines with no product took no stock and need linking by hand.
-      stockWarnings: allLines
-        .filter((l) => !l.product_id)
-        .map((l) => `${String(l.description ?? 'Item')} × ${Number(l.qty) || 0}`),
     });
 
     await logAttempt(db, {
@@ -231,4 +229,208 @@ export async function sendStealthHealthPaidAlertForInvoice(
     console.error(`[stealth-health-alert] paid invoice ${invoiceId} failed:`, err);
     return { sent: false, reason: 'error' };
   }
+}
+
+// ---------------------------------------------------------------------------
+//  Shared payload, manual send and status
+// ---------------------------------------------------------------------------
+
+type AlertPayload = Omit<Parameters<typeof import('@/lib/email').sendStealthHealthOrderAlert>[0], 'to' | 'paidVia'>;
+
+function alertLines(lines: Array<Record<string, any>>) {
+  return {
+    items: lines.map((l) => ({
+      description: String(l.description ?? ''),
+      qty: Number(l.qty) || 0,
+      lineTotal: Number(l.line_total) || 0,
+    })),
+    // Lines with no product took no stock and need linking by hand.
+    stockWarnings: lines
+      .filter((l) => !l.product_id)
+      .map((l) => `${String(l.description ?? 'Item')} × ${Number(l.qty) || 0}`),
+  };
+}
+
+function stealthHealthAlertPayload(
+  ledger: Record<string, any>,
+  invoice: Record<string, any>,
+  lines: Array<Record<string, any>>,
+): AlertPayload {
+  return {
+    invoiceId: invoice.id,
+    invoiceNumber: trimOrNull(invoice.invoice_number),
+    customerName: trimOrNull(invoice.customer_name) ?? trimOrNull(ledger.customer_name),
+    customerEmail: trimOrNull(invoice.customer_email) ?? trimOrNull(ledger.customer_email),
+    ...alertLines(lines),
+    subtotal: Number(invoice.subtotal) || 0,
+    shipping: Number(invoice.shipping_cost) || 0,
+    shippingCourier: trimOrNull(ledger.shipping_courier),
+    total: Number(invoice.total) || 0,
+    currency: trimOrNull(invoice.currency) ?? 'CAD',
+    discountCode: trimOrNull(ledger.discount_code),
+    shipTo: formatShipTo(ledger.shipping_address),
+    source: 'stealth_health',
+  };
+}
+
+async function manualAlertPayload(
+  db: SupabaseClient,
+  invoice: Record<string, any>,
+  lines: Array<Record<string, any>>,
+): Promise<AlertPayload> {
+  const [customerRes, clientRes] = await Promise.all([
+    invoice.customer_id
+      ? db.from('customers').select('*').eq('id', invoice.customer_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    invoice.ships_to_client && invoice.client_id
+      ? db.from('customer_clients').select('*').eq('id', invoice.client_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const customer = (customerRes.data ?? null) as Record<string, any> | null;
+  const client = (clientRes.data ?? null) as Record<string, any> | null;
+  const shipTo = client
+    ? formatShipTo({ ...client, zip: client.postal_code })
+    : customer
+      ? formatShipTo({
+          address: customer.shipping_address,
+          city: customer.shipping_city,
+          state: customer.shipping_state,
+          zip: customer.shipping_postal_code,
+          country: customer.shipping_country,
+        })
+      : null;
+  const customerName =
+    [trimOrNull(customer?.first_name), trimOrNull(customer?.last_name)].filter(Boolean).join(' ') || null;
+  return {
+    invoiceId: invoice.id,
+    invoiceNumber: trimOrNull(invoice.invoice_number),
+    customerName: customerName ?? trimOrNull(invoice.customer_name),
+    customerEmail: trimOrNull(customer?.email) ?? trimOrNull(invoice.customer_email),
+    ...alertLines(lines),
+    subtotal: Number(invoice.subtotal) || 0,
+    shipping: Number(invoice.shipping_cost) || 0,
+    shippingCourier: trimOrNull(invoice.carrier),
+    total: Number(invoice.total) || 0,
+    currency: trimOrNull(invoice.currency) ?? 'CAD',
+    shipTo,
+    source: 'manual',
+  };
+}
+
+type LoadedForAlert =
+  | { kind: 'stealth_health'; invoice: Record<string, any>; ledger: Record<string, any>; lines: Array<Record<string, any>>; paid: boolean }
+  | { kind: 'manual'; invoice: Record<string, any>; lines: Array<Record<string, any>>; paid: boolean };
+
+/** The invoice behind a manual admin send — null for an order's invoice. */
+async function loadForAlert(db: SupabaseClient, invoiceId: string): Promise<LoadedForAlert | null> {
+  const [{ data: invoice, error }, { data: lines }, { data: ledgers }] = await Promise.all([
+    db.from('invoices').select('*').eq('id', invoiceId).maybeSingle(),
+    db.from('invoice_line_items').select('*').eq('invoice_id', invoiceId),
+    db.from('puramass_orders').select('*').eq('invoice_id', invoiceId).limit(1),
+  ]);
+  if (error) throw error;
+  // Storefront orders' invoices aren't covered by this email.
+  if (!invoice || invoice.order_id) return null;
+  const ledger = (ledgers ?? [])[0] as Record<string, any> | undefined;
+  if (ledger) {
+    return {
+      kind: 'stealth_health',
+      invoice,
+      ledger,
+      lines: lines ?? [],
+      paid: invoice.status === 'paid' || ledger.status === 'paid',
+    };
+  }
+  return { kind: 'manual', invoice, lines: lines ?? [], paid: invoice.status === 'paid' };
+}
+
+const NOT_PAID_REASON = 'Mark the invoice paid first — this email tells the team an order was paid.';
+const NO_RECIPIENTS_REASON = 'No admin recipients — add them under Settings → Admin Email Notifications.';
+
+export interface AdminPaidAlertStatus {
+  kind: 'stealth_health' | 'manual';
+  summary: ConfirmationSummary;
+  history: ConfirmationLogRow[];
+  recipients: string[];
+  /** Why a send isn't possible right now; null when it is. */
+  blockedReason: string | null;
+}
+
+/** Sent / not sent, history and recipients for the invoice-page card. */
+export async function getAdminPaidAlertStatus(
+  db: SupabaseClient,
+  invoiceId: string,
+): Promise<AdminPaidAlertStatus | null> {
+  const loaded = await loadForAlert(db, invoiceId);
+  if (!loaded) return null;
+  const { getAdminAlertEmails } = await import('@/lib/admin/alert-recipients');
+  const [recipients, logRes] = await Promise.all([
+    getAdminAlertEmails(db),
+    db
+      .from('fulfillment_email_log')
+      .select('created_at, to_email, success, error, sent_by_email')
+      .eq('kind', LOG_KIND)
+      .eq('invoice_id', invoiceId)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ]);
+  if (logRes.error) console.error('[stealth-health-alert] reading the send history failed:', logRes.error);
+  const history = (logRes.data ?? []) as ConfirmationLogRow[];
+  return {
+    kind: loaded.kind,
+    summary: summarizeConfirmationLog(history),
+    history,
+    recipients,
+    blockedReason: !loaded.paid ? NOT_PAID_REASON : recipients.length === 0 ? NO_RECIPIENTS_REASON : null,
+  };
+}
+
+/**
+ * Send (or resend) the admin paid-order email on an admin's request — Stealth
+ * Health or manual invoice, once it is paid. Not once-only. For a Stealth
+ * Health hand-off it also stamps the claim so the automatic send won't repeat.
+ */
+export async function sendAdminPaidAlertManually(
+  db: SupabaseClient,
+  invoiceId: string,
+  actor: { id: string | null; email: string | null },
+): Promise<{ ok: true; to: string[]; sentAt: string } | { ok: false; status: number; error: string }> {
+  const loaded = await loadForAlert(db, invoiceId);
+  if (!loaded) return { ok: false, status: 404, error: 'Invoice not found, or it belongs to a storefront order.' };
+  if (!loaded.paid) return { ok: false, status: 422, error: NOT_PAID_REASON };
+
+  const { getAdminAlertEmails } = await import('@/lib/admin/alert-recipients');
+  const to = await getAdminAlertEmails(db);
+  if (to.length === 0) return { ok: false, status: 422, error: NO_RECIPIENTS_REASON };
+
+  const payload =
+    loaded.kind === 'stealth_health'
+      ? stealthHealthAlertPayload(loaded.ledger, loaded.invoice, loaded.lines)
+      : await manualAlertPayload(db, loaded.invoice, loaded.lines);
+
+  const { sendStealthHealthOrderAlert } = await import('@/lib/email');
+  const res = await sendStealthHealthOrderAlert({ to, ...payload, paidVia: 'admin' });
+  await logAttempt(db, {
+    invoice_id: invoiceId,
+    to_email: to.join(', '),
+    subject: res.subject,
+    success: res.success,
+    error: res.success ? null : res.error ?? 'Failed to send email',
+    sent_by: actor.id,
+    sent_by_email: actor.email,
+  });
+  if (!res.success) return { ok: false, status: 502, error: res.error || 'The email could not be sent.' };
+
+  const sentAt = new Date().toISOString();
+  if (loaded.kind === 'stealth_health') {
+    const { error } = await db
+      .from('puramass_orders')
+      .update({ [SENT_COLUMN]: sentAt })
+      .eq('id', loaded.ledger.id)
+      .is(SENT_COLUMN, null);
+    if (error && !isMissingColumnError(error)) {
+      console.error('[stealth-health-alert] stamping after a manual send failed:', error);
+    }
+  }
+  return { ok: true, to, sentAt };
 }

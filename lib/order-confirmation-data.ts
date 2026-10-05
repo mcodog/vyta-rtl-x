@@ -333,6 +333,102 @@ export function stealthHealthConfirmationData(
 }
 
 /**
+ * Payload for a manual invoice (no storefront order, no Stealth Health
+ * hand-off). Only ever sent by an admin. Line discounts (`discount_pct`) show
+ * as a Discount row under list-price lines, as long as Subtotal − Discount +
+ * Shipping + Tax still equals the invoice total; otherwise the charged line
+ * totals are shown with no discount row. Recipient and ship-to come from the
+ * linked customer (or the drop-ship client), falling back to the invoice's own
+ * snapshot. Manual invoices aren't in the customer account, so there is no
+ * "View Order Details" link.
+ */
+export function manualInvoiceConfirmationData(
+  invoice: Record<string, any>,
+  lines: Array<Record<string, any>>,
+  customer: Record<string, any> | null = null,
+  client: Record<string, any> | null = null,
+): ConfirmationEmailData | null {
+  const to = deliverableEmail(customer?.email) ?? deliverableEmail(invoice?.customer_email);
+  if (!to) return null;
+
+  const rows = (lines ?? []).map((l) => {
+    const quantity = qty(l.qty);
+    const unit = round2(num(l.unit_price));
+    const lineTotal = l.line_total != null ? round2(num(l.line_total)) : round2(unit * quantity);
+    const description = str(l.description) || 'Item';
+    const { name, pack } = splitPackSuffix(description);
+    const perUnit = num(l.vials_per_unit) || pack || 0;
+    const line: ConfirmationLine = { name: pack != null ? name : description, quantity, price: unit };
+    if (l.price_type === 'vial' || pack === 1) line.unit = 'vial';
+    else if (l.price_type === 'box' || (pack ?? 0) > 1) line.unit = 'case';
+    if (line.unit === 'case' && perUnit > 1) line.vialsPerBox = perUnit;
+    const productId = productIdOf(l.product_id);
+    if (productId) line.productId = productId;
+    return { line, list: round2(unit * quantity), charged: lineTotal };
+  });
+
+  const items = rows.map((r) => r.line);
+  const listSum = round2(rows.reduce((s, r) => s + r.list, 0));
+  const chargedSum = round2(rows.reduce((s, r) => s + r.charged, 0));
+  const shipping = num(invoice.shipping_cost);
+  const tax = num(invoice.tax_total);
+  const total = invoice.total != null ? num(invoice.total) : chargedSum + shipping + tax;
+
+  let subtotal = invoice.subtotal != null ? num(invoice.subtotal) : chargedSum;
+  let discount = 0;
+  const lineDiscount = round2(listSum - chargedSum);
+  if (lineDiscount >= 0.01 && Math.abs(listSum - lineDiscount + shipping + tax - total) < 0.015) {
+    subtotal = listSum;
+    discount = lineDiscount;
+  } else if (lineDiscount >= 0.01) {
+    // Doesn't reconcile with the header — show what each line was charged.
+    rows.forEach((r) => {
+      r.line.price = round2(r.charged / r.line.quantity);
+    });
+  }
+
+  const customerName =
+    [str(customer?.first_name), str(customer?.last_name)].filter(Boolean).join(' ') ||
+    str(invoice.customer_name) ||
+    'there';
+
+  const data: ConfirmationEmailData = {
+    to,
+    customerName,
+    orderNumber: str(invoice.invoice_number) || String(invoice.id ?? ''),
+    items,
+    subtotal: round2(subtotal),
+    discount: round2(discount),
+    shipping: round2(shipping),
+    total: round2(total),
+    currency: currencyCode(invoice.currency),
+    tax: round2(tax),
+  };
+  const orderDate = str(invoice.paid_at) || str(invoice.issue_date) || str(invoice.created_at);
+  if (orderDate) data.orderDate = orderDate;
+  if (invoice.status === 'paid') data.paymentStatus = 'Paid';
+
+  const shipTo = client
+    ? shipToFrom(client, { phone: client.phone })
+    : customer
+      ? shipToFrom(
+          {
+            address: customer.shipping_address,
+            city: customer.shipping_city,
+            state: customer.shipping_state,
+            zip: customer.shipping_postal_code,
+            country: customer.shipping_country,
+            first_name: customer.first_name,
+            last_name: customer.last_name,
+          },
+          { phone: customer.phone ?? invoice.customer_phone },
+        )
+      : undefined;
+  if (shipTo) data.shipTo = shipTo;
+  return data;
+}
+
+/**
  * Each invoice line's list unit price (CAD), matched to the hand-off's lines by
  * product and pack size — or null unless every line has one.
  */

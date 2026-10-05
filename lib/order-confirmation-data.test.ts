@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import {
   deliverableEmail,
   isStorefrontCheckoutSource,
+  manualInvoiceConfirmationData,
   shipToFrom,
   stealthHealthConfirmationData,
   storefrontConfirmationData,
@@ -207,6 +208,80 @@ test('without list prices for every line, charged prices and no discount row', (
   assert.equal(data.subtotal, 577.6);
   assert.equal(data.discount, 0);
   assert.equal(data.discountLabel, undefined);
+});
+
+test('manual invoice: line discounts become a Discount row, customer gives email and ship-to', () => {
+  const data = manualInvoiceConfirmationData(
+    {
+      id: 'inv-9',
+      invoice_number: 'INV-2001',
+      status: 'paid',
+      issue_date: '2026-10-05',
+      subtotal: 270,
+      shipping_cost: 20,
+      tax_total: 35.1,
+      total: 325.1,
+      currency: 'CAD',
+      customer_email: 'old@snapshot.ca',
+    },
+    [
+      { description: 'BPC-157 10mg — Pack of 10', qty: 2, unit_price: 100, discount_pct: 10, line_total: 180, price_type: 'box', vials_per_unit: 10, product_id: P1 },
+      { description: 'Bacteriostatic water', qty: 3, unit_price: 30, discount_pct: 0, line_total: 90 },
+    ],
+    {
+      email: 'Dr.Lee@lab.ca',
+      first_name: 'Ana',
+      last_name: 'Lee',
+      phone: '416-555-0100',
+      shipping_address: '1 King St W',
+      shipping_city: 'Toronto',
+      shipping_state: 'ON',
+      shipping_postal_code: 'M5H 1A1',
+      shipping_country: 'CA',
+    },
+  );
+  assert.ok(data);
+  assert.equal(data.to, 'Dr.Lee@lab.ca');
+  assert.equal(data.customerName, 'Ana Lee');
+  assert.equal(data.orderNumber, 'INV-2001');
+  assert.deepEqual(data.items, [
+    { name: 'BPC-157 10mg', quantity: 2, price: 100, unit: 'case', vialsPerBox: 10, productId: P1 },
+    { name: 'Bacteriostatic water', quantity: 3, price: 30 },
+  ]);
+  assert.equal(data.subtotal, 290);
+  assert.equal(data.discount, 20);
+  assert.equal(data.discountLabel, undefined);
+  assert.equal(data.tax, 35.1);
+  assert.equal(data.total, 325.1);
+  assert.equal(data.paymentStatus, 'Paid');
+  assert.equal(data.orderDate, '2026-10-05');
+  assert.equal(data.accountOrderId, undefined); // not in the customer account → no link
+  assert.deepEqual(data.shipTo, {
+    name: 'Ana Lee',
+    lines: ['1 King St W', 'Toronto, ON M5H 1A1', 'Canada'],
+    phone: '416-555-0100',
+  });
+});
+
+test('manual invoice: drop-ship client wins; unreconciled discounts show charged prices', () => {
+  const data = manualInvoiceConfirmationData(
+    { id: 'inv-10', invoice_number: 'INV-2002', status: 'paid', subtotal: 90, shipping_cost: 0, tax_total: 0, total: 85, customer_email: 'g@guest.ca', customer_name: 'Guest Buyer' },
+    [{ description: 'TB-500', qty: 1, unit_price: 100, discount_pct: 10, line_total: 90 }],
+    null,
+    { first_name: 'Clinic', last_name: 'North', address: '9 Bay St', city: 'Ottawa', state: 'ON', postal_code: 'K1A 0A1', country: 'CA', phone: '613-555-0101' },
+  );
+  assert.ok(data);
+  assert.equal(data.to, 'g@guest.ca');
+  assert.equal(data.customerName, 'Guest Buyer');
+  assert.equal(data.discount, 0); // 100 − 10 ≠ 85, so no discount row
+  assert.equal(data.items[0].price, 90);
+  assert.equal(data.subtotal, 90);
+  assert.deepEqual(data.shipTo?.lines, ['9 Bay St', 'Ottawa, ON K1A 0A1', 'Canada']);
+  assert.equal(data.shipTo?.name, 'Clinic North');
+});
+
+test('manual invoice without a usable email has nothing to send', () => {
+  assert.equal(manualInvoiceConfirmationData({ id: 'x', customer_email: '' }, [], null), null);
 });
 
 test('shipToFrom handles blanks and JSON strings', () => {

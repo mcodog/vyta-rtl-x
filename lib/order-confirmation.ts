@@ -9,6 +9,8 @@
  *   • Storefront `orders`. Only rows from a storefront checkout
  *     (`isStorefrontCheckoutSource`) are sent automatically — none on VYTA
  *     today — but every order gets the admin status card and manual send.
+ *   • Manual invoices (no order, no hand-off). Never sent automatically; the
+ *     admin sends it from the invoice page once the invoice is paid.
  *
  * Exactly once: every paid signal can fire more than once, so the automatic
  * send first claims the row (`confirmation_email_sent_at` NULL → now()); only
@@ -27,6 +29,7 @@ import { buildViewOrderUrl } from '@/lib/customer/order-link';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import {
   isStorefrontCheckoutSource,
+  manualInvoiceConfirmationData,
   stealthHealthConfirmationData,
   storefrontConfirmationData,
   summarizeConfirmationLog,
@@ -62,7 +65,8 @@ export type ConfirmationTargetInput =
 
 export type ConfirmationTarget =
   | { kind: 'storefront'; orderId: string; invoiceId: string | null }
-  | { kind: 'stealth_health'; puramassOrderId: string; invoiceId: string | null };
+  | { kind: 'stealth_health'; puramassOrderId: string; invoiceId: string | null }
+  | { kind: 'manual'; invoiceId: string };
 
 export interface ConfirmationStatus {
   kind: ConfirmationTarget['kind'];
@@ -79,6 +83,7 @@ const MIGRATION_WARNING =
   'run order-confirmation-email-migration.sql; automatic confirmation emails are off until then.';
 
 const NOT_PAID_REASON = 'Not paid yet — the confirmation goes out once the order is paid.';
+const MANUAL_NOT_PAID_REASON = 'Mark the invoice paid first — this email tells the customer their payment was received.';
 const NO_EMAIL_REASON = 'No real email address on this order.';
 
 // ---------------------------------------------------------------------------
@@ -177,6 +182,34 @@ async function loadStealthHealth(
     invoice,
     paid,
     data: invoice ? stealthHealthConfirmationData(ledger, invoice, lines) : null,
+  };
+}
+
+interface LoadedManual {
+  invoice: Record<string, any>;
+  paid: boolean;
+  data: ConfirmationEmailData | null;
+}
+
+/** A manual invoice with its lines, customer and drop-ship client. */
+async function loadManual(db: SupabaseClient, invoiceId: string): Promise<LoadedManual | null> {
+  const { data: invoice, error } = await db.from('invoices').select('*').eq('id', invoiceId).maybeSingle();
+  if (error) throw error;
+  if (!invoice) return null;
+
+  const [{ data: lines }, customerRes, clientRes] = await Promise.all([
+    db.from('invoice_line_items').select('*').eq('invoice_id', invoiceId),
+    invoice.customer_id
+      ? db.from('customers').select('*').eq('id', invoice.customer_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    invoice.ships_to_client && invoice.client_id
+      ? db.from('customer_clients').select('*').eq('id', invoice.client_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  return {
+    invoice,
+    paid: invoice.status === 'paid',
+    data: manualInvoiceConfirmationData(invoice, lines ?? [], customerRes.data ?? null, clientRes.data ?? null),
   };
 }
 
@@ -405,7 +438,8 @@ export async function sendConfirmationForPaidInvoice(
 ): Promise<ConfirmationOutcome> {
   try {
     const target = await resolveConfirmationTarget(db, { invoiceId });
-    if (!target) return { sent: false, reason: 'not_eligible' };
+    // Manual invoices are confirmed by hand only.
+    if (!target || target.kind === 'manual') return { sent: false, reason: 'not_eligible' };
     return target.kind === 'storefront'
       ? await sendStorefrontOrderConfirmationOnce(db, target.orderId)
       : await sendStealthHealthOrderConfirmationOnce(db, target.puramassOrderId);
@@ -420,8 +454,8 @@ export async function sendConfirmationForPaidInvoice(
 // ---------------------------------------------------------------------------
 
 /**
- * Which order an id points at. A manual invoice (no order, no hand-off) has
- * nothing to confirm and resolves to null.
+ * Which order an id points at. An invoice with neither an order nor a hand-off
+ * is a manual invoice (`kind: 'manual'`).
  */
 export async function resolveConfirmationTarget(
   db: SupabaseClient,
@@ -460,7 +494,7 @@ export async function resolveConfirmationTarget(
   const puramassOrderId = ledger?.[0]?.id as string | undefined;
   return puramassOrderId
     ? { kind: 'stealth_health', puramassOrderId, invoiceId: invoice.id }
-    : null;
+    : { kind: 'manual', invoiceId: invoice.id };
 }
 
 async function readLog(db: SupabaseClient, target: ConfirmationTarget): Promise<ConfirmationLogRow[]> {
@@ -500,6 +534,10 @@ export async function getConfirmationStatus(
   let blockedReason: string | null = null;
   if (target.kind === 'storefront') {
     data = (await loadStorefront(db, target.orderId))?.data ?? null;
+  } else if (target.kind === 'manual') {
+    const loaded = await loadManual(db, target.invoiceId);
+    data = loaded?.data ?? null;
+    if (!loaded?.paid) blockedReason = MANUAL_NOT_PAID_REASON;
   } else {
     const loaded = await loadStealthHealth(db, target.puramassOrderId);
     data = loaded?.data ?? null;
@@ -530,20 +568,26 @@ export async function sendConfirmationManually(
 ): Promise<{ ok: true; to: string; sentAt: string } | { ok: false; status: number; error: string }> {
   const target = await resolveConfirmationTarget(db, input);
   if (!target) {
-    return { ok: false, status: 404, error: 'No storefront or Stealth Health order found for this.' };
+    return { ok: false, status: 404, error: 'No order or invoice found for this.' };
   }
 
   let data: ConfirmationEmailData | null;
-  let table: ClaimTable;
-  let rowId: string;
+  // Where the send is stamped so the automatic send won't repeat it; manual
+  // invoices have no automatic send, so nothing to stamp.
+  let stamp: { table: ClaimTable; rowId: string } | null = null;
   let link: { order_id: string | null; invoice_id: string | null };
 
-  if (target.kind === 'storefront') {
+  if (target.kind === 'manual') {
+    const loaded = await loadManual(db, target.invoiceId);
+    if (!loaded) return { ok: false, status: 404, error: 'Invoice not found.' };
+    if (!loaded.paid) return { ok: false, status: 422, error: MANUAL_NOT_PAID_REASON };
+    data = loaded.data;
+    link = { order_id: null, invoice_id: target.invoiceId };
+  } else if (target.kind === 'storefront') {
     const loaded = await loadStorefront(db, target.orderId);
     if (!loaded) return { ok: false, status: 404, error: 'Order not found.' };
     data = loaded.data;
-    table = 'orders';
-    rowId = target.orderId;
+    stamp = { table: 'orders', rowId: target.orderId };
     link = { order_id: target.orderId, invoice_id: target.invoiceId };
   } else {
     const loaded = await loadStealthHealth(db, target.puramassOrderId);
@@ -556,13 +600,19 @@ export async function sendConfirmationManually(
       };
     }
     data = loaded.data;
-    table = 'puramass_orders';
-    rowId = target.puramassOrderId;
+    stamp = { table: 'puramass_orders', rowId: target.puramassOrderId };
     link = { order_id: null, invoice_id: loaded.invoice.id };
   }
 
   if (!data) {
-    return { ok: false, status: 422, error: 'This order has no real email address to send to.' };
+    return {
+      ok: false,
+      status: 422,
+      error:
+        target.kind === 'manual'
+          ? 'This invoice has no customer email address to send to.'
+          : 'This order has no real email address to send to.',
+    };
   }
 
   const res = await deliver(db, data);
@@ -581,9 +631,11 @@ export async function sendConfirmationManually(
   }
 
   const sentAt = new Date().toISOString();
-  const { error } = await db.from(table).update({ [SENT_COLUMN]: sentAt }).eq('id', rowId);
-  if (error && !isMissingColumnError(error)) {
-    console.error(`[order-confirmation] stamping ${table} ${rowId} failed:`, error);
+  if (stamp) {
+    const { error } = await db.from(stamp.table).update({ [SENT_COLUMN]: sentAt }).eq('id', stamp.rowId);
+    if (error && !isMissingColumnError(error)) {
+      console.error(`[order-confirmation] stamping ${stamp.table} ${stamp.rowId} failed:`, error);
+    }
   }
   return { ok: true, to: data.to, sentAt };
 }
