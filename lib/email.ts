@@ -1105,10 +1105,11 @@ export async function sendAbandonedRegistrationAlert(data: {
 }
 
 /**
- * Tell the admins a Stealth Health order has been paid. Fired once, on the
- * invoice's `pending_payment → paid` transition (or when a paid order is
- * recorded for the first time), to the operational list from
- * `getAdminAlertEmails`.
+ * Tell the admins a Stealth Health order has been paid, to the operational
+ * list from `getAdminAlertEmails`. Sent once per order by
+ * lib/admin/stealth-health-paid-alert.ts — whether the checkout or an admin
+ * marked the invoice paid. Never throws; `subject` is returned on every branch
+ * so the caller can log it.
  */
 export async function sendStealthHealthOrderAlert(data: {
   to: string | string[];
@@ -1121,18 +1122,24 @@ export async function sendStealthHealthOrderAlert(data: {
   shipping: number;
   shippingCourier: string | null;
   total: number;
+  /** ISO code shown next to the money; defaults to CAD. */
+  currency?: string;
   discountCode?: string | null;
   shipTo?: string | null;
   /** Lines that took no stock (no product linked) — shown as a warning. */
   stockWarnings?: string[];
-}) {
+  /** 'admin' when an admin marked the invoice paid rather than the checkout. */
+  paidVia?: 'checkout' | 'admin';
+}): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
   const { to, invoiceId, invoiceNumber, customerName, customerEmail, items } = data;
   if (!to || (Array.isArray(to) && to.length === 0)) {
-    return { success: false, error: "no admin recipients" };
+    return { success: false, error: "no admin recipients", subject: "" };
   }
   const money = (n: number) => `$${(Number(n) || 0).toFixed(2)}`;
   const label = invoiceNumber || "Stealth Health order";
   const who = customerName || customerEmail || "Guest";
+  const currency = escapeHtml(data.currency || "CAD");
+  const subject = `New order: ${label} · ${who} · ${money(data.total)} ${data.currency || "CAD"}`;
 
   const row = (k: string, v: string, strong = false) => `
     <tr><td style="padding:6px 0; font-size:13px; color:#56707F; width:140px; vertical-align:top;">${k}</td>
@@ -1150,7 +1157,7 @@ export async function sendStealthHealthOrderAlert(data: {
     <div style="padding: 32px 24px;">
       <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
         <h2 style="font-size: 18px; font-weight: 600; color: #065F46; margin: 0;">New Stealth Health order paid</h2>
-        <p style="font-size: 13px; color: #065F46; margin: 6px 0 0;">${escapeHtml(label)} · ${money(data.total)} CAD</p>
+        <p style="font-size: 13px; color: #065F46; margin: 6px 0 0;">${escapeHtml(label)} · ${money(data.total)} ${currency}</p>
       </div>
 
       <table style="width:100%; border-collapse:collapse; margin-bottom: 20px;"><tbody>
@@ -1167,12 +1174,14 @@ export async function sendStealthHealthOrderAlert(data: {
             <td style="padding:8px 0 2px; font-size:13px; color:#07203A; text-align:right;">${money(data.subtotal)}</td></tr>
         <tr><td style="padding:2px 0; font-size:13px; color:#56707F;">Shipping</td>
             <td style="padding:2px 0; font-size:13px; color:#07203A; text-align:right;">${money(data.shipping)}</td></tr>
-        <tr><td style="padding:6px 0; font-size:15px; font-weight:700; color:#07203A;">Total (CAD)</td>
+        <tr><td style="padding:6px 0; font-size:15px; font-weight:700; color:#07203A;">Total (${currency})</td>
             <td style="padding:6px 0; font-size:15px; font-weight:700; color:#07203A; text-align:right;">${money(data.total)}</td></tr>
       </tbody></table>
 
       <p style="font-size: 13px; color: #56707F; margin: 16px 0 20px; text-align:center;">
-        Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue.
+        ${data.paidVia === "admin"
+          ? "The invoice was marked paid by an admin. The order is now in the fulfillment queue."
+          : "Payment was collected on the Stealth Health checkout. The order is now in the fulfillment queue."}
       </p>
 
       ${
@@ -1193,16 +1202,16 @@ export async function sendStealthHealthOrderAlert(data: {
     const { data: result, error } = await getResend().emails.send({
       from: fromEmail,
       to,
-      subject: `New order: ${label} · ${who} · ${money(data.total)} CAD`,
+      subject,
       html,
     });
     if (error) {
       console.error("Error sending Stealth Health order alert:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, subject };
     }
-    return { success: true, id: result?.id };
+    return { success: true, id: result?.id, subject };
   } catch (error) {
     console.error("Error sending Stealth Health order alert:", error);
-    return { success: false, error: "Failed to send email" };
+    return { success: false, error: "Failed to send email", subject };
   }
 }

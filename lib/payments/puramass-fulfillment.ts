@@ -8,9 +8,9 @@
  *      status `pending_payment`. It stays out of the warehouse queue, the
  *      customer's account and every revenue figure until it is paid.
  *   2. Paid — `materializeStealthHealthFulfillment` (webhook, poller, admin
- *      refresh) flips it to `paid`. The pass that wins that flip emails the
- *      admins; every pass takes the stock, credits the affiliate and books the
- *      Easyship shipment (all idempotent, so a failure on one pass is retried
+ *      refresh) flips it to `paid`. Every pass takes the stock, credits the
+ *      affiliate, books the Easyship shipment and emails the buyer and the
+ *      admins (each email claimed once per order) (all idempotent, so a failure on one pass is retried
  *      by the next — and `healStealthHealthPaidOrders` retries from the cron
  *      for an order no webhook or poll will touch again).
  *      A hand-off made before invoices were created up front has none, so
@@ -483,9 +483,9 @@ export async function materializeStealthHealthFulfillment(
     // Stock on EVERY pass, not only the one that flipped the invoice to paid:
     // a decrement that failed once is retried by the next webhook or poll.
     // Idempotent in the database via invoices.stock_adjusted.
-    const stock = await takeStealthHealthStock(db, invoiceId);
+    await takeStealthHealthStock(db, invoiceId);
 
-    if (firstPaid) await onFirstPaid(db, invoiceId, ledger, stored, stock.unlinked);
+    if (firstPaid) await onFirstPaid(db, invoiceId, ledger, stored);
 
     await creditAffiliate(db, ledger, invoiceId, stored.discount_code_id ?? null);
     // Retried on every pass so a shipment that failed to book once is picked
@@ -494,6 +494,8 @@ export async function materializeStealthHealthFulfillment(
     // Every pass too: the buyer's order confirmation goes out once (claimed on
     // the ledger row), and a send that failed is retried by the next pass.
     await sendConfirmation(db, ledger.id);
+    // Same for the admins' "new order paid" email.
+    await sendAdminAlert(db, ledger.id, firstPaid);
 
     // `created` reads as "this call put the order into the fulfillment queue".
     return { created: firstPaid, invoiceId };
@@ -501,15 +503,6 @@ export async function materializeStealthHealthFulfillment(
     console.error('[stealth-health] materializeStealthHealthFulfillment threw:', err);
     return { created: false };
   }
-}
-
-function formatShipTo(addr: unknown): string | null {
-  if (!addr || typeof addr !== 'object') return null;
-  const a = addr as Record<string, unknown>;
-  const parts = [a.address, a.address2, a.city, a.state, a.zip, a.country]
-    .map((v) => (typeof v === 'string' ? v.trim() : ''))
-    .filter(Boolean);
-  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 /** Who the ledger credits for a Stealth Health stock move. */
@@ -647,55 +640,16 @@ export async function healStealthHealthPaidOrders(
 }
 
 /**
- * Everything that happens once, when an order is first known to be paid:
- * email the admins (flagging any line that took no stock) and tell Klaviyo.
+ * Everything that happens once, when an order is first known to be paid: tell
+ * Klaviyo. (The admin email is claimed per order and retried on every pass —
+ * see `sendAdminAlert`.)
  */
 async function onFirstPaid(
   db: SupabaseClient,
   invoiceId: string,
   ledger: StealthHealthLedgerRow,
   stored: Record<string, any>,
-  stockWarnings: string[],
 ): Promise<void> {
-  // Admin alert.
-  try {
-    const [{ data: inv }, { data: lines }] = await Promise.all([
-      db
-        .from('invoices')
-        .select('invoice_number, subtotal, shipping_cost, total, customer_name, customer_email')
-        .eq('id', invoiceId)
-        .maybeSingle(),
-      db
-        .from('invoice_line_items')
-        .select('description, qty, line_total')
-        .eq('invoice_id', invoiceId),
-    ]);
-    const { getAdminAlertEmails } = await import('@/lib/admin/alert-recipients');
-    const { sendStealthHealthOrderAlert } = await import('@/lib/email');
-    const to = await getAdminAlertEmails(db);
-    await sendStealthHealthOrderAlert({
-      to,
-      invoiceId,
-      invoiceNumber: (inv?.invoice_number as string | null) ?? null,
-      customerName: (inv?.customer_name as string | null) ?? ledger.customer_name ?? null,
-      customerEmail: (inv?.customer_email as string | null) ?? ledger.customer_email ?? null,
-      items: ((lines ?? []) as any[]).map((l) => ({
-        description: String(l.description ?? ''),
-        qty: Number(l.qty) || 0,
-        lineTotal: Number(l.line_total) || 0,
-      })),
-      subtotal: Number(inv?.subtotal) || 0,
-      shipping: Number(inv?.shipping_cost) || 0,
-      shippingCourier: trimOrNull(stored.shipping_courier),
-      total: Number(inv?.total) || 0,
-      discountCode: trimOrNull(stored.discount_code),
-      shipTo: formatShipTo(stored.shipping_address),
-      stockWarnings,
-    });
-  } catch (err) {
-    console.error('[stealth-health] admin order alert failed:', err);
-  }
-
   // Klaviyo "Placed Order" + "Ordered Product". Once, on first payment; keyed
   // on the invoice id so Klaviyo drops any duplicate. Never throws.
   try {
@@ -814,6 +768,25 @@ async function sendConfirmation(db: SupabaseClient, ledgerId: string): Promise<v
     }
   } catch (err) {
     console.error('[stealth-health] order confirmation email failed:', err);
+  }
+}
+
+/**
+ * Email the admin notification list that the order is paid, once (claimed on
+ * the ledger row). Lazily imported and best-effort, like `sendConfirmation`.
+ */
+async function sendAdminAlert(db: SupabaseClient, ledgerId: string, firstPaid: boolean): Promise<void> {
+  try {
+    const { sendStealthHealthPaidAlertOnce } = await import('@/lib/admin/stealth-health-paid-alert');
+    const res = await sendStealthHealthPaidAlertOnce(db, ledgerId, {
+      transition: firstPaid,
+      paidVia: 'checkout',
+    });
+    if (!res.sent && res.reason === 'send_failed') {
+      console.error(`[stealth-health] admin paid-order email for ${ledgerId} failed; will retry`);
+    }
+  } catch (err) {
+    console.error('[stealth-health] admin paid-order email failed:', err);
   }
 }
 
