@@ -80,6 +80,7 @@ function CheckoutRouter() {
   const [loaded, setLoaded] = useState(false);
   const [guestCheckoutEnabled, setGuestCheckoutEnabled] = useState(true);
   const [shippingRatesEnabled, setShippingRatesEnabled] = useState(false);
+  const [addonsEnabled, setAddonsEnabled] = useState(true);
   const [flatShipping, setFlatShipping] = useState(DEFAULT_FLAT_SHIPPING);
   const [freeShipping, setFreeShipping] = useState({ active: false, threshold: 0 });
 
@@ -93,6 +94,7 @@ function CheckoutRouter() {
         if (cancelled) return;
         setGuestCheckoutEnabled(s.guest_checkout_enabled ?? true);
         setShippingRatesEnabled(!!s.puramass_shipping_rates_enabled);
+        setAddonsEnabled(s.checkout_addons_enabled ?? true);
         // `??` + a finite check, not `||`: a saved fee of 0 is a real setting
         // (free flat shipping), not a missing one.
         const flat = Number(s.puramass_flat_shipping ?? DEFAULT_FLAT_SHIPPING);
@@ -120,6 +122,7 @@ function CheckoutRouter() {
     <PuramassCheckoutContent
       guestCheckoutEnabled={guestCheckoutEnabled}
       shippingRatesEnabled={shippingRatesEnabled}
+      addonsEnabled={addonsEnabled}
       flatShipping={flatShipping}
       freeShippingActive={freeShipping.active}
       freeShippingThreshold={freeShipping.threshold}

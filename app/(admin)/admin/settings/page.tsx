@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Settings as SettingsIcon, AlertCircle, AlertTriangle, Check, CreditCard, Send, Mail, Plus,
   Trash2, FileText, ChevronRight, MapPin, Users, ToggleRight, ToggleLeft,
-  Truck, KeyRound, Bell, Clock, ShieldCheck, RefreshCw, Megaphone,
+  Truck, KeyRound, Bell, Clock, ShieldCheck, RefreshCw, Megaphone, Droplets,
 } from 'lucide-react';
 import { supabase, type SiteSettings } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
@@ -190,6 +190,12 @@ export default function SettingsPage() {
     if (isReadOnly || !settings) return;
     setSettings({ ...settings, guest_checkout_enabled: enabled });
     saveSettings({ guest_checkout_enabled: enabled });
+  };
+
+  const handleCheckoutAddonsToggle = (enabled: boolean) => {
+    if (isReadOnly || !settings) return;
+    setSettings({ ...settings, checkout_addons_enabled: enabled });
+    saveSettings({ checkout_addons_enabled: enabled });
   };
 
   const handleEasyshipToggle = (enabled: boolean) => {
@@ -660,6 +666,23 @@ export default function SettingsPage() {
             onClick={() => handleGuestCheckoutToggle(false)}
             icon={<ToggleLeft className="w-5 h-5" />} title="Disabled"
             desc="Account required to check out." />
+        </div>
+      </Card>
+
+      {/* 7a. Checkout Add-ons ("Complete your order" box) */}
+      <Card icon={<Droplets className="w-4 h-4 text-teal-dark" />} title="Checkout Add-ons"
+        subtitle={'The "Complete your order" box on the checkout page — reconstitution help, the WhatsApp link and products flagged as checkout add-ons.'}>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <SelectCard
+            selected={settings.checkout_addons_enabled !== false} disabled={isReadOnly}
+            onClick={() => handleCheckoutAddonsToggle(true)}
+            icon={<ToggleRight className="w-5 h-5" />} title="Shown"
+            desc="Checkout shows the box between contact and order summary." />
+          <SelectCard
+            selected={settings.checkout_addons_enabled === false} disabled={isReadOnly}
+            onClick={() => handleCheckoutAddonsToggle(false)}
+            icon={<ToggleLeft className="w-5 h-5" />} title="Hidden"
+            desc="Checkout shows contact and order summary only." />
         </div>
       </Card>
 

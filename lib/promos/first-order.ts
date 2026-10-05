@@ -98,17 +98,20 @@ export async function isCustomerFirstOrder(
 /**
  * Where a buyer stands with a first-order-only offer.
  *
- *   first    — nothing on record: the offer is theirs.
+ *   first    — no paid order on record: the offer is theirs.
  *   ordered  — a paid order (hosted, or legacy by flag or email) exists.
- *   pending  — no paid order, but a hosted checkout is still awaiting payment.
- *              It consumes the offer for the same reason it does in
- *              `isCustomerFirstOrder`; kept apart from `ordered` only so the
- *              buyer can be told the offer is waiting on that checkout rather
- *              than that it is gone.
  *   unknown  — no identity to check, or a read failed. Callers that decide
  *              money treat this as "not first" (fail closed).
+ *
+ * An unpaid hosted checkout (`payment_pending`) does NOT hold the offer here.
+ * It used to, and it refused buyers their code on a checkout they had only
+ * just started: the hand-off writes its pending row before the buyer reaches
+ * the payment page, so going back to change the cart — or a second attempt
+ * after a failed card — found that row and was turned away. Those rows also
+ * stay pending until the poller hears the link expired, which can be days.
+ * A first-order code is redeemed by paying, so only a paid order uses it up.
  */
-export type FirstOrderStatus = 'first' | 'ordered' | 'pending' | 'unknown';
+export type FirstOrderStatus = 'first' | 'ordered' | 'unknown';
 
 /**
  * Legacy (pre-hosted-checkout) order statuses that mean the order went
@@ -139,8 +142,8 @@ export function escapeLike(value: string): string {
  *
  *   • `customers.has_completed_first_order`, on their own row and on any
  *     account registered to the same email;
- *   • hosted orders (`puramass_orders`) under their customer id or email that
- *     are paid, or still awaiting payment (see `FirstOrderStatus`);
+ *   • paid hosted orders (`puramass_orders`) under their customer id or
+ *     email (an unpaid one does not count — see `FirstOrderStatus`);
  *   • legacy orders (`orders`) placed with the same email.
  *
  * Emails are matched case-insensitively: the hosted ledger stores the address
@@ -154,7 +157,7 @@ export async function firstOrderStatus(
   const email = normalizeOrderEmail(identity.email);
   if (!customerId && !email) return 'unknown';
   const pattern = email ? escapeLike(email) : null;
-  const consuming = [...WELCOME_DISCOUNT_CONSUMING_STATUSES] as string[];
+  const paid = ['paid'];
 
   try {
     const reads = await Promise.all([
@@ -165,10 +168,10 @@ export async function firstOrderStatus(
         ? db.from('customers').select('has_completed_first_order').ilike('email', pattern).limit(5)
         : null,
       customerId
-        ? db.from('puramass_orders').select('status').eq('customer_id', customerId).in('status', consuming).limit(20)
+        ? db.from('puramass_orders').select('status').eq('customer_id', customerId).in('status', paid).limit(20)
         : null,
       pattern
-        ? db.from('puramass_orders').select('status').ilike('customer_email', pattern).in('status', consuming).limit(20)
+        ? db.from('puramass_orders').select('status').ilike('customer_email', pattern).in('status', paid).limit(20)
         : null,
       pattern
         ? db
@@ -197,7 +200,6 @@ export async function firstOrderStatus(
 
     const hosted = [...rows(hostedById), ...rows(hostedByEmail)];
     if (hosted.some((o) => o.status === 'paid')) return 'ordered';
-    if (hosted.length > 0) return 'pending';
     return 'first';
   } catch {
     return 'unknown';

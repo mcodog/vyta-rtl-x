@@ -134,6 +134,9 @@ function shape(data: Record<string, any> | null | undefined) {
     // off, and default on for a store that has not been asked yet.
     cart_fbt_enabled: d.cart_fbt_enabled ?? true,
     cart_similar_enabled: d.cart_similar_enabled ?? true,
+    // The checkout's "Complete your order" box (reconstitution help + add-on
+    // products). Merchandising only, so on unless switched off.
+    checkout_addons_enabled: d.checkout_addons_enabled ?? true,
     easyship_enabled: d.easyship_enabled ?? false,
     easyship_api_key_set: Boolean(d.easyship_api_key),
     shipping_origin: d.shipping_origin ?? {},
@@ -233,6 +236,7 @@ export async function PUT(req: NextRequest) {
     'cart_offer_enabled',
     'cart_fbt_enabled',
     'cart_similar_enabled',
+    'checkout_addons_enabled',
     'klaviyo_enabled',
     'klaviyo_onsite_enabled',
     'klaviyo_server_events_enabled',

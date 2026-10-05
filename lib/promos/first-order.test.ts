@@ -193,12 +193,33 @@ test('a guest who paid before, as a guest, has ordered', async () => {
   assert.equal(await firstOrderStatus(db, { email: 'buyer@example.com' }), 'ordered');
 });
 
-test('a checkout awaiting payment is pending, not ordered', async () => {
+test('a checkout awaiting payment does not use up a first-order code', async () => {
+  // The buyer's own just-started hand-off writes this row — going back to the
+  // checkout must not find it and refuse them their code.
   const { db } = chainDb({ hostedByEmail: [{ status: 'payment_pending' }] });
-  assert.equal(await firstOrderStatus(db, { email: 'buyer@example.com' }), 'pending');
+  assert.equal(await firstOrderStatus(db, { email: 'buyer@example.com' }), 'first');
 });
 
-test('paid beats pending when both exist', async () => {
+test('only paid hosted orders are asked for', async () => {
+  const statuses: unknown[] = [];
+  const { db } = chainDb({});
+  const from = db.from;
+  db.from = (table: string) => {
+    const q = from(table);
+    if (table === 'puramass_orders') {
+      const inner = q.in;
+      q.in = (_c: string, v: unknown) => {
+        statuses.push(v);
+        return inner();
+      };
+    }
+    return q;
+  };
+  await firstOrderStatus(db, { customerId: 'cus_1', email: 'b@example.com' });
+  assert.deepEqual(statuses, [['paid'], ['paid']]);
+});
+
+test('paid counts even beside an unpaid checkout', async () => {
   const { db } = chainDb({
     hostedById: [{ status: 'payment_pending' }],
     hostedByEmail: [{ status: 'paid' }],

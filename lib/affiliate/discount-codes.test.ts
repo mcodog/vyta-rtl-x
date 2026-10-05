@@ -161,11 +161,6 @@ test('a first-order-only code is refused to anyone who has ordered', () => {
     ok: false,
     reason: 'first-order-only',
   });
-  // A checkout awaiting payment holds the offer — and says so.
-  assert.deepEqual(evaluateDiscountCode(code, { ...ctx, firstOrder: 'pending' }), {
-    ok: false,
-    reason: 'first-order-pending',
-  });
   // A read that failed is not a yes.
   assert.deepEqual(evaluateDiscountCode(code, { ...ctx, firstOrder: 'unknown' }), {
     ok: false,
