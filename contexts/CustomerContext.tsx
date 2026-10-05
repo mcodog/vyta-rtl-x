@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import type { Customer } from '@/lib/supabase';
 import { apiFetch } from '@/lib/api-fetch';
 import { identifyVisitor } from '@/lib/customer/activity';
+import { takePostAuthRedirect } from '@/lib/customer/post-auth-redirect';
 
 interface CustomerContextType {
   customer: Customer | null;
@@ -86,6 +87,17 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
         // and forget — it never blocks the sign-in, and it is idempotent, so
         // a token refresh that re-fires SIGNED_IN costs one no-op request.
         void identifyVisitor();
+
+        // Signed in from an email-confirmation link after signing up to view
+        // an order: carry on to that order. The login/signup forms redirect
+        // on their own (and clear this), so leave those pages alone.
+        const path = window.location.pathname;
+        if (path !== '/login' && path !== '/signup') {
+          const pending = takePostAuthRedirect();
+          if (pending && pending !== `${path}${window.location.search}`) {
+            window.location.assign(pending);
+          }
+        }
       }
 
       if (event === 'SIGNED_OUT') {

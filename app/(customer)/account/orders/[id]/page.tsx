@@ -25,7 +25,10 @@ const statusConfig: Record<string, { icon: React.ReactNode; color: string; label
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { customer } = useCustomer();
+  const { customer, isLoading: authLoading } = useCustomer();
+  // Set when the "View Order Details" link from the confirmation email could
+  // not attach this order to the signed-in account.
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<(OrderItem & { product_name?: string; product_strength?: string })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,15 +105,56 @@ export default function OrderDetailPage() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!customer) {
-      router.push('/login');
+      // Come back here (claim token and all) once signed in.
+      const here = `${window.location.pathname}${window.location.search}`;
+      router.replace(`/login?redirect=${encodeURIComponent(here)}`);
       return;
+    }
+    const signedIn = customer;
+
+    // Arrived from the confirmation email: link a guest order to this account
+    // first (the server checks the token was issued for this email address).
+    async function claimFromEmail(): Promise<string | null> {
+      const url = new URL(window.location.href);
+      const claim = url.searchParams.get('claim');
+      if (!claim) return null;
+      let error: string | null = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`/api/customer/orders/${encodeURIComponent(params.id as string)}/claim`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token ?? ''}`,
+          },
+          body: JSON.stringify({ token: claim }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          error = j?.error || 'We couldn’t link this order to your account.';
+        }
+      } catch {
+        error = 'We couldn’t link this order to your account. Please try again.';
+      }
+      // Drop the token from the address bar either way.
+      url.searchParams.delete('claim');
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      setClaimError(error);
+      return error;
     }
 
     async function loadOrder() {
+      const claimFailed = await claimFromEmail();
       const result = await getOrderWithItems(params.id as string);
       if (result) {
-        if (result.order.customer_id !== customer.id) {
+        if (result.order.customer_id !== signedIn.id) {
+          // Show why the emailed link didn't work instead of bouncing away.
+          if (claimFailed) {
+            setLoading(false);
+            return;
+          }
           router.push('/account/dashboard');
           return;
         }
@@ -121,7 +165,7 @@ export default function OrderDetailPage() {
     }
 
     loadOrder();
-  }, [params.id, customer, router]);
+  }, [params.id, customer, authLoading, router]);
 
   if (!customer || loading) {
     return (
@@ -144,7 +188,9 @@ export default function OrderDetailPage() {
               <Beaker className="w-6 sm:w-7 h-6 sm:h-7 text-slate-400" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2 sm:mb-3">Order Not Found</h1>
-            <p className="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6">This order doesn&apos;t exist or you don&apos;t have access to it.</p>
+            <p className="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6">
+              {claimError ?? <>This order doesn&apos;t exist or you don&apos;t have access to it.</>}
+            </p>
             <Link
               href="/account/dashboard"
               className="inline-flex items-center gap-2 text-cyan-600 hover:text-cyan-700 font-semibold text-xs sm:text-sm"

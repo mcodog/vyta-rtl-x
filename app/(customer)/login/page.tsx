@@ -8,6 +8,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useCustomer } from '@/contexts/CustomerContext';
 import PeptideLoader from '@/components/PeptideLoader';
+import {
+  authHref,
+  clearPostAuthRedirect,
+  isOrderRedirect,
+  safeRedirect,
+} from '@/lib/customer/post-auth-redirect';
 
 // Maps common raw Supabase auth error strings to friendly, human copy.
 function friendlyAuthError(message?: string): string {
@@ -31,17 +37,21 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const { customer } = useCustomer();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const redirect = searchParams.get('redirect') || '/';
+  // Same-site paths only — never bounce a sign-in to another origin.
+  const redirect = safeRedirect(searchParams.get('redirect')) || '/';
 
   useEffect(() => {
-    if (customer) router.push(redirect);
+    if (customer) {
+      clearPostAuthRedirect();
+      router.push(redirect);
+    }
   }, [customer, router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,6 +80,7 @@ function LoginContent() {
         await supabase.from('customers').update({ website_accessed: 'aminocan' }).eq('id', data.session.user.id);
         setShowAnimation(true);
         console.log('[Auth] login: redirecting to', redirect);
+        clearPostAuthRedirect();
         setTimeout(() => {
           router.replace(redirect);
         }, 2500);
@@ -111,6 +122,13 @@ function LoginContent() {
             <h2 className="text-xl sm:text-2xl font-bold text-ink mb-1">Welcome Back</h2>
             <p className="text-ink-muted text-xs sm:text-sm">Sign in to your account</p>
           </div>
+
+          {isOrderRedirect(redirect) && (
+            <div className="mb-4 sm:mb-5 p-3 bg-surface border border-line rounded-lg text-xs sm:text-sm text-ink">
+              <span className="font-semibold">Sign in to view your order.</span>{' '}
+              <span className="text-ink-muted">Use the email address your order confirmation was sent to.</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 sm:mb-5 p-2.5 sm:p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 sm:gap-3">
@@ -182,7 +200,7 @@ function LoginContent() {
           <div className="mt-4 sm:mt-5 text-center">
             <p className="text-ink-muted text-xs sm:text-sm">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-teal-dark hover:text-teal-dark font-medium">
+              <Link href={authHref('/signup', redirect, email)} className="text-teal-dark hover:text-teal-dark font-medium">
                 Create one
               </Link>
             </p>

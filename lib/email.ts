@@ -1,6 +1,12 @@
 import { sendMail, defaultFrom } from "@/lib/smtp";
 import { productPath } from '@/lib/products/url';
 import { SITE_URL } from '@/lib/config';
+import type { ConfirmationEmailData } from '@/lib/order-confirmation-data';
+import {
+  orderConfirmationSubject,
+  renderOrderConfirmationHtml,
+  renderOrderConfirmationText,
+} from '@/lib/order-confirmation-email';
 
 /**
  * Storefront / transactional email sends route through the shared custom SMTP
@@ -36,121 +42,27 @@ function getResend() {
 // the authenticated mailbox — many SMTP servers reject a mismatched From.
 const fromEmail = defaultFrom();
 
-interface OrderItem {
-  name: string;
-  quantity: number;
-  /** Price of ONE unit; the row shows the line total (price × quantity). */
-  price: number;
-  strength?: string;
-  /** Storefront pack choice — renders a "Pack of N" / "Single vial" pill. */
-  unit?: 'vial' | 'case';
-  vialsPerBox?: number;
-}
-
-/** Item / Qty / Price rows for an order email's line table. */
-function renderItemRows(items: OrderItem[]): string {
-  return items
-    .map((item) => {
-      const perBox = Number(item.vialsPerBox) > 0 ? Number(item.vialsPerBox) : 10;
-      const unitLabel =
-        item.unit === 'case' ? `Pack of ${perBox}` : item.unit === 'vial' ? 'Single vial' : '';
-      const unitTag = unitLabel
-        ? `<span style="display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 999px; background: #F7FAFB; border: 1px solid #DCE7EB; font-size: 11px; color: #56707F;">${escapeHtml(unitLabel)}</span>`
-        : '';
-      return `<tr>
-          <td style="padding: 12px 0; border-bottom: 1px solid #DCE7EB; font-size: 14px; color: #07203A;">${escapeHtml(item.name)}${item.strength ? ` — ${escapeHtml(item.strength)}` : ''}${unitTag}</td>
-          <td style="padding: 12px 0; border-bottom: 1px solid #DCE7EB; font-size: 14px; color: #56707F; text-align: center;">${Number(item.quantity) || 0}</td>
-          <td style="padding: 12px 0; border-bottom: 1px solid #DCE7EB; font-size: 14px; color: #07203A; text-align: right;">$${(Number(item.price) * Number(item.quantity) || 0).toFixed(2)}</td>
-        </tr>`;
-    })
-    .join('');
-}
-
 /**
- * Send the paid-order confirmation ("Order Confirmed — your payment has been
- * received") to the customer. Sent once automatically when an order is paid
- * (lib/order-confirmation.ts) and on demand from the admin. Never throws;
- * `subject` is returned on every branch so the caller can log it.
+ * Send the paid-order confirmation ("Thank you for your order.") to the
+ * customer. Sent once automatically when an order is paid
+ * (lib/order-confirmation.ts) and on demand from the admin. The template
+ * lives in lib/order-confirmation-email.ts. Never throws; `subject` is
+ * returned on every branch so the caller can log it.
  */
-export async function sendOrderConfirmation(data: {
-  to: string;
-  customerName: string;
-  orderNumber: string;
-  items: OrderItem[];
-  subtotal: number;
-  discount?: number;
-  shipping: number;
-  total: number;
-  currency?: string;
-}): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
-  const {
-    to,
-    customerName,
-    orderNumber,
-    items,
-    discount = 0,
-    currency = "CAD",
-  } = data;
-  const subtotal = Number(data.subtotal) || 0;
-  const shipping = Number(data.shipping) || 0;
-  const total = Number(data.total) || 0;
-  const subject = `Order Confirmed - ${orderNumber}`;
-
-  const html = vytaShell(`
-    <div style="padding: 32px 24px;">
-      <h2 style="font-size: 20px; font-weight: 600; color: #07203A; margin: 0 0 8px;">Order Confirmed</h2>
-      <p style="font-size: 14px; color: #56707F; margin: 0 0 24px;">
-        Hi ${escapeHtml(customerName)}, thank you for your order! Your payment has been received and we're getting your order ready.
-      </p>
-
-      <div style="background: #F7FAFB; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-        <p style="font-size: 12px; color: #56707F; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.05em;">Order Number</p>
-        <p style="font-size: 16px; font-weight: 600; color: #07203A; margin: 0; font-family: monospace;">${escapeHtml(orderNumber)}</p>
-      </div>
-
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-        <thead>
-          <tr>
-            <th style="text-align: left; padding: 8px 0; border-bottom: 2px solid #DCE7EB; font-size: 11px; color: #56707F; text-transform: uppercase; letter-spacing: 0.05em;">Item</th>
-            <th style="text-align: center; padding: 8px 0; border-bottom: 2px solid #DCE7EB; font-size: 11px; color: #56707F; text-transform: uppercase; letter-spacing: 0.05em;">Qty</th>
-            <th style="text-align: right; padding: 8px 0; border-bottom: 2px solid #DCE7EB; font-size: 11px; color: #56707F; text-transform: uppercase; letter-spacing: 0.05em;">Price</th>
-          </tr>
-        </thead>
-        <tbody>${renderItemRows(items)}</tbody>
-      </table>
-
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-        <tr>
-          <td style="font-size: 14px; color: #56707F; padding: 4px 0;">Subtotal</td>
-          <td style="font-size: 14px; color: #07203A; text-align: right; padding: 4px 0;">$${subtotal.toFixed(2)}</td>
-        </tr>
-        ${Number(discount) > 0 ? `
-        <tr>
-          <td style="font-size: 14px; color: #047857; padding: 4px 0;">Discount</td>
-          <td style="font-size: 14px; color: #047857; text-align: right; padding: 4px 0;">-$${Number(discount).toFixed(2)}</td>
-        </tr>` : ''}
-        <tr>
-          <td style="font-size: 14px; color: #56707F; padding: 4px 0;">Shipping</td>
-          <td style="font-size: 14px; color: #07203A; text-align: right; padding: 4px 0;">${shipping > 0 ? `$${shipping.toFixed(2)}` : 'Free'}</td>
-        </tr>
-        <tr>
-          <td style="font-size: 16px; font-weight: 700; color: #07203A; padding: 12px 0 0; border-top: 1px solid #DCE7EB;">Total</td>
-          <td style="font-size: 16px; font-weight: 700; color: #07203A; text-align: right; padding: 12px 0 0; border-top: 1px solid #DCE7EB;">$${total.toFixed(2)} ${escapeHtml(currency)}</td>
-        </tr>
-      </table>
-
-      <p style="font-size: 13px; color: #56707F; margin: 0;">
-        We'll email you again with tracking as soon as it ships. Questions? Just reply to this email.
-      </p>
-    </div>
-  `);
+export async function sendOrderConfirmation(
+  data: ConfirmationEmailData,
+): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
+  const subject = orderConfirmationSubject(data);
+  const html = renderOrderConfirmationHtml(data, SITE_URL);
+  const text = renderOrderConfirmationText(data);
 
   try {
     const { data: result, error } = await getResend().emails.send({
       from: fromEmail,
-      to,
+      to: data.to,
       subject,
       html,
+      text,
     });
 
     if (error) {

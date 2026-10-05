@@ -8,6 +8,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signUpCustomer } from '@/lib/customer/api';
 import { useCustomer } from '@/contexts/CustomerContext';
 import { supabase } from '@/lib/supabase';
+import {
+  authHref,
+  clearPostAuthRedirect,
+  isOrderRedirect,
+  rememberPostAuthRedirect,
+  safeRedirect,
+} from '@/lib/customer/post-auth-redirect';
 
 // Maps common raw Supabase auth error strings to friendly, human copy.
 function friendlyAuthError(message?: string): string {
@@ -32,7 +39,7 @@ function SignupContent() {
   const { customer } = useCustomer();
 
   const [formData, setFormData] = useState({
-    email: '',
+    email: searchParams.get('email') ?? '',
     firstName: '',
     lastName: '',
     password: '',
@@ -50,10 +57,14 @@ function SignupContent() {
   const [emailChecking, setEmailChecking] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const redirect = searchParams.get('redirect') || '/';
+  // Same-site paths only — never bounce a sign-up to another origin.
+  const redirect = safeRedirect(searchParams.get('redirect')) || '/';
 
   useEffect(() => {
-    if (customer) router.push(redirect);
+    if (customer) {
+      clearPostAuthRedirect();
+      router.push(redirect);
+    }
   }, [customer, router, redirect]);
 
   // Debounced email check against the customers table
@@ -136,6 +147,9 @@ function SignupContent() {
     });
 
     if (result.success) {
+      // The email-confirmation link signs them in on the home page; resume
+      // the destination (e.g. their order) from there.
+      rememberPostAuthRedirect(redirect);
       setSuccess(true);
     } else {
       setError(friendlyAuthError(result.error));
@@ -164,7 +178,7 @@ function SignupContent() {
               Click the link to verify your account.
             </p>
             <Link
-              href="/login"
+              href={authHref('/login', redirect, formData.email)}
               className="inline-flex items-center gap-2 text-teal-dark hover:text-teal-dark font-semibold text-sm"
             >
               Go to Login
@@ -200,6 +214,13 @@ function SignupContent() {
             <h2 className="text-xl sm:text-2xl font-bold text-ink mb-1">Create Account</h2>
             <p className="text-ink-muted text-xs sm:text-sm">Join us for exclusive access and order tracking</p>
           </div>
+
+          {isOrderRedirect(redirect) && (
+            <div className="mb-4 sm:mb-5 p-3 bg-surface border border-line rounded-lg text-xs sm:text-sm text-ink">
+              <span className="font-semibold">Create an account to view your order.</span>{' '}
+              <span className="text-ink-muted">Use the email address your order confirmation was sent to — you&apos;ll go straight to your order once you&apos;re signed in.</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 sm:mb-5 p-2.5 sm:p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 sm:gap-3">
@@ -268,7 +289,7 @@ function SignupContent() {
               {emailExists === true && (
                 <p className="mt-1 text-[10px] sm:text-xs text-red-600">
                   An account with this email already exists.{' '}
-                  <Link href="/login" className="underline font-medium">Sign in</Link>
+                  <Link href={authHref('/login', redirect, formData.email)} className="underline font-medium">Sign in</Link>
                 </p>
               )}
             </div>
@@ -386,7 +407,7 @@ function SignupContent() {
           <div className="mt-5 sm:mt-6 text-center">
             <p className="text-ink-muted text-xs sm:text-sm">
               Already have an account?{' '}
-              <Link href="/login" className="text-teal-dark hover:text-teal-dark font-medium">
+              <Link href={authHref('/login', redirect, formData.email)} className="text-teal-dark hover:text-teal-dark font-medium">
                 Sign in
               </Link>
             </p>

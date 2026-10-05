@@ -16,6 +16,18 @@ export interface ConfirmationLine {
   strength?: string;
   unit?: 'vial' | 'case';
   vialsPerBox?: number;
+  /** Catalog product, used to look up the line's image. */
+  productId?: string;
+  /** Absolute product image URL — filled in by the server before sending. */
+  imageUrl?: string;
+}
+
+/** Where the order ships, as the email shows it. */
+export interface ConfirmationShipTo {
+  name: string | null;
+  /** Street, city/province/postal, country — one entry per printed line. */
+  lines: string[];
+  phone: string | null;
 }
 
 export interface ConfirmationEmailData {
@@ -28,6 +40,21 @@ export interface ConfirmationEmailData {
   shipping: number;
   total: number;
   currency: string;
+  /** When the order was paid / placed (timestamp or YYYY-MM-DD). */
+  orderDate?: string;
+  /** Shown in the header strip; the email is only sent for paid orders. */
+  paymentStatus?: string;
+  tax?: number;
+  /**
+   * What discounts took off when they are already baked into the line prices
+   * (Stealth Health) — shown as a note, not subtracted again.
+   */
+  savings?: { amount: number; label: string | null };
+  shipTo?: ConfirmationShipTo;
+  /** Id the customer order page is keyed by (orders.id or the invoice id). */
+  accountOrderId?: string;
+  /** "View Order Details" target — filled in by the server before sending. */
+  viewOrderUrl?: string;
 }
 
 /** One `fulfillment_email_log` row, as much of it as the summary needs. */
@@ -110,6 +137,60 @@ function currencyCode(...candidates: unknown[]): string {
   return 'CAD';
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function productIdOf(v: unknown): string | undefined {
+  const id = str(v);
+  return UUID_RE.test(id) ? id : undefined;
+}
+
+/** A JSONB address (camelCase or snake_case keys) as printable lines. */
+export function shipToFrom(
+  raw: unknown,
+  fallback: { name?: unknown; phone?: unknown } = {},
+): ConfirmationShipTo | undefined {
+  let addr: Record<string, any> | null = null;
+  if (raw && typeof raw === 'object') addr = raw as Record<string, any>;
+  else if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+    try {
+      addr = JSON.parse(raw);
+    } catch {
+      addr = null;
+    }
+  }
+  if (!addr) return undefined;
+
+  const street = [str(addr.address ?? addr.address1 ?? addr.line1), str(addr.address2 ?? addr.line2)]
+    .filter(Boolean)
+    .join(', ');
+  const region = [str(addr.state ?? addr.province), str(addr.zip ?? addr.postalCode ?? addr.postal_code)]
+    .filter(Boolean)
+    .join(' ');
+  const cityLine = [str(addr.city), region].filter(Boolean).join(', ');
+  const country = str(addr.country);
+  const lines = [street, cityLine, country === 'CA' ? 'Canada' : country === 'US' ? 'United States' : country]
+    .filter(Boolean);
+  if (lines.length === 0) return undefined;
+
+  const name =
+    [str(addr.firstName ?? addr.first_name), str(addr.lastName ?? addr.last_name)].filter(Boolean).join(' ') ||
+    str(addr.name) ||
+    str(fallback.name) ||
+    null;
+  const phone = str(addr.phone) || str(fallback.phone) || null;
+  return { name, lines, phone };
+}
+
+/**
+ * Split a Stealth Health invoice description ("GLP-3 20mg — Pack of 5") into
+ * the product name and the pack it was sold as.
+ */
+function splitPackSuffix(description: string): { name: string; pack: number | null } {
+  const m = description.match(/^(.*?)\s+[—-]\s+(?:Pack of (\d+)|Single vial)\s*$/i);
+  if (!m) return { name: description, pack: null };
+  return { name: m[1].trim() || description, pack: m[2] ? Number(m[2]) : 1 };
+}
+
 /**
  * Payload for a storefront order. `order.items` are the priced JSONB lines
  * (`{ name, quantity, price, strength?, unit?, vials_per_box? }`); the server
@@ -133,6 +214,8 @@ export function storefrontConfirmationData(order: Record<string, any>): Confirma
       if (it.unit === 'vial' || it.unit === 'case') line.unit = it.unit;
       const perBox = num(it.vials_per_box);
       if (perBox > 0) line.vialsPerBox = perBox;
+      const productId = productIdOf(it.product_id ?? it.id);
+      if (productId) line.productId = productId;
       return line;
     });
 
@@ -150,7 +233,7 @@ export function storefrontConfirmationData(order: Record<string, any>): Confirma
       .filter(Boolean)
       .join(' ') || 'there';
 
-  return {
+  const data: ConfirmationEmailData = {
     to,
     customerName,
     orderNumber: str(order.order_number) || String(order.id ?? ''),
@@ -161,12 +244,19 @@ export function storefrontConfirmationData(order: Record<string, any>): Confirma
     total: round2(total),
     currency: currencyCode(order.currency),
   };
+  const orderDate = str(order.payment_confirmed_at) || str(order.created_at);
+  if (orderDate) data.orderDate = orderDate;
+  const shipTo = shipToFrom(order.shipping_address, { phone: order.phone });
+  if (shipTo) data.shipTo = shipTo;
+  if (order.id) data.accountOrderId = String(order.id);
+  return data;
 }
 
 /**
  * Payload for a Stealth Health hand-off. The invoice carries the number the
  * buyer sees and the money; prices on its lines already have any discount
- * applied, so there is no separate discount row.
+ * applied, so there is no separate discount row — what the discounts saved is
+ * reported as `savings` instead.
  */
 export function stealthHealthConfirmationData(
   ledger: Record<string, any>,
@@ -176,17 +266,29 @@ export function stealthHealthConfirmationData(
   const to = deliverableEmail(ledger?.customer_email) ?? deliverableEmail(invoice?.customer_email);
   if (!to) return null;
 
-  const items: ConfirmationLine[] = (lines ?? []).map((l) => ({
-    name: str(l.description) || 'Item',
-    quantity: qty(l.qty),
-    price: round2(num(l.unit_price)),
-  }));
+  const items: ConfirmationLine[] = (lines ?? []).map((l) => {
+    const description = str(l.description) || 'Item';
+    const { name, pack } = splitPackSuffix(description);
+    const perUnit = num(l.vials_per_unit) || pack || 0;
+    const line: ConfirmationLine = {
+      name: pack != null ? name : description,
+      quantity: qty(l.qty),
+      price: round2(num(l.unit_price)),
+    };
+    if (l.price_type === 'vial' || pack === 1) line.unit = 'vial';
+    else if (l.price_type === 'box' || (pack ?? 0) > 1) line.unit = 'case';
+    if (line.unit === 'case' && perUnit > 1) line.vialsPerBox = perUnit;
+    const productId = productIdOf(l.product_id);
+    if (productId) line.productId = productId;
+    return line;
+  });
   const lineSum = items.reduce((s, l) => s + l.price * l.quantity, 0);
   const shipping = num(invoice.shipping_cost);
+  const tax = num(invoice.tax_total);
   const subtotal = invoice.subtotal != null ? num(invoice.subtotal) : lineSum;
-  const total = invoice.total != null ? num(invoice.total) : subtotal + shipping;
+  const total = invoice.total != null ? num(invoice.total) : subtotal + shipping + tax;
 
-  return {
+  const data: ConfirmationEmailData = {
     to,
     customerName: str(ledger.customer_name) || str(invoice.customer_name) || 'there',
     orderNumber: str(invoice.invoice_number) || str(ledger.partner_reference) || String(ledger.id ?? ''),
@@ -197,6 +299,29 @@ export function stealthHealthConfirmationData(
     total: round2(total),
     currency: currencyCode(invoice.currency, ledger.currency),
   };
+
+  const orderDate = str(invoice.paid_at) || str(ledger.paid_at) || str(invoice.created_at);
+  if (orderDate) data.orderDate = orderDate;
+  if (invoice.status === 'paid' || ledger.status === 'paid') data.paymentStatus = 'Paid';
+  data.tax = round2(tax);
+
+  const saved = num(ledger.ad_discount_cents) / 100;
+  if (saved > 0) {
+    const parts = [
+      str(ledger.discount_code) && num(ledger.discount_code_percent) > 0 ? str(ledger.discount_code) : '',
+      num(ledger.ad_discount_percent) > 0 ? `${num(ledger.ad_discount_percent)}% first-order discount` : '',
+      num(ledger.cart_offer_percent) > 0 ? `${num(ledger.cart_offer_percent)}% limited-time offer` : '',
+    ].filter(Boolean);
+    data.savings = { amount: round2(saved), label: parts.length ? parts.join(' + ') : null };
+  }
+
+  const shipTo = shipToFrom(ledger.shipping_address, {
+    name: ledger.customer_name || invoice.customer_name,
+    phone: ledger.customer_phone || invoice.customer_phone,
+  });
+  if (shipTo) data.shipTo = shipTo;
+  if (invoice.id) data.accountOrderId = String(invoice.id);
+  return data;
 }
 
 /** Fold a send history (any order) into the summary the admin screens show. */

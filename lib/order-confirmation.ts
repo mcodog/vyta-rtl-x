@@ -22,6 +22,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendOrderConfirmation } from '@/lib/email';
+import { SITE_URL } from '@/lib/config';
+import { buildViewOrderUrl } from '@/lib/customer/order-link';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import {
   isStorefrontCheckoutSource,
@@ -158,7 +160,9 @@ async function loadStealthHealth(
       db.from('invoices').select('*').eq('id', ledger.invoice_id).maybeSingle(),
       db
         .from('invoice_line_items')
-        .select('description, qty, unit_price')
+        // `*`: product_id / price_type / vials_per_unit arrive with later
+        // migrations, and naming them would fail the read before those ran.
+        .select('*')
         .eq('invoice_id', ledger.invoice_id),
     ]);
     invoice = inv.data ?? null;
@@ -212,11 +216,57 @@ async function release(db: SupabaseClient, table: ClaimTable, id: string): Promi
   if (error) console.error(`[order-confirmation] releasing ${table} ${id} failed:`, error);
 }
 
+/** Public URL for a catalog image path (spaces and all), or null. */
+function absoluteImageUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const url = raw.trim();
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${SITE_URL}${encodeURI(url.startsWith('/') ? url : `/${url}`)}`;
+}
+
+/**
+ * Fill in what the pure payload can't know: each line's product image and
+ * the "View Order Details" link (sign in / sign up, then the order page).
+ * Best-effort — the email still goes out without either.
+ */
+async function enrichForEmail(
+  db: SupabaseClient,
+  data: ConfirmationEmailData,
+): Promise<ConfirmationEmailData> {
+  const out: ConfirmationEmailData = { ...data, items: data.items.map((i) => ({ ...i })) };
+
+  const ids = [...new Set(out.items.map((i) => i.productId).filter((id): id is string => !!id))];
+  if (ids.length > 0) {
+    try {
+      const { data: products } = await db.from('products').select('id, image_url').in('id', ids);
+      const byId = new Map<string, string | null>(
+        (products ?? []).map((p: any) => [String(p.id), absoluteImageUrl(p.image_url)]),
+      );
+      for (const item of out.items) {
+        const url = item.productId ? byId.get(item.productId) : null;
+        if (url) item.imageUrl = url;
+      }
+    } catch (err) {
+      console.error('[order-confirmation] product image lookup failed:', err);
+    }
+  }
+
+  if (out.accountOrderId) {
+    try {
+      out.viewOrderUrl = await buildViewOrderUrl(db, SITE_URL, out.accountOrderId, out.to);
+    } catch (err) {
+      console.error('[order-confirmation] building the order link failed:', err);
+    }
+  }
+  return out;
+}
+
 async function deliver(
+  db: SupabaseClient,
   data: ConfirmationEmailData,
 ): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
   try {
-    return await sendOrderConfirmation(data);
+    return await sendOrderConfirmation(await enrichForEmail(db, data));
   } catch (err: any) {
     return {
       success: false,
@@ -268,7 +318,7 @@ async function claimAndSend(
   if (claimed === 'not_migrated') return { sent: false, reason: 'not_migrated' };
   if (claimed === 'lost') return { sent: false, reason: 'already_sent' };
 
-  const res = await deliver(data);
+  const res = await deliver(db, data);
   await logAttempt(db, {
     ...link,
     to_email: data.to,
@@ -515,7 +565,7 @@ export async function sendConfirmationManually(
     return { ok: false, status: 422, error: 'This order has no real email address to send to.' };
   }
 
-  const res = await deliver(data);
+  const res = await deliver(db, data);
   await logAttempt(db, {
     ...link,
     to_email: data.to,
