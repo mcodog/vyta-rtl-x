@@ -130,6 +130,8 @@ export interface ProductDetailClientProps {
   showSpecs?: boolean;
   /** Admin → Settings: the Key Research Benefits list. */
   showBenefits?: boolean;
+  /** Admin → Settings: the Quality Certifications panel. */
+  showCertifications?: boolean;
 }
 
 export default function ProductDetailClient({
@@ -140,6 +142,7 @@ export default function ProductDetailClient({
   showReviews = true,
   showSpecs = true,
   showBenefits = true,
+  showCertifications = true,
 }: ProductDetailClientProps) {
   // Everything below reads `product`; the server render is the first paint and
   // the volatile fields are refreshed in place. See useLiveProduct above.
@@ -758,51 +761,53 @@ export default function ProductDetailClient({
           )}
 
           {/* Quality Certifications */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-10 sm:mb-16"
-          >
-            <div className="bg-ink rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
-              <h2 className="text-base sm:text-lg md:text-xl font-bold text-white mb-4 sm:mb-6 text-center">Quality Certifications</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-                <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
-                  <div className="w-10 sm:w-12 h-10 sm:h-12 bg-teal/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
-                    <Beaker className="w-5 sm:w-6 h-5 sm:h-6 text-teal-light" />
+          {showCertifications && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-10 sm:mb-16"
+            >
+              <div className="bg-ink rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
+                <h2 className="text-base sm:text-lg md:text-xl font-bold text-white mb-4 sm:mb-6 text-center">Quality Certifications</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                  <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
+                    <div className="w-10 sm:w-12 h-10 sm:h-12 bg-teal/20 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
+                      <Beaker className="w-5 sm:w-6 h-5 sm:h-6 text-teal-light" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">99%+ Purity</h3>
+                    <p className="text-[10px] sm:text-xs text-white/50">Third-party verified</p>
                   </div>
-                  <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">99%+ Purity</h3>
-                  <p className="text-[10px] sm:text-xs text-white/50">Third-party verified</p>
+                  <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
+                    <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
+                      <Award className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">GMP Certified</h3>
+                    <p className="text-[10px] sm:text-xs text-white/50">Good Manufacturing</p>
+                  </div>
+                  <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
+                    <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
+                      <BadgeCheck className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">ISO Compliant</h3>
+                    <p className="text-[10px] sm:text-xs text-white/50">Intl standards</p>
+                  </div>
+                  <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
+                    <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
+                      <Shield className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">COA Available</h3>
+                    <p className="text-[10px] sm:text-xs text-white/50">Certificate of Analysis</p>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
-                  <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
-                    <Award className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">GMP Certified</h3>
-                  <p className="text-[10px] sm:text-xs text-white/50">Good Manufacturing</p>
-                </div>
-                <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
-                  <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
-                    <BadgeCheck className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">ISO Compliant</h3>
-                  <p className="text-[10px] sm:text-xs text-white/50">Intl standards</p>
-                </div>
-                <div className="flex flex-col items-center text-center p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10">
-                  <div className="w-10 sm:w-12 h-10 sm:h-12 bg-white/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-2 sm:mb-3">
-                    <Shield className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-white mb-0.5 sm:mb-1 text-xs sm:text-sm">COA Available</h3>
-                  <p className="text-[10px] sm:text-xs text-white/50">Certificate of Analysis</p>
+                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 text-center">
+                  <p className="text-xs sm:text-sm text-white/50">
+                    <span className="font-medium text-white/70">For Research Purposes Only</span> - Not for human consumption.
+                  </p>
                 </div>
               </div>
-              <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-white/10 text-center">
-                <p className="text-xs sm:text-sm text-white/50">
-                  <span className="font-medium text-white/70">For Research Purposes Only</span> - Not for human consumption.
-                </p>
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
           {/* Related Products */}
           {relatedProducts.length > 0 && (

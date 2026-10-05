@@ -356,6 +356,8 @@ export interface SiteSettings {
   product_specs_enabled: boolean;
   /** Show the Key Research Benefits list on product pages. */
   product_benefits_enabled: boolean;
+  /** Show the Quality Certifications panel on product pages. */
+  product_certifications_enabled: boolean;
   // Easyship shipping config
   easyship_enabled: boolean;
   easyship_api_key_set: boolean; // never the key itself
