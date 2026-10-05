@@ -126,6 +126,10 @@ export interface ProductDetailClientProps {
   showTrustBadges?: boolean;
   /** Admin → Settings: the Customer Reviews section. */
   showReviews?: boolean;
+  /** Admin → Settings: the Purity / Strength / Form tiles. */
+  showSpecs?: boolean;
+  /** Admin → Settings: the Key Research Benefits list. */
+  showBenefits?: boolean;
 }
 
 export default function ProductDetailClient({
@@ -134,6 +138,8 @@ export default function ProductDetailClient({
   batWater,
   showTrustBadges = true,
   showReviews = true,
+  showSpecs = true,
+  showBenefits = true,
 }: ProductDetailClientProps) {
   // Everything below reads `product`; the server render is the first paint and
   // the volatile fields are refreshed in place. See useLiveProduct above.
@@ -380,20 +386,22 @@ export default function ProductDetailClient({
               </h1>
 
               {/* Product Specs */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
-                <div className="bg-surface rounded-lg sm:rounded-xl p-3 sm:p-4 text-center border border-line">
-                  <div className="text-[9px] sm:text-[10px] text-ink-muted uppercase tracking-wider mb-1">Purity</div>
-                  <div className="text-teal-dark font-bold text-sm sm:text-base">{product.purity}</div>
+              {showSpecs && (
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                  <div className="bg-surface rounded-lg sm:rounded-xl p-3 sm:p-4 text-center border border-line">
+                    <div className="text-[9px] sm:text-[10px] text-ink-muted uppercase tracking-wider mb-1">Purity</div>
+                    <div className="text-teal-dark font-bold text-sm sm:text-base">{product.purity}</div>
+                  </div>
+                  <div className="bg-surface rounded-lg sm:rounded-xl p-3 sm:p-4 text-center border border-line">
+                    <div className="text-[9px] sm:text-[10px] text-ink-muted uppercase tracking-wider mb-1">Strength</div>
+                    <div className="text-ink font-bold text-sm sm:text-base">{product.strength}</div>
+                  </div>
+                  <div className="bg-surface rounded-lg sm:rounded-xl p-3 sm:p-4 text-center border border-line">
+                    <div className="text-[9px] sm:text-[10px] text-ink-muted uppercase tracking-wider mb-1">Form</div>
+                    <div className="text-ink font-bold text-sm sm:text-base">{product.form}</div>
+                  </div>
                 </div>
-                <div className="bg-surface rounded-lg sm:rounded-xl p-3 sm:p-4 text-center border border-line">
-                  <div className="text-[9px] sm:text-[10px] text-ink-muted uppercase tracking-wider mb-1">Strength</div>
-                  <div className="text-ink font-bold text-sm sm:text-base">{product.strength}</div>
-                </div>
-                <div className="bg-surface rounded-lg sm:rounded-xl p-3 sm:p-4 text-center border border-line">
-                  <div className="text-[9px] sm:text-[10px] text-ink-muted uppercase tracking-wider mb-1">Form</div>
-                  <div className="text-ink font-bold text-sm sm:text-base">{product.form}</div>
-                </div>
-              </div>
+              )}
 
               {/* COA Button */}
               {product.coa_url && product.coa_url.length > 0 && (
@@ -422,7 +430,7 @@ export default function ProductDetailClient({
                   still read the way it always was. Each point goes through the
                   site's inline syntax, so a point can carry a bold phrase or a
                   link to the study behind it. */}
-              {benefitPoints.length > 0 && (
+              {showBenefits && benefitPoints.length > 0 && (
                 <div className="mb-4 sm:mb-6">
                   <h3 className="font-semibold text-ink mb-2 sm:mb-3 text-sm">Key Research Benefits</h3>
                   <ul className="space-y-1.5 sm:space-y-2">

@@ -37,6 +37,10 @@ export interface SiteConfig {
   product_trust_badges_enabled: boolean;
   /** Product page: the Customer Reviews section. */
   product_reviews_enabled: boolean;
+  /** Product page: the Purity / Strength / Form tiles under the name. */
+  product_specs_enabled: boolean;
+  /** Product page: the Key Research Benefits list. */
+  product_benefits_enabled: boolean;
 }
 
 function cleanString(v: unknown): string | null {
@@ -87,6 +91,8 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   tracking_consent_required: true,
   product_trust_badges_enabled: true,
   product_reviews_enabled: true,
+  product_specs_enabled: true,
+  product_benefits_enabled: true,
 };
 
 /**
@@ -123,6 +129,8 @@ export function shapeSiteConfig(row: Record<string, any> | null | undefined): Si
     tracking_consent_required: d.tracking_consent_required === false ? false : true,
     product_trust_badges_enabled: d.product_trust_badges_enabled !== false,
     product_reviews_enabled: d.product_reviews_enabled !== false,
+    product_specs_enabled: d.product_specs_enabled !== false,
+    product_benefits_enabled: d.product_benefits_enabled !== false,
   };
 }
 
