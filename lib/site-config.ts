@@ -44,6 +44,9 @@ export interface SiteConfig {
   /** Product page: the dark Quality Certifications panel (incl. the
    *  research-use line). */
   product_certifications_enabled: boolean;
+  /** Product page: the 99% Purity / Third-Party Tested / COA / Ships from
+   *  Canada row under Add to Cart. */
+  product_cta_badges_enabled: boolean;
 }
 
 function cleanString(v: unknown): string | null {
@@ -97,6 +100,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   product_specs_enabled: true,
   product_benefits_enabled: true,
   product_certifications_enabled: true,
+  product_cta_badges_enabled: true,
 };
 
 /**
@@ -136,6 +140,7 @@ export function shapeSiteConfig(row: Record<string, any> | null | undefined): Si
     product_specs_enabled: d.product_specs_enabled !== false,
     product_benefits_enabled: d.product_benefits_enabled !== false,
     product_certifications_enabled: d.product_certifications_enabled !== false,
+    product_cta_badges_enabled: d.product_cta_badges_enabled !== false,
   };
 }
 

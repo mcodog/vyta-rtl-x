@@ -142,6 +142,7 @@ export default async function ProductPage(
         showSpecs={cfg.product_specs_enabled}
         showBenefits={cfg.product_benefits_enabled}
         showCertifications={cfg.product_certifications_enabled}
+        showCtaBadges={cfg.product_cta_badges_enabled}
       />
     </>
   );

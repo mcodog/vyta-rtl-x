@@ -358,6 +358,8 @@ export interface SiteSettings {
   product_benefits_enabled: boolean;
   /** Show the Quality Certifications panel on product pages. */
   product_certifications_enabled: boolean;
+  /** Show the badge row under Add to Cart on product pages. */
+  product_cta_badges_enabled: boolean;
   // Easyship shipping config
   easyship_enabled: boolean;
   easyship_api_key_set: boolean; // never the key itself
