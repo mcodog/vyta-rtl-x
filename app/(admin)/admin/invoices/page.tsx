@@ -16,6 +16,7 @@ import {
 } from '@/lib/admin/invoices';
 import { INVOICE_STATUS_META, INVOICE_STATUSES } from '@/lib/admin/invoice-status';
 import { formatMoney, normalizeCurrency } from '@/lib/currency';
+import { addDays, appDayKey, formatAppDate, todayInAppTz } from '@/lib/datetime';
 import type { InvoiceStatus, AgingBucket } from '@/lib/supabase';
 import PricelistsTab from '@/components/admin/PricelistsTab';
 import EasyshipSyncDialog from '@/components/admin/EasyshipSyncDialog';
@@ -344,11 +345,9 @@ export default function InvoicesIndex() {
   // Group the invoices on this page by issue date, so the table shows a
   // readable divider each time the day changes.
   const invoiceGroups = React.useMemo(() => {
-    const today = new Date();
-    const todayKey = today.toDateString();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const yesterdayKey = yesterday.toDateString();
+    // Day keys are New York calendar days, whatever zone the viewer is in.
+    const todayKey = todayInAppTz();
+    const yesterdayKey = addDays(todayKey, -1);
 
     const groups: {
       key: string;
@@ -361,15 +360,14 @@ export default function InvoicesIndex() {
     const index = new Map<string, number>();
 
     for (const inv of rows) {
-      const d = new Date(inv.issue_date);
-      const key = d.toDateString();
+      const key = appDayKey(inv.issue_date) ?? String(inv.issue_date);
       let gi = index.get(key);
       if (gi === undefined) {
         gi = groups.length;
         index.set(key, gi);
         groups.push({
           key,
-          label: d.toLocaleDateString(undefined, {
+          label: formatAppDate(key, {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
@@ -508,7 +506,7 @@ export default function InvoicesIndex() {
           )}
         </td>
         <td className={`px-5 py-4 text-sm whitespace-nowrap ${isOverdueRow ? 'text-red-600 font-medium' : 'text-ink-muted'}`}>
-          {new Date(inv.due_date).toLocaleDateString()}
+          {formatAppDate(inv.due_date, {})}
         </td>
         <td className="px-5 py-4 text-sm font-semibold text-ink whitespace-nowrap">
           <InvoiceTotalAmount invoice={inv} puramass={pm} align="left" />
@@ -1103,12 +1101,12 @@ function InvoicePreviewCard({
         )}
         <div className="flex justify-between">
           <span className="text-ink-muted">Issued</span>
-          <span className="text-ink">{new Date(invoice.issue_date).toLocaleDateString()}</span>
+          <span className="text-ink">{formatAppDate(invoice.issue_date, {})}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-ink-muted">Due</span>
           <span className={effective === 'overdue' ? 'text-red-600 font-medium' : 'text-ink'}>
-            {new Date(invoice.due_date).toLocaleDateString()}
+            {formatAppDate(invoice.due_date, {})}
           </span>
         </div>
         <div className="flex justify-between">

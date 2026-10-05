@@ -25,6 +25,7 @@
  * Nothing here throws — a failure must never break a webhook ACK, a poll, or
  * the checkout redirect.
  */
+import { todayInAppTz } from '@/lib/datetime';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAffiliateCommission } from '@/lib/affiliate/commission';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
@@ -177,6 +178,8 @@ async function insertInvoice(
   row: Record<string, unknown>,
   courierId: string | null,
 ): Promise<{ id: string; invoice_number: string | null } | null> {
+  // Stamp the New York day; the column's CURRENT_DATE default is UTC.
+  row = { issue_date: todayInAppTz(), ...row };
   let { data, error } = await db
     .from('invoices')
     .insert(courierId ? { ...row, easyship_courier_id: courierId } : row)

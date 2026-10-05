@@ -34,6 +34,7 @@ import OrderManagementPanel from '@/components/admin/OrderManagementPanel';
 import LiveShipmentTracking from '@/components/admin/LiveShipmentTracking';
 import InvoiceEasyshipPanel from '@/components/admin/InvoiceEasyshipPanel';
 import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
+import { formatAppDate } from '@/lib/datetime';
 
 const statusColors: Record<InvoiceStatus, string> = {
   draft: 'bg-gray-500/10 text-gray-600 border-gray-300',
@@ -827,14 +828,14 @@ export default function InvoiceDetailPage() {
             </div>
             <div>
               <p className="text-xs text-ink-muted mb-1">Issue Date</p>
-              <p className="text-sm text-ink">{new Date(invoice.issue_date).toLocaleDateString()}</p>
+              <p className="text-sm text-ink">{formatAppDate(invoice.issue_date, {})}</p>
             </div>
             <div>
               <p className="text-xs text-ink-muted mb-1">Due Date</p>
               <p className={`text-sm font-medium ${
                 invoice.status === 'overdue' ? 'text-red-500' : 'text-ink'
               }`}>
-                {new Date(invoice.due_date).toLocaleDateString()}
+                {formatAppDate(invoice.due_date, {})}
               </p>
             </div>
           </div>

@@ -4,6 +4,7 @@
 //
 // To generate an actual PDF file, integrate @sparticuz/chromium +
 // puppeteer-core and call page.pdf() with this HTML as the content.
+import { formatAppDate } from '@/lib/datetime';
 import {
   formatAddressLines,
 } from '@/lib/payments/puramass-address';
@@ -22,9 +23,7 @@ export function formatInvoiceCurrency(n: number, currency: 'CAD' | 'USD' = 'CAD'
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-CA', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
+  return formatAppDate(d, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-CA', '');
 }
 
 export interface RenderInvoiceHtmlOptions {

@@ -16,6 +16,7 @@ import { getOrCreateInvoiceForOrder } from '@/lib/admin/invoices';
 import { useUserRole } from '../layout';
 import { canEdit, canDelete } from '@/lib/permissions';
 import { printPdfBlob } from '@/lib/print-pdf';
+import { APP_TIME_ZONE, addDays, appDayKey, formatAppDate, todayInAppTz } from '@/lib/datetime';
 import BulkShipmentDialog, { type SkippedOrder } from './_components/BulkShipmentDialog';
 
 // A selected order fails the bulk *create shipment* check when it can't have a
@@ -347,11 +348,9 @@ export default function AdminOrders() {
   // Group the (newest-first) orders by calendar day so the table can show a
   // readable divider each time the day changes.
   const orderGroups = React.useMemo(() => {
-    const today = new Date();
-    const todayKey = today.toDateString();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const yesterdayKey = yesterday.toDateString();
+    // Day keys are New York calendar days, whatever zone the viewer is in.
+    const todayKey = todayInAppTz();
+    const yesterdayKey = addDays(todayKey, -1);
 
     const groups: {
       key: string;
@@ -364,15 +363,14 @@ export default function AdminOrders() {
     const index = new Map<string, number>();
 
     for (const order of filteredOrders) {
-      const d = new Date(order.created_at);
-      const key = d.toDateString();
+      const key = appDayKey(order.created_at) ?? String(order.created_at);
       let gi = index.get(key);
       if (gi === undefined) {
         gi = groups.length;
         index.set(key, gi);
         groups.push({
           key,
-          label: d.toLocaleDateString(undefined, {
+          label: formatAppDate(key, {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
@@ -510,7 +508,7 @@ export default function AdminOrders() {
           </div>
         )}
       </td>
-      <td className="px-5 py-4 text-sm text-ink-muted">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+      <td className="px-5 py-4 text-sm text-ink-muted">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: APP_TIME_ZONE })}</td>
       <td className="px-5 py-4">
         <div className="flex items-center gap-2">
           {canEdit(userRole) ? (

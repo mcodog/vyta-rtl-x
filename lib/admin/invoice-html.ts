@@ -9,6 +9,7 @@
  * `lib/invoice-pdf.ts` so the browser view, the pdfkit attachment, and
  * the list badges never disagree.
  */
+import { formatAppDate } from '@/lib/datetime';
 import type { InvoiceStatus } from '@/lib/types/ecommerce';
 import { INVOICE_STATUS_META, effectiveStatus } from './invoice-status';
 
@@ -99,13 +100,7 @@ function formatMoney(n: number, currency: string): string {
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return escape(iso);
-  return d.toLocaleDateString('en-CA', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  return formatAppDate(iso, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-CA', escape(iso));
 }
 
 function customerBlock(inv: InvoiceHtmlInvoice): {

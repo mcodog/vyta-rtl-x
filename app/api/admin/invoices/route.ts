@@ -1,3 +1,4 @@
+import { todayInAppTz } from '@/lib/datetime';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { InvoiceStatus, EasyshipHandover } from '@/lib/types/ecommerce';
@@ -345,6 +346,8 @@ export async function POST(req: NextRequest) {
     customer_name: customer_name ?? null,
     customer_email: customer_email ?? null,
     customer_phone: customer_phone ?? null,
+    // Stamp the New York day; the column's CURRENT_DATE default is UTC.
+    issue_date: todayInAppTz(),
     due_date: due_date ?? undefined,
     notes: notes ?? null,
     currency: currency === 'USD' ? 'USD' : 'CAD',

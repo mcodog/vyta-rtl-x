@@ -1,5 +1,6 @@
 'use client';
 
+import { todayInAppTz } from '@/lib/datetime';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search, Plus, X, ChevronDown, ChevronUp, Check, Loader2,
@@ -96,7 +97,7 @@ export default function PurchaseOrderForm({ mode, po, backorder, onUpdated }: Pr
 
   // ---- Meta ----
   const [notes, setNotes] = useState(po?.notes ?? '');
-  const [orderDate, setOrderDate] = useState(po?.order_date ? po.order_date.slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const [orderDate, setOrderDate] = useState(po?.order_date ? po.order_date.slice(0, 10) : todayInAppTz());
   const [expectedDate, setExpectedDate] = useState(po?.expected_date ? po.expected_date.slice(0, 10) : '');
   const [createAsFulfilled, setCreateAsFulfilled] = useState(false);
 

@@ -4,6 +4,8 @@
  * the system works even when site_settings template columns are NULL.
  */
 
+import { formatAppDate } from '@/lib/datetime';
+
 export interface InvoiceEmailInvoice {
   invoice_number: string;
   customer_name?: string | null;
@@ -71,9 +73,7 @@ function money(v: number | string | null | undefined, currency?: string | null):
 }
 
 function date(v: string | null | undefined): string {
-  if (!v) return '—';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+  return formatAppDate(v, {});
 }
 
 export function buildInvoiceMergeVars(inv: InvoiceEmailInvoice): Record<string, string> {

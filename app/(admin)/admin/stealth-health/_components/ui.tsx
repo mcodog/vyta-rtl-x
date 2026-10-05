@@ -5,6 +5,7 @@
  * dashboard. Kept in one file so the KPI cards, money formatting and status
  * chips read the same on the overview, the invoice list and the invoice page.
  */
+import { formatAppDate } from '@/lib/datetime';
 import React from 'react';
 import { formatMoney, type Currency } from '@/lib/currency';
 import {
@@ -32,12 +33,7 @@ export function money(cents: number, currency: Currency = 'USD'): string {
 export const fmtInt = (n: number) => Number(n ?? 0).toLocaleString();
 
 export function fmtDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  // Date-only values are stored as YYYY-MM-DD; render them as the calendar day
-  // they are rather than shifting them by the viewer's timezone.
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(d);
-  const dt = new Date(dateOnly ? `${d}T12:00:00` : d);
-  return Number.isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString();
+  return formatAppDate(d, {});
 }
 
 export function KpiCard({ label, value, sub, icon: Icon, tint = 'neutral', hint }: {

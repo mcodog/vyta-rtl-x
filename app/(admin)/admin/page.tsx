@@ -17,6 +17,7 @@ import FulfillmentAlerts from './_components/FulfillmentAlerts';
 import { useUserRole } from './layout';
 import { GUIDES } from './guides/_content';
 import EarningsByChannel from '@/components/admin/EarningsByChannel';
+import { formatAppDate } from '@/lib/datetime';
 
 // Status is conveyed by a small coloured dot beside a plain-text label rather
 // than a filled colour box, so semantic colour reads as an accent, not a slab.
@@ -361,7 +362,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-5 py-4 text-sm">
                       <span className={isOverdue ? 'text-red-500 font-medium' : 'text-ink-muted'}>
-                        {new Date(inv.due_date).toLocaleDateString()}
+                        {formatAppDate(inv.due_date, {})}
                       </span>
                     </td>
                   </tr>
