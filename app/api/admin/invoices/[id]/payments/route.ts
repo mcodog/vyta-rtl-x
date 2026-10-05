@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { logAuditServer } from '@/lib/admin/audit';
 import { checkLowStockForProducts } from '@/lib/admin/low-stock';
 import { adjustInvoiceStock } from '@/lib/admin/stock-ledger';
+import { sendConfirmationForPaidInvoice } from '@/lib/order-confirmation';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,6 +100,9 @@ export async function POST(
   // First transition into `paid` decrements stock (idempotent in the DB).
   if (newStatus === 'paid' && !wasPaid) {
     await settlePaidStock(params.id, actor_email);
+    // Fully paid: email the customer their order confirmation (once, after
+    // the response).
+    after(() => sendConfirmationForPaidInvoice(db, params.id));
   }
 
   await logAuditServer(db, { actor_id: userId, actor_email }, {

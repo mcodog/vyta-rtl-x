@@ -8,6 +8,7 @@ import {
   loadAbandonedHours,
   RECOVERABLE_STATUSES,
 } from '@/lib/payments/puramass-abandoned';
+import { confirmationSummariesByInvoice } from '@/lib/order-confirmation';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -179,6 +180,8 @@ export async function GET(req: NextRequest) {
       .in('id', invoiceIds);
     invoiceMap = Object.fromEntries((invoices ?? []).map((i: any) => [i.id, i]));
   }
+  // Order-confirmation email state per hand-off (logged against its invoice).
+  const confirmationByInvoice = await confirmationSummariesByInvoice(db, invoiceIds);
 
   // Resolve each captured referral code to the affiliate it belongs to. A bare
   // code identifies nobody at a glance, and the two cases an admin most needs
@@ -243,6 +246,7 @@ export async function GET(req: NextRequest) {
   const orders = (data ?? []).map((r: any) => ({
     ...r,
     invoice: r.invoice_id ? invoiceMap[r.invoice_id] ?? null : null,
+    confirmation: r.invoice_id ? confirmationByInvoice[r.invoice_id] ?? null : null,
     affiliate: r.referral_code
       ? affiliateByCode[String(r.referral_code).toUpperCase()] ?? null
       : null,

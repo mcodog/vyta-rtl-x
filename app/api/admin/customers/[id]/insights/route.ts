@@ -13,6 +13,10 @@ import {
 import { toShippingAddress } from '@/lib/payments/puramass-address';
 import { fetchLead, type Lead } from '@/lib/admin/customer-leads';
 import { fetchEmailHistory } from '@/lib/admin/crm-actions';
+import {
+  confirmationSummariesByInvoice,
+  confirmationSummariesByOrder,
+} from '@/lib/order-confirmation';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -511,10 +515,20 @@ async function buildPurchaseData({
 
   const paidPuramass = puramassOrders.filter((p) => p.status === 'paid');
 
+  // Order-confirmation email state per row, for the tables' Confirmation
+  // column. Stealth Health hand-offs log against their invoice.
+  const [confirmByOrder, confirmByInvoice] = await Promise.all([
+    confirmationSummariesByOrder(db, orders.map((o) => o.id)),
+    confirmationSummariesByInvoice(db, puramassOrders.map((p) => p.invoice_id)),
+  ]);
+
   return {
-    orders,
+    orders: orders.map((o) => ({ ...o, confirmation: confirmByOrder[o.id] ?? null })),
     invoices,
-    puramassOrders,
+    puramassOrders: puramassOrders.map((p) => ({
+      ...p,
+      confirmation: p.invoice_id ? confirmByInvoice[p.invoice_id] ?? null : null,
+    })),
     products: tally.result(),
     paidInvoices: paidInvoices.length,
     stats: {

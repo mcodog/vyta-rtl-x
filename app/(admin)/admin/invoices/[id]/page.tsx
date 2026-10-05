@@ -33,6 +33,7 @@ import { formatMoney, normalizeCurrency, type Currency } from '@/lib/currency';
 import OrderManagementPanel from '@/components/admin/OrderManagementPanel';
 import LiveShipmentTracking from '@/components/admin/LiveShipmentTracking';
 import InvoiceEasyshipPanel from '@/components/admin/InvoiceEasyshipPanel';
+import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
 
 const statusColors: Record<InvoiceStatus, string> = {
   draft: 'bg-gray-500/10 text-gray-600 border-gray-300',
@@ -227,6 +228,8 @@ export default function InvoiceDetailPage() {
     if (result.success) {
       await load();
       flash('Status updated');
+    } else {
+      flash(result.error ?? 'Failed to update status');
     }
   }
 
@@ -756,6 +759,17 @@ export default function InvoiceDetailPage() {
               gets re-synced or the customer gets asked for a missing address. */}
           {puramass && <PuramassShipToPanel puramass={puramass} />}
           {puramass && <PuramassOrderPanel puramass={puramass} />}
+
+          {/* Paid-order confirmation email for a Stealth Health hand-off. An
+              invoice with an order shows it in the order panel below instead;
+              a manual invoice has nothing to confirm. */}
+          {!invoice.order_id && isPuramassInvoice(invoice) && (
+            <OrderConfirmationEmailCard
+              key={invoice.status}
+              target={{ invoiceId: invoice.id }}
+              canSend={editable}
+            />
+          )}
 
           {/* Easyship — set up, follow and print the shipment for this
               invoice without leaving the page. Anchored on the invoice's order

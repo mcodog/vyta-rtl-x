@@ -25,6 +25,7 @@ import {
   Columns3,
   CloudDownload,
   FileText,
+  MailCheck,
   MailPlus,
   ShoppingCart,
   Sparkles,
@@ -33,7 +34,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
 import { useUserRole } from '@/app/(admin)/admin/layout';
-import { canDelete } from '@/lib/permissions';
+import { canDelete, canEdit } from '@/lib/permissions';
+import type { ConfirmationSummary } from '@/lib/order-confirmation-data';
 import { INVOICE_STATUS_META, effectiveStatus } from '@/lib/admin/invoice-status';
 import type { InvoiceStatus } from '@/lib/types/ecommerce';
 import {
@@ -117,6 +119,8 @@ export interface PuramassOrderRow {
   recovery_promo_code: string | null;
   recovery_discount_type: string | null;
   recovery_discount_value: number | null;
+  /** Order-confirmation email state (logged against the invoice); null = never sent. */
+  confirmation?: ConfirmationSummary | null;
 }
 
 
@@ -231,6 +235,40 @@ function timeAgo(iso: string): string {
 function formatMoney(cents: number | null, currency: string | null): string {
   if (cents == null) return '—';
   return `$${(cents / 100).toFixed(2)} ${(currency || 'usd').toUpperCase()}`;
+}
+
+/** Order-confirmation email state under a paid row's status badge. */
+function ConfirmationLine({ row }: { row: PuramassOrderRow }) {
+  const c = row.confirmation;
+  if (c?.lastAttemptFailed) {
+    return (
+      <div
+        className="mt-1 flex items-center gap-1 text-[11px] text-red-600"
+        title={`Last attempt failed: ${c.lastError || 'unknown error'}`}
+      >
+        <MailCheck className="h-3 w-3" />
+        Confirmation failed
+      </div>
+    );
+  }
+  if (c && c.sendCount > 0 && c.lastSentAt) {
+    return (
+      <div
+        className="mt-1 flex items-center gap-1 text-[11px] text-emerald-700"
+        title={`Order confirmation last sent ${new Date(c.lastSentAt).toLocaleString()} to ${c.lastSentTo || 'the buyer'} ${c.lastSentBy ? `by ${c.lastSentBy}` : 'automatically'}.`}
+      >
+        <MailCheck className="h-3 w-3" />
+        Confirmed {timeAgo(c.lastSentAt)}
+        {c.sendCount > 1 ? ` · ${c.sendCount}×` : ''}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-1 flex items-center gap-1 text-[11px] text-amber-700">
+      <MailCheck className="h-3 w-3" />
+      No confirmation sent
+    </div>
+  );
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -486,6 +524,7 @@ export default function OrdersTab() {
   const toast = useToast();
   const userRole = useUserRole();
   const canDeleteOrders = canDelete(userRole);
+  const canSendConfirmation = canEdit(userRole);
   const { visible, toggle, reset, isDefault } = useColumnPreferences();
 
   const [rows, setRows] = useState<PuramassOrderRow[]>([]);
@@ -495,6 +534,7 @@ export default function OrdersTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   // Paid orders are the ones that matter day to day; the rest are one click away.
   const [status, setStatus] = useState<string>('paid');
@@ -566,6 +606,48 @@ export default function OrdersTab() {
   }, [page, status, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Send (or resend) the buyer's paid-order confirmation email.
+  const sendConfirmation = async (row: PuramassOrderRow) => {
+    const count = row.confirmation?.sendCount ?? 0;
+    if (count > 0) {
+      const times = count === 1 ? 'once' : `${count} times`;
+      const to = row.confirmation?.lastSentTo || row.customer_email || 'This buyer';
+      if (!window.confirm(`${to} has already been sent this confirmation ${times}. Send it again?`)) return;
+    }
+    setConfirmingId(row.id);
+    try {
+      const res = await fetch('/api/admin/confirmation-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+        body: JSON.stringify({ puramassOrderId: row.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'The email could not be sent.');
+      setRows((cur) =>
+        cur.map((r) =>
+          r.id === row.id
+            ? {
+                ...r,
+                confirmation: {
+                  sendCount: (r.confirmation?.sendCount ?? 0) + 1,
+                  lastSentAt: json.sent_at,
+                  lastSentTo: json.to,
+                  lastSentBy: 'you',
+                  lastAttemptFailed: false,
+                  lastError: null,
+                },
+              }
+            : r,
+        ),
+      );
+      toast.success(`Order confirmation ${count > 0 ? 're' : ''}sent to ${json.to}.`);
+    } catch (e: any) {
+      toast.error(e.message ?? 'The email could not be sent.');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const refreshRow = async (row: PuramassOrderRow) => {
     if (!row.transaction_id) return;
@@ -906,6 +988,7 @@ export default function OrdersTab() {
                 Chased {row.recovery_email_count}×
               </div>
             ) : null}
+            {row.status === 'paid' && row.invoice_id && <ConfirmationLine row={row} />}
           </>
         ),
       },
@@ -1335,6 +1418,29 @@ export default function OrdersTab() {
                       >
                         <MailPlus className="h-3.5 w-3.5" />
                       </button>
+                      {canSendConfirmation && row.status === 'paid' && row.invoice_id && (
+                        <button
+                          onClick={() => sendConfirmation(row)}
+                          disabled={confirmingId === row.id}
+                          title={
+                            (row.confirmation?.sendCount ?? 0) > 0
+                              ? 'Resend the order confirmation email'
+                              : 'Send the order confirmation email'
+                          }
+                          aria-label="Send the order confirmation email"
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-surface transition-colors hover:border-ink/20 hover:text-ink disabled:opacity-40 ${
+                            (row.confirmation?.sendCount ?? 0) === 0
+                              ? 'border-teal/40 text-teal-dark'
+                              : 'border-line text-ink-muted'
+                          }`}
+                        >
+                          {confirmingId === row.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <MailCheck className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )}
                       <button
                         onClick={() => refreshRow(row)}
                         disabled={!row.transaction_id || refreshingId === row.id}

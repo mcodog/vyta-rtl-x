@@ -208,16 +208,27 @@ export async function createInvoice(
 
 // ---- UPDATE INVOICE ----
 
+/**
+ * Status / due date / notes change. Goes through PATCH /api/admin/invoices/[id]
+ * rather than writing the row from the browser, so the server-side effects of
+ * a status change run: marking paid decrements stock and emails the order
+ * confirmation, cancelling restores stock, and the change is audited.
+ */
 export async function updateInvoice(
   id: string,
   updates: Partial<Pick<Invoice, 'status' | 'due_date' | 'notes'>>
 ): Promise<{ success: boolean; error?: string }> {
-  const { error } = await supabase
-    .from('invoices')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  const token = await getToken();
+  try {
+    await apiFetch(`/api/admin/invoices/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(token),
+      body: JSON.stringify(updates),
+    });
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 // ---- UPDATE INVOICE (full edit, including line items / customer / sales person) ----
