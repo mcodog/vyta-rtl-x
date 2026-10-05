@@ -18,6 +18,8 @@
  * job or a build script.
  */
 
+import { formatAppDate } from '@/lib/datetime';
+
 export type StockUnit = 'boxes' | 'vials';
 
 export interface Stat {
@@ -315,9 +317,7 @@ export function fmtMoney(n: unknown, currency = 'CAD'): string {
 
 export function fmtDate(s: unknown): string {
   if (!s) return '—';
-  const d = new Date(String(s));
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatAppDate(String(s), { year: 'numeric', month: 'short', day: 'numeric' }, 'en-CA');
 }
 
 export function legacyReportShell(args: ReportShellArgs): string {

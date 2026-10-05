@@ -6,6 +6,7 @@ import {
   Settings as SettingsIcon, AlertCircle, AlertTriangle, Check, CreditCard, Send, Mail, Plus,
   Trash2, FileText, ChevronRight, MapPin, Users, ToggleRight, ToggleLeft,
   Truck, KeyRound, Bell, Clock, ShieldCheck, RefreshCw, Megaphone, Droplets,
+  ShoppingCart,
 } from 'lucide-react';
 import { supabase, type SiteSettings } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
@@ -192,10 +193,22 @@ export default function SettingsPage() {
     saveSettings({ guest_checkout_enabled: enabled });
   };
 
-  const handleCheckoutAddonsToggle = (enabled: boolean) => {
+  // Show/hide switches for the optional sections on the product, cart and
+  // checkout pages.
+  // cart_similar_enabled is the same switch as Promotions → Cart suggestions.
+  const handleSectionToggle = (
+    key:
+      | 'product_trust_badges_enabled'
+      | 'product_reviews_enabled'
+      | 'cart_trust_strip_enabled'
+      | 'cart_similar_enabled'
+      | 'checkout_addons_enabled'
+      | 'checkout_verify_notice_enabled',
+    enabled: boolean,
+  ) => {
     if (isReadOnly || !settings) return;
-    setSettings({ ...settings, checkout_addons_enabled: enabled });
-    saveSettings({ checkout_addons_enabled: enabled });
+    setSettings({ ...settings, [key]: enabled });
+    saveSettings({ [key]: enabled });
   };
 
   const handleEasyshipToggle = (enabled: boolean) => {
@@ -669,20 +682,53 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* 7a. Checkout Add-ons ("Complete your order" box) */}
-      <Card icon={<Droplets className="w-4 h-4 text-teal-dark" />} title="Checkout Add-ons"
-        subtitle={'The "Complete your order" box on the checkout page — reconstitution help, the WhatsApp link and products flagged as checkout add-ons.'}>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <SelectCard
-            selected={settings.checkout_addons_enabled !== false} disabled={isReadOnly}
-            onClick={() => handleCheckoutAddonsToggle(true)}
-            icon={<ToggleRight className="w-5 h-5" />} title="Shown"
-            desc="Checkout shows the box between contact and order summary." />
-          <SelectCard
-            selected={settings.checkout_addons_enabled === false} disabled={isReadOnly}
-            onClick={() => handleCheckoutAddonsToggle(false)}
-            icon={<ToggleLeft className="w-5 h-5" />} title="Hidden"
-            desc="Checkout shows contact and order summary only." />
+      {/* 7a. Storefront Sections — show/hide the optional blocks */}
+      <Card icon={<ShoppingCart className="w-4 h-4 text-teal-dark" />} title="Storefront Sections"
+        subtitle="Show or hide the optional sections on the product, cart and checkout pages.">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Product page</p>
+        <div className="space-y-3 mb-5">
+          <ToggleSwitch
+            checked={settings.product_trust_badges_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_trust_badges_enabled', v)}
+            icon={<ShieldCheck className="w-4 h-4" />}
+            label="Trust badges"
+            description={'"99% Purity", "GMP Certified", "COA Available" and "Ships from Canada" with their icons, under the product image.'} />
+          <ToggleSwitch
+            checked={settings.product_reviews_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('product_reviews_enabled', v)}
+            icon={<Users className="w-4 h-4" />}
+            label="Customer reviews"
+            description="The Customer Reviews section — ratings, the review list and the write-a-review form." />
+        </div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Cart page</p>
+        <div className="space-y-3 mb-5">
+          <ToggleSwitch
+            checked={settings.cart_trust_strip_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('cart_trust_strip_enabled', v)}
+            icon={<ShieldCheck className="w-4 h-4" />}
+            label="Trust badges"
+            description={'"Free, Fast & Discreet Shipping", "Secure Checkout" and "Carefully Packaged" with their icons, at the top of the cart.'} />
+          <ToggleSwitch
+            checked={settings.cart_similar_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('cart_similar_enabled', v)}
+            icon={<Megaphone className="w-4 h-4" />}
+            label="You May Also Like"
+            description="Suggested products under the cart items. Same switch as Promotions → Cart suggestions." />
+        </div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Checkout page</p>
+        <div className="space-y-3">
+          <ToggleSwitch
+            checked={settings.checkout_addons_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('checkout_addons_enabled', v)}
+            icon={<Droplets className="w-4 h-4" />}
+            label="Checkout add-ons"
+            description={'The "Complete your order" box — reconstitution help, the WhatsApp link and products flagged as checkout add-ons. Hidden, checkout shows contact and order summary only.'} />
+          <ToggleSwitch
+            checked={settings.checkout_verify_notice_enabled !== false} disabled={isReadOnly}
+            onChange={(v) => handleSectionToggle('checkout_verify_notice_enabled', v)}
+            icon={<AlertCircle className="w-4 h-4" />}
+            label="Verification notice"
+            description={'"A few quick questions first" — the note under the pay button explaining the checkout partner\'s confirmation questions.'} />
         </div>
       </Card>
 

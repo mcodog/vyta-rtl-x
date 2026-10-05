@@ -11,6 +11,7 @@
 // back-filled later. One invoice per order (uniq_invoices_order_id), so this is
 // idempotent and safe to call from every order-creation site.
 
+import { addDays, todayInAppTz } from '@/lib/datetime';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 function round2(n: number): number {
@@ -165,9 +166,8 @@ export async function createInvoiceForOrder(
       `${ship.firstName ?? ''} ${ship.lastName ?? ''}`.trim() || null;
   }
 
-  const dueDate = new Date(Date.now() + 30 * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const issueDate = todayInAppTz();
+  const dueDate = addDays(issueDate, 30);
 
   const { data: invoice, error: invErr } = await db
     .from('invoices')
@@ -179,6 +179,7 @@ export async function createInvoiceForOrder(
       customer_phone,
       status: 'draft',
       currency,
+      issue_date: issueDate,
       due_date: dueDate,
       subtotal,
       tax_total,

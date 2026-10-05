@@ -1,5 +1,6 @@
 'use client';
 
+import { addDays, todayInAppTz } from '@/lib/datetime';
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Plus, Trash2, Loader2, Save, Search, X, User, Link2, UserPlus, Briefcase, PackageX, Truck, Store, Tag, Beaker, Package, Check, MapPin } from 'lucide-react';
 import Link from 'next/link';
@@ -149,7 +150,7 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
 
   // ---- Invoice fields ----
   const [dueDate, setDueDate] = useState(
-    new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+    addDays(todayInAppTz(), 30),
   );
   const [notes, setNotes] = useState('');
   const [currency, setCurrency] = useState<Currency>(DEFAULT_CURRENCY);
@@ -1215,7 +1216,7 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
                 <label className="block text-xs font-medium text-ink-muted mb-1">Issue Date</label>
                 <input
                   type="date"
-                  value={isEdit && initial ? initial.invoice.issue_date.slice(0, 10) : new Date().toISOString().split('T')[0]}
+                  value={isEdit && initial ? initial.invoice.issue_date.slice(0, 10) : todayInAppTz()}
                   readOnly
                   className="w-full px-3 py-2.5 bg-surface border border-line rounded-lg text-sm text-ink-muted"
                 />

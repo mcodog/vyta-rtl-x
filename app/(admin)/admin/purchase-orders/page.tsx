@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { getPurchaseOrders, type PurchaseOrderListItem } from '@/lib/admin/purchase-orders';
 import { PO_STATUS_META, isPoLocked } from '@/lib/admin/po-status';
 import type { PurchaseOrderStatus } from '@/lib/types/ecommerce';
+import { formatAppDate } from '@/lib/datetime';
 
 export default function PurchaseOrdersPage() {
   const [pos, setPOs] = useState<PurchaseOrderListItem[]>([]);
@@ -136,7 +137,7 @@ export default function PurchaseOrdersPage() {
                     <td className="px-5 py-4"><p className="text-sm font-medium text-ink">{po.supplier?.name ?? '—'}</p></td>
                     <td className="px-5 py-4 text-sm text-ink-muted tabular-nums">{po.item_count}</td>
                     <td className="px-5 py-4 text-right font-semibold tabular-nums text-ink">${Number(po.total).toFixed(2)}</td>
-                    <td className="px-5 py-4 text-sm text-ink-muted">{po.expected_date ? new Date(po.expected_date).toLocaleDateString() : '—'}</td>
+                    <td className="px-5 py-4 text-sm text-ink-muted">{formatAppDate(po.expected_date, {})}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-medium ${meta.badge}`}>
                         {isPoLocked(po.status) && <Lock className="w-3 h-3" />}

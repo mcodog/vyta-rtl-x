@@ -1,3 +1,4 @@
+import { todayInAppTz } from '@/lib/datetime';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -159,7 +160,7 @@ export async function POST(req: NextRequest) {
       tax_total: summary.tax_total,
       total: summary.total,
       notes: notes ?? null,
-      order_date: order_date ?? new Date().toISOString().slice(0, 10),
+      order_date: order_date ?? todayInAppTz(),
       expected_date: expected_date ?? null,
       created_by: userId,
     })

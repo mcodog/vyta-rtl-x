@@ -1,3 +1,4 @@
+import { todayInAppTz } from '@/lib/datetime';
 import { NextRequest, NextResponse } from 'next/server';
 import { logAuditServer } from '@/lib/admin/audit';
 import {
@@ -21,7 +22,7 @@ const MIGRATION_HINT =
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInAppTz();
 }
 
 /**

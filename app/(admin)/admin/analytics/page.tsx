@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAppDate } from '@/lib/datetime';
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
@@ -27,8 +28,7 @@ const fmtInt = (n: number) => n.toLocaleString();
 const fmtPct = (n: number) => `${n}%`;
 
 function fmtDate(d: string | null) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString();
+  return formatAppDate(d, {});
 }
 
 // Local YYYY-MM-DD for the <input type="date"> presets.

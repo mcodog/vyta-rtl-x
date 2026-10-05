@@ -137,6 +137,8 @@ export default async function ProductPage(
         product={product}
         relatedProducts={related}
         batWater={batWater}
+        showTrustBadges={cfg.product_trust_badges_enabled}
+        showReviews={cfg.product_reviews_enabled}
       />
     </>
   );

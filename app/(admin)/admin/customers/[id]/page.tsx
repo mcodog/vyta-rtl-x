@@ -1,5 +1,6 @@
 'use client';
 
+import { formatAppDate } from '@/lib/datetime';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -228,8 +229,7 @@ interface Insights {
 const fmtDateTime = (s: string | null) =>
   s ? new Date(s).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
-const fmtDate = (s: string | null) =>
-  s ? new Date(s).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '—';
+const fmtDate = (s: string | null) => formatAppDate(s);
 
 function fmtMoney(amount: number | null | undefined, currency: string | null | undefined): string {
   if (amount == null) return '—';

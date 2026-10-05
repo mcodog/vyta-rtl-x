@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canAccessAdmin, type UserRole } from '@/lib/permissions';
@@ -137,6 +138,12 @@ function shape(data: Record<string, any> | null | undefined) {
     // The checkout's "Complete your order" box (reconstitution help + add-on
     // products). Merchandising only, so on unless switched off.
     checkout_addons_enabled: d.checkout_addons_enabled ?? true,
+    // Cart header trust badges and the checkout's "A few quick questions
+    // first" notice. Presentation only, so on unless switched off.
+    cart_trust_strip_enabled: d.cart_trust_strip_enabled ?? true,
+    checkout_verify_notice_enabled: d.checkout_verify_notice_enabled ?? true,
+    product_trust_badges_enabled: d.product_trust_badges_enabled ?? true,
+    product_reviews_enabled: d.product_reviews_enabled ?? true,
     easyship_enabled: d.easyship_enabled ?? false,
     easyship_api_key_set: Boolean(d.easyship_api_key),
     shipping_origin: d.shipping_origin ?? {},
@@ -237,6 +244,10 @@ export async function PUT(req: NextRequest) {
     'cart_fbt_enabled',
     'cart_similar_enabled',
     'checkout_addons_enabled',
+    'cart_trust_strip_enabled',
+    'checkout_verify_notice_enabled',
+    'product_trust_badges_enabled',
+    'product_reviews_enabled',
     'klaviyo_enabled',
     'klaviyo_onsite_enabled',
     'klaviyo_server_events_enabled',
@@ -434,6 +445,12 @@ export async function PUT(req: NextRequest) {
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     saved = data as any;
+  }
+
+  // Product pages are cached for 5 minutes; refresh them now so a show/hide
+  // switch takes effect on the next visit.
+  if ('product_trust_badges_enabled' in body || 'product_reviews_enabled' in body) {
+    revalidatePath('/products/[slug]', 'page');
   }
 
   return NextResponse.json({ success: true, settings: shape(saved) });

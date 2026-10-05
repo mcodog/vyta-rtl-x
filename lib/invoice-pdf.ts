@@ -5,6 +5,7 @@
  * runs on the Node.js serverless runtime. The on-screen/print view is a
  * separate HTML path (app/api/admin/invoices/[id]/pdf).
  */
+import { formatAppDate } from '@/lib/datetime';
 import PDFDocument from 'pdfkit';
 import { formatAddressLines, type ShippingAddressLike } from '@/lib/payments/puramass-address';
 
@@ -70,11 +71,7 @@ export interface InvoicePdfInput {
 const money = (n: number | string | null | undefined) =>
   `$${(Number(n) || 0).toFixed(2)}`;
 
-const fmtDate = (v: string | null | undefined) => {
-  if (!v) return '—';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
-};
+const fmtDate = (v: string | null | undefined) => formatAppDate(v, {});
 
 export function renderInvoicePdf(inv: InvoicePdfInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {

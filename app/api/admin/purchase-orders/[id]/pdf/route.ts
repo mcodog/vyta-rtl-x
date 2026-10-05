@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { PO_STATUS_META } from '@/lib/admin/po-status';
 import { allocateLandedCost } from '@/lib/admin/po-landed-cost';
 import type { PurchaseOrderStatus } from '@/lib/types/ecommerce';
+import { formatAppDate } from '@/lib/datetime';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +23,7 @@ function fmt(n: number) {
   return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(Number(n) || 0);
 }
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatAppDate(d, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-CA');
 }
 function esc(s: unknown) {
   return String(s ?? '')
