@@ -137,6 +137,10 @@ function shape(data: Record<string, any> | null | undefined) {
     // The checkout's "Complete your order" box (reconstitution help + add-on
     // products). Merchandising only, so on unless switched off.
     checkout_addons_enabled: d.checkout_addons_enabled ?? true,
+    // Cart header trust badges and the checkout's "A few quick questions
+    // first" notice. Presentation only, so on unless switched off.
+    cart_trust_strip_enabled: d.cart_trust_strip_enabled ?? true,
+    checkout_verify_notice_enabled: d.checkout_verify_notice_enabled ?? true,
     easyship_enabled: d.easyship_enabled ?? false,
     easyship_api_key_set: Boolean(d.easyship_api_key),
     shipping_origin: d.shipping_origin ?? {},
@@ -237,6 +241,8 @@ export async function PUT(req: NextRequest) {
     'cart_fbt_enabled',
     'cart_similar_enabled',
     'checkout_addons_enabled',
+    'cart_trust_strip_enabled',
+    'checkout_verify_notice_enabled',
     'klaviyo_enabled',
     'klaviyo_onsite_enabled',
     'klaviyo_server_events_enabled',

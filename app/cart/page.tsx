@@ -22,7 +22,7 @@
  * re-decided by `/api/checkout/puramass` at hand-off against the catalog — the
  * numbers on this page are what the buyer is TOLD, not what they are charged.
  */
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -79,6 +79,24 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, totalPrice, totalItems, clearCart } = useCart();
   const { config } = useSiteConfig();
   const { frequentlyBoughtTogether, youMayAlsoLike } = useCartRecommendations();
+
+  // Admin → Settings → Cart & Checkout Sections. Held back until the setting
+  // is known so a store that hid the badges never flashes them.
+  const [trustStripEnabled, setTrustStripEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/admin/settings', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled) setTrustStripEnabled(json?.settings?.cart_trust_strip_enabled ?? true);
+      })
+      .catch(() => {
+        if (!cancelled) setTrustStripEnabled(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // The promos running on this cart. Resolved once for the whole app by
   // PromosProvider: `freeShipping.active` already accounts for the hosted
@@ -161,7 +179,7 @@ export default function CartPage() {
                 )}
               </div>
 
-              {items.length > 0 && (
+              {items.length > 0 && trustStripEnabled && (
                 <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                   {HEADER_TRUST.map(({ icon: Icon, title, note }) => (
                     <div key={title} className="flex items-center gap-2">

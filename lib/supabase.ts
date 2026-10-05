@@ -344,6 +344,10 @@ export interface SiteSettings {
   cart_similar_enabled: boolean;
   /** Show the "Complete your order" box (reconstitution help + add-ons) on the checkout. */
   checkout_addons_enabled: boolean;
+  /** Show the three trust badges (shipping / secure checkout / packaging) at the top of the cart. */
+  cart_trust_strip_enabled: boolean;
+  /** Show the "A few quick questions first" notice under the checkout's pay button. */
+  checkout_verify_notice_enabled: boolean;
   // Easyship shipping config
   easyship_enabled: boolean;
   easyship_api_key_set: boolean; // never the key itself

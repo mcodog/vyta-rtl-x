@@ -310,6 +310,7 @@ export default function PuramassCheckoutContent({
   guestCheckoutEnabled,
   shippingRatesEnabled,
   addonsEnabled = true,
+  verifyNoticeEnabled = true,
   flatShipping,
   freeShippingActive,
   freeShippingThreshold,
@@ -319,6 +320,8 @@ export default function PuramassCheckoutContent({
   shippingRatesEnabled: boolean;
   /** Admin toggle: show the "Complete your order" box (reconstitution help + add-ons). */
   addonsEnabled?: boolean;
+  /** Admin toggle: show the "A few quick questions first" notice under the pay button. */
+  verifyNoticeEnabled?: boolean;
   /** Flat fee (CAD) charged when live rates are off or unavailable. */
   flatShipping: number;
   /** A free-shipping promo is running. */
@@ -1705,18 +1708,20 @@ export default function PuramassCheckoutContent({
 
                   {/* What happens on the partner's page, so the extra step
                       doesn't come as a surprise mid-payment. */}
-                  <div className="mt-4 flex items-start gap-2 rounded-xl border border-teal/20 bg-teal/5 px-3.5 py-3">
-                    <HelpCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-dark" />
-                    <p className="text-[11px] leading-relaxed text-ink-muted">
-                      <span className="font-semibold text-ink">
-                        A few quick questions first.
-                      </span>{" "}
-                      Our checkout partner runs a secure, encrypted page and will ask you to
-                      answer a short set of questions to confirm the order is really yours.
-                      Once they&apos;re answered you can pay, and we&apos;ll get your parcel
-                      moving.
-                    </p>
-                  </div>
+                  {verifyNoticeEnabled && (
+                    <div className="mt-4 flex items-start gap-2 rounded-xl border border-teal/20 bg-teal/5 px-3.5 py-3">
+                      <HelpCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-dark" />
+                      <p className="text-[11px] leading-relaxed text-ink-muted">
+                        <span className="font-semibold text-ink">
+                          A few quick questions first.
+                        </span>{" "}
+                        Our checkout partner runs a secure, encrypted page and will ask you to
+                        answer a short set of questions to confirm the order is really yours.
+                        Once they&apos;re answered you can pay, and we&apos;ll get your parcel
+                        moving.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Trust badges */}
                   <div className="mt-4 flex items-center justify-center gap-5 pt-4 border-t border-line">
