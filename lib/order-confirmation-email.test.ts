@@ -7,6 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   adminOrderPaidSubject,
+  discountPercentText,
   formatOrderDate,
   renderAdminOrderPaidHtml,
   renderAdminOrderPaidText,
@@ -27,7 +28,8 @@ const base: ConfirmationEmailData = {
   ],
   subtotal: 480,
   discount: 115.2,
-  discountLabel: 'VYTA20 + 5% limited-time offer',
+  discountLabel: 'VYTA20 20% + 5% limited-time offer',
+  discountPercent: 24,
   shipping: 0,
   total: 364.8,
   currency: 'CAD',
@@ -61,7 +63,9 @@ test('html carries every section, escaped', () => {
   assert.match(html, /Single vial/);
   assert.match(html, /\$364\.80 CAD/);
   assert.ok(!html.includes('You saved'));
-  assert.match(html, /Discount <span[^>]*>\(VYTA20 \+ 5% limited-time offer\)<\/span>/);
+  assert.match(html, /Subtotal<\/td>\s*<td[^>]*>\$480\.00</);
+  assert.match(html, /Discount <strong[^>]*>24%<\/strong> <span[^>]*>\(VYTA20 20% \+ 5% limited-time offer\)<\/span>/);
+  assert.match(html, /-\$115\.20/);
   assert.match(html, /-\$115\.20/);
   // Lucide / Font Awesome icons as hosted PNGs, never emoji or inline SVG.
   for (const name of ['file-text-blue', 'calendar-blue', 'check-teal', 'map-pin-blue', 'package-blue', 'truck-blue', 'package-open-blue', 'mail-blue', 'shield-check-white', 'canadian-maple-leaf-white', 'arrow-right-white']) {
@@ -95,7 +99,8 @@ test('plain-text body mirrors the html', () => {
   const text = renderOrderConfirmationText(base);
   assert.match(text, /Order number: VYTA-1016/);
   assert.match(text, /GLP-3 20mg \(Single vial\) × 2 — \$266\.00/);
-  assert.match(text, /Discount \(VYTA20 \+ 5% limited-time offer\): -\$115\.20/);
+  assert.match(text, /Subtotal: \$480\.00/);
+  assert.match(text, /Discount 24% \(VYTA20 20% \+ 5% limited-time offer\): -\$115\.20/);
   assert.match(text, /Total: \$364\.80 CAD/);
   assert.match(text, /View your order/);
 });
@@ -127,4 +132,11 @@ test('admin email for a manual invoice', () => {
   };
   assert.equal(adminOrderPaidSubject(manual), 'Invoice paid: VYTA-1016 · Guest · $364.80 CAD');
   assert.equal(renderAdminOrderPaidHtml(manual, 'https://www.vytabio.com'), renderOrderConfirmationHtml(manual.order, 'https://www.vytabio.com'));
+});
+
+test('discount percent: recorded, else worked out from the subtotal', () => {
+  assert.equal(discountPercentText({ subtotal: 480, discount: 115.2, discountPercent: 24 }), '24%');
+  assert.equal(discountPercentText({ subtotal: 400, discount: 130 }), '32.5%');
+  assert.equal(discountPercentText({ subtotal: 290, discount: 20 }), '6.9%');
+  assert.equal(discountPercentText({ subtotal: 100, discount: 0 }), null);
 });

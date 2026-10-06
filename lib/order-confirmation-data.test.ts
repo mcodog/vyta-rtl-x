@@ -189,7 +189,8 @@ test('discounted Stealth Health order shows list prices and a Discount row', () 
   assert.deepEqual(data.items.map((i) => i.price), [133, 494]);
   assert.equal(data.subtotal, 760);
   assert.equal(data.discount, 182.4);
-  assert.equal(data.discountLabel, 'VYTA20 + 5% limited-time offer');
+  assert.equal(data.discountLabel, 'VYTA20 20% + 5% limited-time offer');
+  assert.equal(data.discountPercent, 24);
   // The rows still add up to what was charged.
   assert.equal(Math.round((data.subtotal - data.discount + data.shipping + (data.tax ?? 0)) * 100), Math.round(data.total * 100));
 });
@@ -337,4 +338,58 @@ test('summarises the send history', () => {
     lastAttemptFailed: true,
     lastError: 'SMTP down',
   });
+});
+
+test('older hand-off without list prices: worked back from the recorded promos', () => {
+  const ledger = {
+    id: 'p5',
+    status: 'paid',
+    customer_email: 'm@buyer.ca',
+    discount_code: 'VYTA20',
+    discount_code_percent: 20,
+    ad_discount_percent: 0,
+    cart_offer_percent: 5,
+    ad_discount_cents: 18240,
+    items: [
+      { sku: 'GLP3-20', quantity: 2, unit_price_cents: 10108 },
+      { sku: 'MOTSC-40-5', quantity: 1, unit_price_cents: 37544 },
+    ],
+  };
+  const invoice = { id: 'i5', invoice_number: 'VYTA-1016', status: 'paid', subtotal: 577.6, shipping_cost: 0, tax_total: 0, total: 577.6 };
+  const lines = [
+    { description: 'GLP-3 20mg — Single vial', qty: 2, unit_price: 101.08, vials_per_unit: 1, product_id: P1 },
+    { description: 'MOTS C 40mg — Pack of 5', qty: 1, unit_price: 375.44, vials_per_unit: 5, product_id: P2 },
+  ];
+  const data = stealthHealthConfirmationData(ledger, invoice, lines);
+  assert.ok(data);
+  assert.deepEqual(data.items.map((i) => i.price), [133, 494]);
+  assert.equal(data.subtotal, 760);
+  assert.equal(data.discount, 182.4);
+  assert.equal(data.discountPercent, 24);
+  assert.equal(data.discountLabel, 'VYTA20 20% + 5% limited-time offer');
+  assert.equal(data.total, 577.6);
+});
+
+test('older hand-off whose code covered only some lines: the saving on top of charged lines', () => {
+  const ledger = {
+    id: 'p6',
+    customer_email: 'm@buyer.ca',
+    discount_code: 'VYTA20',
+    discount_code_percent: 20,
+    ad_discount_cents: 5320, // 20% off the two GLP-3 vials only
+    items: [{ sku: 'GLP3-20', quantity: 2, unit_price_cents: 10640 }, { sku: 'BAC', quantity: 1, unit_price_cents: 3000 }],
+  };
+  const invoice = { id: 'i6', subtotal: 242.8, total: 242.8 };
+  const lines = [
+    { description: 'GLP-3 20mg — Single vial', qty: 2, unit_price: 106.4, vials_per_unit: 1, product_id: P1 },
+    { description: 'Bacteriostatic water', qty: 1, unit_price: 30 },
+  ];
+  const data = stealthHealthConfirmationData(ledger, invoice, lines);
+  assert.ok(data);
+  assert.deepEqual(data.items.map((i) => i.price), [106.4, 30]);
+  assert.equal(data.subtotal, 296);
+  assert.equal(data.discount, 53.2);
+  assert.equal(data.discountLabel, 'VYTA20');
+  assert.equal(data.discountPercent, undefined); // 53.20 isn't 20% of 296
+  assert.equal(data.total, 242.8);
 });
