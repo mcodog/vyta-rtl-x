@@ -174,6 +174,20 @@ function itemRows(site: string, items: ConfirmationLine[]): string {
     .join('');
 }
 
+/** "24%", "32.5%" — the whole discount as a share of the subtotal. */
+export function discountPercentText(data: Pick<ConfirmationEmailData, 'subtotal' | 'discount' | 'discountPercent'>): string | null {
+  const subtotal = Number(data.subtotal) || 0;
+  const pct = data.discountPercent ?? (subtotal > 0 ? ((Number(data.discount) || 0) / subtotal) * 100 : 0);
+  if (!(pct > 0)) return null;
+  return `${Number(pct.toFixed(pct < 1 ? 2 : 1))}%`;
+}
+
+/** "Discount 24% (VYTA20 20% + 5% limited-time offer)", as plain text. */
+function discountText(data: ConfirmationEmailData): string {
+  const pct = discountPercentText(data);
+  return `Discount${pct ? ` ${pct}` : ''}${data.discountLabel ? ` (${data.discountLabel})` : ''}`;
+}
+
 function summaryRow(label: string, value: string, opts: { color?: string } = {}): string {
   const color = opts.color ?? NAVY;
   return `<tr>
@@ -189,7 +203,7 @@ function orderSummary(site: string, data: ConfirmationEmailData): string {
     summaryRow('Subtotal', money(data.subtotal)),
     discount > 0
       ? summaryRow(
-          `Discount${data.discountLabel ? ` <span style="color: ${MUTED};">(${esc(data.discountLabel)})</span>` : ''}`,
+          `Discount${discountPercentText(data) ? ` <strong style="color: ${GREEN};">${discountPercentText(data)}</strong>` : ''}${data.discountLabel ? ` <span style="color: ${MUTED};">(${esc(data.discountLabel)})</span>` : ''}`,
           `-${money(discount)}`,
           { color: GREEN },
         )
@@ -480,9 +494,7 @@ export function renderOrderConfirmationText(data: ConfirmationEmailData): string
     ...lines,
     '',
     `Subtotal: ${money(data.subtotal)}`,
-    Number(data.discount) > 0
-      ? `Discount${data.discountLabel ? ` (${data.discountLabel})` : ''}: -${money(data.discount)}`
-      : null,
+    Number(data.discount) > 0 ? `${discountText(data)}: -${money(data.discount)}` : null,
     `Shipping: ${Number(data.shipping) > 0 ? money(data.shipping) : 'Free'}`,
     data.tax != null ? `Tax: ${money(data.tax)}` : null,
     `Total: ${money(data.total)} ${data.currency}`,

@@ -37,8 +37,10 @@ export interface ConfirmationEmailData {
   items: ConfirmationLine[];
   subtotal: number;
   discount: number;
-  /** What the discount was, e.g. "VYTA20 + 5% limited-time offer". */
+  /** What the discount was, e.g. "VYTA20 20% + 5% limited-time offer". */
   discountLabel?: string;
+  /** The whole discount as a percent of `subtotal`; derived from the two when absent. */
+  discountPercent?: number;
   shipping: number;
   total: number;
   currency: string;
@@ -279,9 +281,12 @@ export function storefrontConfirmationData(order: Record<string, any>): Confirma
  * buyer sees and the money. Its line prices already have any discount
  * applied; when the hand-off recorded each line's list price, the lines are
  * shown at list price with the difference as a Discount row, so Subtotal −
- * Discount + Shipping + Tax is still exactly the invoice total. Without list
- * prices (older hand-offs, or lines an admin changed) the charged prices are
- * shown with no discount row.
+ * Discount + Shipping + Tax is still exactly the invoice total. Older
+ * hand-offs recorded no list prices, only the promo percentages and the
+ * saving (`ad_discount_cents`): the list prices are then worked back from
+ * those, or, when they don't add up to the saving, the saving alone is shown
+ * on top of the charged lines. With neither (or lines an admin changed) the
+ * charged prices are shown with no discount row.
  */
 export function stealthHealthConfirmationData(
   ledger: Record<string, any>,
@@ -329,7 +334,7 @@ export function stealthHealthOrderSummary(
 
   let subtotal = chargedSubtotal;
   let discount = 0;
-  const listPrices = listUnitPrices(ledger.items, lines ?? []);
+  const listPrices = listUnitPrices(ledger.items, lines ?? []) ?? impliedListPrices(ledger, items, chargedSubtotal);
   if (listPrices) {
     const listSum = round2(listPrices.reduce((s, p, i) => s + p * items[i].quantity, 0));
     if (listSum - chargedSubtotal >= 0.01) {
@@ -339,6 +344,12 @@ export function stealthHealthOrderSummary(
       subtotal = listSum;
       discount = listSum - chargedSubtotal;
     }
+  }
+  const saved = num(ledger.ad_discount_cents) / 100;
+  if (discount === 0 && saved >= 0.01) {
+    // The saving is on record but the lines can't be priced back to list.
+    subtotal = chargedSubtotal + saved;
+    discount = saved;
   }
 
   const data: ConfirmationEmailData = {
@@ -360,6 +371,10 @@ export function stealthHealthOrderSummary(
   if (discount > 0) {
     const label = discountLabelFor(ledger);
     if (label) data.discountLabel = label;
+    const percent = recordedDiscountPercent(ledger);
+    if (percent != null && Math.abs(subtotal * (percent / 100) - discount) < 0.01 * Math.max(1, items.length)) {
+      data.discountPercent = percent;
+    }
   }
 
   const shipTo = shipToFrom(ledger.shipping_address, {
@@ -532,13 +547,55 @@ function listUnitPrices(
   return out;
 }
 
-/** "VYTA20 + 5% limited-time offer" — the promos the checkout recorded. */
+/**
+ * Each line's list unit price worked back from the promos a hand-off
+ * recorded, for hand-offs from before `list_unit_price_cents`. Null unless
+ * the result agrees with the recorded saving (`ad_discount_cents`) to within
+ * a cent a unit — a code that only covered some lines doesn't.
+ */
+function impliedListPrices(
+  ledger: Record<string, any>,
+  items: ConfirmationLine[],
+  chargedSubtotal: number,
+): number[] | null {
+  const saved = num(ledger.ad_discount_cents) / 100;
+  if (saved < 0.01 || items.length === 0) return null;
+  const percent = recordedDiscountPercent(ledger) ?? (saved / (chargedSubtotal + saved)) * 100;
+  const keep = 1 - percent / 100;
+  if (!(keep > 0 && keep < 1)) return null;
+  const out = items.map((i) => round2(i.price / keep));
+  const listSum = out.reduce((s, p, i) => s + p * items[i].quantity, 0);
+  const units = items.reduce((s, i) => s + i.quantity, 0);
+  return Math.abs(listSum - chargedSubtotal - saved) <= 0.01 * units + 0.005 ? out : null;
+}
+
+/** Each promo's recorded percent off; 0 when it wasn't applied. */
+function recordedPromoPercents(ledger: Record<string, any>): { code: number; ad: number; offer: number } {
+  return {
+    code: str(ledger.discount_code) ? Math.max(0, num(ledger.discount_code_percent)) : 0,
+    ad: Math.max(0, num(ledger.ad_discount_percent)),
+    offer: Math.max(0, num(ledger.cart_offer_percent)),
+  };
+}
+
+/** The recorded promos composed (20% then 5% = 24%), or null when none was. */
+function recordedDiscountPercent(ledger: Record<string, any>): number | null {
+  const { code, ad, offer } = recordedPromoPercents(ledger);
+  const keep = [code, ad, offer].filter((p) => p > 0 && p < 100).reduce((k, p) => k * (1 - p / 100), 1);
+  return keep < 1 ? Math.round((1 - keep) * 10000) / 100 : null;
+}
+
+/**
+ * "VYTA20 20% + 5% limited-time offer" — the promos the checkout recorded. A
+ * lone code is just its name: the overall percentage sits next to it.
+ */
 function discountLabelFor(ledger: Record<string, any>): string | null {
+  const { code, ad, offer } = recordedPromoPercents(ledger);
   const parts = [
-    str(ledger.discount_code) && num(ledger.discount_code_percent) > 0 ? str(ledger.discount_code) : '',
-    num(ledger.ad_discount_percent) > 0 ? `${num(ledger.ad_discount_percent)}% first-order discount` : '',
-    num(ledger.cart_offer_percent) > 0 ? `${num(ledger.cart_offer_percent)}% limited-time offer` : '',
+    ad > 0 ? `${ad}% first-order discount` : '',
+    offer > 0 ? `${offer}% limited-time offer` : '',
   ].filter(Boolean);
+  if (code > 0) parts.unshift(parts.length ? `${str(ledger.discount_code)} ${code}%` : str(ledger.discount_code));
   return parts.length ? parts.join(' + ') : null;
 }
 
