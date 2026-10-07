@@ -55,7 +55,7 @@ const BAND_MASK_X =
 // mobile still (below the copy) read through, and it carries less white than
 // the desktop band so the portrait art shows behind the copy too.
 const BAND_TINT_Y =
-  'linear-gradient(180deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.62) 40%, rgba(255,255,255,0.34) 52%, rgba(255,255,255,0.1) 62%, rgba(255,255,255,0) 70%)';
+  'linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.46) 40%, rgba(255,255,255,0.24) 52%, rgba(255,255,255,0.06) 62%, rgba(255,255,255,0) 70%)';
 const BAND_MASK_Y =
   'linear-gradient(180deg, #000 0%, #000 40%, rgba(0,0,0,0.65) 52%, rgba(0,0,0,0.25) 62%, transparent 70%)';
 
