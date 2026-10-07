@@ -187,8 +187,9 @@ export default function MarketingManagementPage() {
             </div>
             <p className="text-xs text-ink-muted mb-4">
               The background of the first screen visitors see, behind the frosted band the
-              headline sits on. This image is the whole hero background on every screen size —
-              the hero no longer plays a background clip — so a wide, landscape render works best.
+              headline sits on, on laptops and desktops — a wide, landscape render works best.
+              Phones and tablets use a portrait still shipped with the site. Leave this empty to
+              use the shipped desktop image.
             </p>
 
             <div className="space-y-4">
