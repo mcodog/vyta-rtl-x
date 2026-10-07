@@ -33,9 +33,10 @@ const GRAIN_TEXTURE =
  * across — never a solid plate — and from the 40% mark it thins out in small
  * steps until there is nothing left of it at the far edge.
  *
- * The white is kept light — roughly two-thirds at its heaviest — so the hero
- * art shows through behind the copy rather than being washed out; the blur
- * does the rest of the work of holding navy type over a busy image.
+ * The hero image is brand art now rather than a still graded hard to Midnight
+ * Navy (see `.hero-image-grade`), so these carry more white than they used to:
+ * the ground has to hold navy type over whatever the uploaded image is, not
+ * only over a dark one.
  *
  * The tint gradient alone would leave a hard edge where the blur stops, so the
  * same shape is repeated as a mask — `backdrop-filter` is clipped by the
@@ -43,7 +44,7 @@ const GRAIN_TEXTURE =
  * white rather than ending in a line.
  */
 const BAND_TINT_X =
-  'linear-gradient(90deg, rgba(255,255,255,0.64) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0.46) 56%, rgba(255,255,255,0.28) 72%, rgba(255,255,255,0.12) 86%, rgba(255,255,255,0) 100%)';
+  'linear-gradient(90deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.84) 40%, rgba(255,255,255,0.7) 56%, rgba(255,255,255,0.46) 72%, rgba(255,255,255,0.22) 86%, rgba(255,255,255,0) 100%)';
 const BAND_MASK_X =
   'linear-gradient(90deg, #000 0%, #000 40%, rgba(0,0,0,0.85) 56%, rgba(0,0,0,0.6) 72%, rgba(0,0,0,0.28) 86%, transparent 100%)';
 
@@ -51,7 +52,8 @@ const BAND_MASK_X =
 // and hands the frame back above the badge strip. The fade starts lower down
 // than it does across: there is copy all the way to the buttons.
 // It clears out well before the badge strip so the vials in the portrait
-// mobile still (below the copy) read through.
+// mobile still (below the copy) read through, and it carries less white than
+// the desktop band so the portrait art shows behind the copy too.
 const BAND_TINT_Y =
   'linear-gradient(180deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.62) 40%, rgba(255,255,255,0.34) 52%, rgba(255,255,255,0.1) 62%, rgba(255,255,255,0) 70%)';
 const BAND_MASK_Y =
