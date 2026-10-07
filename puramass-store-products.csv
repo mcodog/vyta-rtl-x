@@ -1,0 +1,89 @@
+id,name,category,categories,description,retailPrice,currency,clinicUsePrice,b2bPrice,price,shippingRate,image,images,badge,requiresConsult,consultProgramId,active,sortOrder,subStore,notificationEmails,shipStationEnabled,shipStationSku,shipStationIntegration,easyShipEnabled,easyShipSku,easyShipIntegration,netSuiteEnabled,netSuiteItemId,netSuiteIntegration
+puramass-e-spray-case,Puramass- E Spray (Case),Peptides,Peptides,Case,80.00,CAD,,,CA$80.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,e-spray-case,puramass,,,
+puramass-e-spray-vial,Puramass- E Spray (Single Vial),Peptides,Peptides,Single Vial,40.00,CAD,,,CA$40.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,e-spray-vial,puramass,,,
+puramass-pinaleon-20mg-case,Puramass- Pinaleon 20mg (Case),Peptides,Peptides,Case,98.60,CAD,,,CA$98.60,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,pinaleon-20mg-case,puramass,,,
+puramass-pinaleon-20mg-vial,Puramass- Pinaleon 20mg (Single Vial),Peptides,Peptides,Single Vial,6.80,CAD,,,CA$6.80,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,pinaleon-20mg-vial,puramass,,,
+puramass-oxytocin-acetate-10mg-case,Puramass- Oxytocin Acetate 10mg (Case),Peptides,Peptides,Case,400.00,CAD,,,CA$400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124264001-olfzwg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124264001-olfzwg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,oxytocin-acetate-10mg-case,puramass,,,
+puramass-oxytocin-acetate-10mg-vial,Puramass- Oxytocin Acetate 10mg (Single Vial),Peptides,Peptides,Single Vial,140.00,CAD,,,CA$140.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123679825-05vywj.jpg,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123679825-05vywj.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,oxytocin-acetate-10mg-vial,puramass,,,
+puramass-test-e-case,Puramass- Test E (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,test-e-case,puramass,,,
+puramass-test-e-vial,Puramass- Test E (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,test-e-vial,puramass,,,
+puramass-bacteriostatic-water-pfizer-30ml-case,Puramass- Bacteriostatic Water Pfizer 30mL (Case),Peptides,Peptides,Case,15.00,CAD,,,CA$15.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124305309-amfjkh.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124305309-amfjkh.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,bacteriostatic-water-pfizer-30ml-case,puramass,,,
+puramass-bacteriostatic-water-pfizer-30ml-vial,Puramass- Bacteriostatic Water Pfizer 30mL (Single Vial),Peptides,Peptides,Single Vial,15.00,CAD,,,CA$15.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123749509-0k308s.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123749509-0k308s.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,bacteriostatic-water-pfizer-30ml-vial,puramass,,,
+puramass-bpc-157-500mcg-bottle-case,Puramass- BPC - 157 500mcg Bottle (Case),Peptides,Peptides,Case,30.00,CAD,,,CA$30.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,bpc-157-500mcg-bottle-case,puramass,,,
+puramass-bpc-157-500mcg-bottle-vial,Puramass- BPC - 157 500mcg Bottle (Single Vial),Peptides,Peptides,Single Vial,30.00,CAD,,,CA$30.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,bpc-157-500mcg-bottle-vial,puramass,,,
+puramass-klow-80mg-case,Puramass- KLOW 80mg (Case),Peptides,Peptides,Case,440.00,CAD,,,CA$440.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/KLOW%2080mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/KLOW%2080mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,klow-80mg-case,puramass,,,
+puramass-klow-80mg-vial,Puramass- KLOW 80mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://puramass.com/images/products/KLOW 80mg.jpg,https://puramass.com/images/products/KLOW 80mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,klow-80mg-vial,puramass,,,
+puramass-cartalax-case,Puramass- Cartalax (Case),Peptides,Peptides,Case,150.00,CAD,,,CA$150.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,cartalax-case,puramass,,,
+puramass-cartalax-vial,Puramass- Cartalax (Single Vial),Peptides,Peptides,Single Vial,15.00,CAD,,,CA$15.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,cartalax-vial,puramass,,,
+puramass-eloralintide-elo5-case,Puramass- Eloralintide (Case),Peptides,Peptides,Case,200.00,CAD,,,CA$200.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,eloralintide-elo5-case,puramass,,,
+puramass-eloralintide-elo5-vial,Puramass- Eloralintide (Single Vial),Peptides,Peptides,Single Vial,20.00,CAD,,,CA$20.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,eloralintide-elo5-vial,puramass,,,
+puramass-vitamin-m-case,Puramass- Vitamin M (Case),Peptides,Peptides,Case,450.00,CAD,,,CA$450.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,vitamin-m-case,puramass,,,
+puramass-vitamin-m-vial,Puramass- Vitamin M (Single Vial),Peptides,Peptides,Single Vial,45.00,CAD,,,CA$45.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,vitamin-m-vial,puramass,,,
+puramass-slu-pp-332-1000mcg-tablets-case,Puramass- SLU-PP-332 1000mcg (Tablets) (Case),Peptides,Peptides,Case,70.08,CAD,,,CA$70.08,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,slu-pp-332-1000mcg-tablets-case,puramass,,,
+puramass-slu-pp-332-1000mcg-tablets-vial,Puramass- SLU-PP-332 1000mcg (Tablets) (Single Vial),Peptides,Peptides,Single Vial,7.01,CAD,,,CA$7.01,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,slu-pp-332-1000mcg-tablets-vial,puramass,,,
+puramass-eloralintide-elo10-case,Puramass- Eloralintide (Case),Peptides,Peptides,Case,370.00,CAD,,,CA$370.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,eloralintide-elo10-case,puramass,,,
+puramass-eloralintide-elo10-vial,Puramass- Eloralintide (Single Vial),Peptides,Peptides,Single Vial,37.00,CAD,,,CA$37.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,eloralintide-elo10-vial,puramass,,,
+puramass-reta20mg-trize40mg-10ml-case,Puramass- Reta20mg +Trize40mg/(10ml) (Case),Peptides,Peptides,Case,280.00,CAD,,,CA$280.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,reta20mg-trize40mg-10ml-case,puramass,,,
+puramass-reta20mg-trize40mg-10ml-vial,Puramass- Reta20mg +Trize40mg/(10ml) (Single Vial),Peptides,Peptides,Single Vial,28.00,CAD,,,CA$28.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,reta20mg-trize40mg-10ml-vial,puramass,,,
+puramass-retatrutide-30mg-cagrilintide-3mg-case,Puramass- Retatrutide 30mg + Cagrilintide 3mg (Case),Peptides,Peptides,Case,260.00,CAD,,,CA$260.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,retatrutide-30mg-cagrilintide-3mg-case,puramass,,,
+puramass-retatrutide-30mg-cagrilintide-3mg-vial,Puramass- Retatrutide 30mg + Cagrilintide 3mg (Single Vial),Peptides,Peptides,Single Vial,26.00,CAD,,,CA$26.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,retatrutide-30mg-cagrilintide-3mg-vial,puramass,,,
+puramass-cu50-kpv10-bpc10-case,Puramass- CU50+KPV10+BPC10 (Case),Peptides,Peptides,Case,80.00,CAD,,,CA$80.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,cu50-kpv10-bpc10-case,puramass,,,
+puramass-cu50-kpv10-bpc10-vial,Puramass- CU50+KPV10+BPC10 (Single Vial),Peptides,Peptides,Single Vial,8.00,CAD,,,CA$8.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,cu50-kpv10-bpc10-vial,puramass,,,
+puramass-tirzepatide-50mg-case,Puramass- Tirzepatide 50mg (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124336174-8lyb1r.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124336174-8lyb1r.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,tirzepatide-50mg-case,puramass,,,
+puramass-tirzepatide-50mg-vial,Puramass- Tirzepatide 50mg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123786240-4360uh.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123786240-4360uh.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,tirzepatide-50mg-vial,puramass,,,
+puramass-tirzepatide-60mg-case,Puramass- Tirzepatide 60mg (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124291061-qb1dng.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124291061-qb1dng.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,tirzepatide-60mg-case,puramass,,,
+puramass-tirzepatide-60mg-vial,Puramass- Tirzepatide 60mg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123726734-85j57s.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123726734-85j57s.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,tirzepatide-60mg-vial,puramass,,,
+puramass-enchance-spray-case,Puramass- Enchance Spray (Case),Peptides,Peptides,Case,75.00,CAD,,,CA$75.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,enchance-spray-case,puramass,,,
+puramass-enchance-spray-vial,Puramass- Enchance Spray (Single Vial),Peptides,Peptides,Single Vial,7.50,CAD,,,CA$7.50,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,enchance-spray-vial,puramass,,,
+puramass-nad-100mg-case,Puramass- NAD 100mg (Case),Peptides,Peptides,Case,240.00,CAD,,,CA$240.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124320469-9dbuh.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124320469-9dbuh.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,nad-100mg-case,puramass,,,
+puramass-nad-100mg-vial,Puramass- NAD 100mg (Single Vial),Peptides,Peptides,Single Vial,30.00,CAD,,,CA$30.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123770586-gnq6n.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123770586-gnq6n.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,nad-100mg-vial,puramass,,,
+puramass-test-c-10ml-case,Puramass- Test C (10ml) (Case),Peptides,Peptides,Case,50.00,CAD,,,CA$50.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,test-c-10ml-case,puramass,,,
+puramass-test-c-10ml-vial,Puramass- Test C (10ml) (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,test-c-10ml-vial,puramass,,,
+puramass-alprostadil-20mcg-case,Puramass- Alprostadil 20mcg (Case),Peptides,Peptides,Case,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Alprostadil%2020mcg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Alprostadil%2020mcg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,alprostadil-20mcg-case,puramass,,,
+puramass-alprostadil-20mcg-vial,Puramass- Alprostadil 20mcg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Alprostadil%2020mcg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Alprostadil%2020mcg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,alprostadil-20mcg-vial,puramass,,,
+puramass-semax-10mg-selank-10mg-case,Puramass- Semax 10mg + Selank 10mg (Case),Peptides,Peptides,Case,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semax%2010mg%20+%20Selank%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semax%2010mg%20+%20Selank%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,semax-10mg-selank-10mg-case,puramass,,,
+puramass-semax-10mg-selank-10mg-vial,Puramass- Semax 10mg + Selank 10mg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Semax%2010mg%20+%20Selank%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Semax%2010mg%20+%20Selank%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me",,,,true,semax-10mg-selank-10mg-vial,puramass,,,

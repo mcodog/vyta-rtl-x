@@ -1,0 +1,751 @@
+id,name,category,categories,description,retailPrice,currency,clinicUsePrice,b2bPrice,price,shippingRate,image,images,badge,requiresConsult,consultProgramId,active,sortOrder,subStore,notificationEmails,shipStationEnabled,shipStationSku,shipStationIntegration,easyShipEnabled,easyShipSku,easyShipIntegration,netSuiteEnabled,netSuiteItemId,netSuiteIntegration
+vyta-ghk-cu-100mg-case,Vyta- GHK(CU) 100mg (Case),Peptides,Peptides,Case,1100.00,CAD,,,CA$1100.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743618044-orcpgs.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743618044-orcpgs.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghk-cu-100mg-case,puramass,,,
+vyta-ghk-cu-100mg-vial,Vyta- GHK(CU) 100mg (Single Vial),Peptides,Peptides,Single Vial,110.00,CAD,,,CA$110.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743601544-2xc95o.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743601544-2xc95o.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghk-cu-100mg-vial,puramass,,,
+vyta-pinaleon-20mg-case,Vyta- Pinaleon 20mg (Case),Peptides,Peptides,Case,800.00,CAD,,,CA$800.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pinaleon-20mg-case,puramass,,,
+vyta-pinaleon-20mg-vial,Vyta- Pinaleon 20mg (Single Vial),Peptides,Peptides,Single Vial,6.80,CAD,,,CA$6.80,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pinaleon-20mg-vial,puramass,,,
+vyta-e-spray-case,Vyta- E Spray (Case),Peptides,Peptides,Case,800.00,CAD,,,CA$800.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,e-spray-case,puramass,,,
+vyta-e-spray-vial,Vyta- E Spray (Single Vial),Peptides,Peptides,Single Vial,80.00,CAD,,,CA$80.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,e-spray-vial,puramass,,,
+vyta-pt141-10mg-case,Vyta- PT141 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PT-141%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PT-141%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pt141-10mg-case,puramass,,,
+vyta-pt141-10mg-vial,Vyta- PT141 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://puramass.com/images/products/PT-141.jpg,https://puramass.com/images/products/PT-141.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pt141-10mg-vial,puramass,,,
+vyta-vilon-20mg-case,Vyta- Vilon 20mg (Case),Peptides,Peptides,Case,799.90,CAD,,,CA$799.90,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Vilon%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Vilon%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vilon-20mg-case,puramass,,,
+vyta-vilon-20mg-vial,Vyta- Vilon 20mg (Single Vial),Peptides,Peptides,Single Vial,79.99,CAD,,,CA$79.99,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Vilon%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Vilon%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vilon-20mg-vial,puramass,,,
+vyta-dsip-5mg-case,Vyta- DSIP 5mg (Case),Peptides,Peptides,Case,450.00,CAD,,,CA$450.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/DSIP%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/DSIP%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dsip-5mg-case,puramass,,,
+vyta-dsip-5mg-vial,Vyta- DSIP 5mg (Single Vial),Peptides,Peptides,Single Vial,45.00,CAD,,,CA$45.00,,https://puramass.com/images/products/DSIP 5mg.jpg,https://puramass.com/images/products/DSIP 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dsip-5mg-vial,puramass,,,
+vyta-klow-80mg-case,Vyta- KLOW 80mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745378833-s7xnz4.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745378833-s7xnz4.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,klow-80mg-case,puramass,,,
+vyta-klow-80mg-vial,Vyta- KLOW 80mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745348515-k3cry5.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745348515-k3cry5.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,klow-80mg-vial,puramass,,,
+vyta-tesa-10mg-case,Vyta- Tesa 10mg (Case),Peptides,Peptides,Case,1750.00,CAD,,,CA$1750.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789747147012-2prcd.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789747147012-2prcd.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-10mg-case,puramass,,,
+vyta-tesa-10mg-vial,Vyta- Tesa 10mg (Single Vial),Peptides,Peptides,Single Vial,175.00,CAD,,,CA$175.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789747134438-9rpd5j.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789747134438-9rpd5j.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-10mg-vial,puramass,,,
+vyta-tirz-20mg-case,Vyta- Tirz 20mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750264823-nc0i3l.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750264823-nc0i3l.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-20mg-case,puramass,,,
+vyta-tirz-20mg-vial,Vyta- Tirz 20mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750279052-lepk2i.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750279052-lepk2i.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-20mg-vial,puramass,,,
+vyta-kpv-5mg-case,Vyta- KPV 5mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745982807-zr7nzk.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745982807-zr7nzk.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kpv-5mg-case,puramass,,,
+vyta-kpv-5mg-vial,Vyta- KPV 5mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746082012-90l0wa.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746082012-90l0wa.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kpv-5mg-vial,puramass,,,
+vyta-hgh-191aa-10-iu-case,Vyta- HGH 191AA 10 IU (Case),Peptides,Peptides,Case,750.00,CAD,,,CA$750.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2010%20IU.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2010%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-10-iu-case,puramass,,,
+vyta-hgh-191aa-10-iu-vial,Vyta- HGH 191AA 10 IU (Single Vial),Peptides,Peptides,Single Vial,75.00,CAD,,,CA$75.00,,https://puramass.com/images/products/HGH 191AA (Somatropin) 10 IU.jpg,https://puramass.com/images/products/HGH 191AA (Somatropin) 10 IU.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-10-iu-vial,puramass,,,
+vyta-alprostadil-20mcg-case,Vyta- Alprostadil 20mcg (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Alprostadil%2020mcg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Alprostadil%2020mcg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,alprostadil-20mcg-case,puramass,,,
+vyta-alprostadil-20mcg-vial,Vyta- Alprostadil 20mcg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Alprostadil%2020mcg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Alprostadil%2020mcg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,alprostadil-20mcg-vial,puramass,,,
+vyta-fox04-10mg-case,Vyta- FOX04 10mg (Case),Peptides,Peptides,Case,3000.00,CAD,,,CA$3000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789742953089-ct9jtq.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789742953089-ct9jtq.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,fox04-10mg-case,puramass,,,
+vyta-fox04-10mg-vial,Vyta- FOX04 10mg (Single Vial),Peptides,Peptides,Single Vial,300.00,CAD,,,CA$300.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743005744-dg8wp5a.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743005744-dg8wp5a.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,fox04-10mg-vial,puramass,,,
+vyta-kpv-10mg-case,Vyta- KPV 10mg (Case),Peptides,Peptides,Case,950.00,CAD,,,CA$950.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746180496-e2cm1.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746180496-e2cm1.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kpv-10mg-case,puramass,,,
+vyta-kpv-10mg-vial,Vyta- KPV 10mg (Single Vial),Peptides,Peptides,Single Vial,95.00,CAD,,,CA$95.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746169809-7bh0ea.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746169809-7bh0ea.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kpv-10mg-vial,puramass,,,
+vyta-tirz-10mg-case,Vyta- Tirz 10mg (Case),Peptides,Peptides,Case,1200.00,CAD,,,CA$1200.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750198361-40z0nt.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750198361-40z0nt.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-10mg-case,puramass,,,
+vyta-tirz-10mg-vial,Vyta- Tirz 10mg (Single Vial),Peptides,Peptides,Single Vial,120.00,CAD,,,CA$120.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750185405-3ual9.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789750185405-3ual9.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-10mg-vial,puramass,,,
+vyta-cagri-10mg-case,Vyta- Cagri 10mg (Case),Peptides,Peptides,Case,3350.00,CAD,,,CA$3350.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Cagrilintide%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Cagrilintide%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cagri-10mg-case,puramass,,,
+vyta-cagri-10mg-vial,Vyta- Cagri 10mg (Single Vial),Peptides,Peptides,Single Vial,335.00,CAD,,,CA$335.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Cagrilintide%2010mg.JPG,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Cagrilintide%2010mg.JPG,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cagri-10mg-vial,puramass,,,
+vyta-bpc-tb500-20mg-case,Vyta- BPC+ TB500 20mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740845135-37opu.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740845135-37opu.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc-tb500-20mg-case,puramass,,,
+vyta-bpc-tb500-20mg-vial,Vyta- BPC+ TB500 20mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740756308-5qtz4n.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740756308-5qtz4n.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc-tb500-20mg-vial,puramass,,,
+vyta-mots-c-40mg-case,Vyta- MOTS C 40mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746532264-e1do33.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746532264-e1do33.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mots-c-40mg-case,puramass,,,
+vyta-mots-c-40mg-vial,Vyta- MOTS C 40mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746519365-ube5m.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746519365-ube5m.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mots-c-40mg-vial,puramass,,,
+vyta-bpc157-10mg-case,Vyta- BPC157 10mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789741800235-k7a56v.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789741800235-k7a56v.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc157-10mg-case,puramass,,,
+vyta-bpc157-10mg-vial,Vyta- BPC157 10mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789741822514-c8xvrk.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789741822514-c8xvrk.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc157-10mg-vial,puramass,,,
+vyta-bpc157-20mg-case,Vyta- BPC157 20mg (Case),Peptides,Peptides,Case,1400.00,CAD,,,CA$1400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/BPC-157%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/BPC-157%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc157-20mg-case,puramass,,,
+vyta-bpc157-20mg-vial,Vyta- BPC157 20mg (Single Vial),Peptides,Peptides,Single Vial,140.00,CAD,,,CA$140.00,,https://puramass.com/images/products/BPC-157 20mg.jpg,https://puramass.com/images/products/BPC-157 20mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc157-20mg-vial,puramass,,,
+vyta-tesa-5mg-case,Vyta- Tesa 5mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789749758736-zvxtee.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789749758736-zvxtee.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-5mg-case,puramass,,,
+vyta-tesa-5mg-vial,Vyta- Tesa 5mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789749770826-100t9d.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789749770826-100t9d.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-5mg-vial,puramass,,,
+vyta-tirz-40mg-case,Vyta- Tirz 40mg (Case),Peptides,Peptides,Case,4000.00,CAD,,,CA$4000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tirzepatide%2040mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tirzepatide%2040mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-40mg-case,puramass,,,
+vyta-tirz-40mg-vial,Vyta- Tirz 40mg (Single Vial),Peptides,Peptides,Single Vial,400.00,CAD,,,CA$400.00,,https://puramass.com/images/products/GLP-2T 40mg.jpg,https://puramass.com/images/products/GLP-2T 40mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-40mg-vial,puramass,,,
+vyta-epit-10mg-case,Vyta- Epit 10mg (Case),Peptides,Peptides,Case,650.00,CAD,,,CA$650.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Epithalon%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Epithalon%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,epit-10mg-case,puramass,,,
+vyta-epit-10mg-vial,Vyta- Epit 10mg (Single Vial),Peptides,Peptides,Single Vial,65.00,CAD,,,CA$65.00,,https://puramass.com/images/products/Epithalon 10mg.jpg,https://puramass.com/images/products/Epithalon 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,epit-10mg-vial,puramass,,,
+vyta-tirz-30mg-case,Vyta- Tirz 30mg (Case),Peptides,Peptides,Case,3000.00,CAD,,,CA$3000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tirzepatide%2030mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tirzepatide%2030mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-30mg-case,puramass,,,
+vyta-tirz-30mg-vial,Vyta- Tirz 30mg (Single Vial),Peptides,Peptides,Single Vial,300.00,CAD,,,CA$300.00,,https://puramass.com/images/products/GLP-2T 30mg.jpg,https://puramass.com/images/products/GLP-2T 30mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-30mg-vial,puramass,,,
+vyta-bpc157-5mg-case,Vyta- BPC157 5mg (Case),Peptides,Peptides,Case,750.00,CAD,,,CA$750.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789742766015-a8vo65.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789742766015-a8vo65.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc157-5mg-case,puramass,,,
+vyta-bpc157-5mg-vial,Vyta- BPC157 5mg (Single Vial),Peptides,Peptides,Single Vial,75.00,CAD,,,CA$75.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789742753190-wjqbw.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789742753190-wjqbw.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc157-5mg-vial,puramass,,,
+vyta-tb500-10mg-case,Vyta- TB500 10mg (Case),Peptides,Peptides,Case,950.00,CAD,,,CA$950.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/TB500%2010mg.png,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/TB500%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tb500-10mg-case,puramass,,,
+vyta-tb500-10mg-vial,Vyta- TB500 10mg (Single Vial),Peptides,Peptides,Single Vial,95.00,CAD,,,CA$95.00,,https://puramass.com/images/products/TB-500 10mg.jpg,https://puramass.com/images/products/TB-500 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tb500-10mg-vial,puramass,,,
+vyta-bacteriostatic-water-pfizer-30ml-case,Vyta- Bacteriostatic Water Pfizer 30mL (Case),Peptides,Peptides,Case,300.00,CAD,,,CA$300.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124305309-amfjkh.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124305309-amfjkh.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-pfizer-30ml-case,puramass,,,
+vyta-bacteriostatic-water-pfizer-30ml-vial,Vyta- Bacteriostatic Water Pfizer 30mL (Single Vial),Peptides,Peptides,Single Vial,30.00,CAD,,,CA$30.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123749509-0k308s.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123749509-0k308s.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-pfizer-30ml-vial,puramass,,,
+vyta-ghk-cu-50mg-case,Vyta- GHK(Cu) 50mg (Case),Peptides,Peptides,Case,550.00,CAD,,,CA$550.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743869074-ib4o6s.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789743869074-ib4o6s.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghk-cu-50mg-case,puramass,,,
+vyta-ghk-cu-50mg-vial,Vyta- GHK(Cu) 50mg (Single Vial),Peptides,Peptides,Single Vial,55.00,CAD,,,CA$55.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744128053-li7stl.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744128053-li7stl.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghk-cu-50mg-vial,puramass,,,
+vyta-snap8-10mg-case,Vyta- Snap8 10mg (Case),Peptides,Peptides,Case,1050.00,CAD,,,CA$1050.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Snap-8%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Snap-8%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,snap8-10mg-case,puramass,,,
+vyta-snap8-10mg-vial,Vyta- Snap8 10mg (Single Vial),Peptides,Peptides,Single Vial,105.00,CAD,,,CA$105.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Snap-8%2010mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Snap-8%2010mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,snap8-10mg-vial,puramass,,,
+vyta-glp-3-10mg-case,Vyta- GLP-3 10mg (Case),Peptides,Peptides,Case,1500.00,CAD,,,CA$1500.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744513059-g7m5fm7.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744513059-g7m5fm7.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-10mg-case,puramass,,,
+vyta-glp-3-10mg-vial,Vyta- GLP-3 10mg (Single Vial),Peptides,Peptides,Single Vial,150.00,CAD,,,CA$150.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744529533-1a2o2g.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744529533-1a2o2g.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-10mg-vial,puramass,,,
+vyta-glow-70mg-case,Vyta- GLOW 70mg (Case),Peptides,Peptides,Case,1500.00,CAD,,,CA$1500.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744352697-t2yij6.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744352697-t2yij6.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glow-70mg-case,puramass,,,
+vyta-glow-70mg-vial,Vyta- GLOW 70mg (Single Vial),Peptides,Peptides,Single Vial,150.00,CAD,,,CA$150.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744341342-c5imna.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744341342-c5imna.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glow-70mg-vial,puramass,,,
+vyta-glp-3-20mg-case,Vyta- GLP-3 20mg (Case),Peptides,Peptides,Case,2500.00,CAD,,,CA$2500.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744773748-8i42c.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744773748-8i42c.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-20mg-case,puramass,,,
+vyta-glp-3-20mg-vial,Vyta- GLP-3 20mg (Single Vial),Peptides,Peptides,Single Vial,250.00,CAD,,,CA$250.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744729222-3mm0eq.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789744729222-3mm0eq.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-20mg-vial,puramass,,,
+vyta-glp-3-30mg-case,Vyta- GLP-3 30mg (Case),Peptides,Peptides,Case,3500.00,CAD,,,CA$3500.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745055607-ifxdhj.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745055607-ifxdhj.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-30mg-case,puramass,,,
+vyta-glp-3-30mg-vial,Vyta- GLP-3 30mg (Single Vial),Peptides,Peptides,Single Vial,350.00,CAD,,,CA$350.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745065925-acpzop.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789745065925-acpzop.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-30mg-vial,puramass,,,
+vyta-vitamin-e-case,Vyta- Vitamin E (Case),Peptides,Peptides,Case,300.00,CAD,,,CA$300.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Vitamin%20E.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Vitamin%20E.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vitamin-e-case,puramass,,,
+vyta-vitamin-e-vial,Vyta- Vitamin E (Single Vial),Peptides,Peptides,Single Vial,30.00,CAD,,,CA$30.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Vitamin%20E.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Vitamin%20E.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vitamin-e-vial,puramass,,,
+vyta-tirz-50mg-case,Vyta- Tirz 50mg (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124336174-8lyb1r.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124336174-8lyb1r.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-50mg-case,puramass,,,
+vyta-tirz-50mg-vial,Vyta- Tirz 50mg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123786240-4360uh.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123786240-4360uh.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-50mg-vial,puramass,,,
+vyta-glp-3-40mg-pen-case,Vyta- GLP-3 40mg Pen (Case),Peptides,Peptides,Case,5990.00,CAD,,,CA$5990.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT40.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT40.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-40mg-pen-case,puramass,,,
+vyta-glp-3-40mg-pen-vial,Vyta- GLP-3 40mg Pen (Single Vial),Peptides,Peptides,Single Vial,599.00,CAD,,,CA$599.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT40.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT40.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-40mg-pen-vial,puramass,,,
+vyta-5amino-1mq-50mg-case,Vyta- 5Amino(1MQ) 50mg (Case),Peptides,Peptides,Case,2250.00,CAD,,,CA$2250.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/5-Amino-1MQ%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/5-Amino-1MQ%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,5amino-1mq-50mg-case,puramass,,,
+vyta-5amino-1mq-50mg-vial,Vyta- 5Amino(1MQ) 50mg (Single Vial),Peptides,Peptides,Single Vial,225.00,CAD,,,CA$225.00,,https://puramass.com/images/products/5-Amino-1mq 10 MG.jpg,https://puramass.com/images/products/5-Amino-1mq 10 MG.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,5amino-1mq-50mg-vial,puramass,,,
+vyta-dsip-15mg-case,Vyta- DSIP 15mg (Case),Peptides,Peptides,Case,225.00,CAD,,,CA$225.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/DSIP%2015mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/DSIP%2015mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dsip-15mg-case,puramass,,,
+vyta-dsip-15mg-vial,Vyta- DSIP 15mg (Single Vial),Peptides,Peptides,Single Vial,112.50,CAD,,,CA$112.50,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/DSIP%2015mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/DSIP%2015mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dsip-15mg-vial,puramass,,,
+vyta-semx-10mg-selnk-10mg-case,Vyta- Semx 10mg + Selnk 10mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semax%2010mg%20+%20Selank%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semax%2010mg%20+%20Selank%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,semx-10mg-selnk-10mg-case,puramass,,,
+vyta-semx-10mg-selnk-10mg-vial,Vyta- Semx 10mg + Selnk 10mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Semax%2010mg%20+%20Selank%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Semax%2010mg%20+%20Selank%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,semx-10mg-selnk-10mg-vial,puramass,,,
+vyta-aod9604-10mg-case,Vyta- AOD9604 10mg (Case),Peptides,Peptides,Case,2950.00,CAD,,,CA$2950.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AOD9604%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AOD9604%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,aod9604-10mg-case,puramass,,,
+vyta-aod9604-10mg-vial,Vyta- AOD9604 10mg (Single Vial),Peptides,Peptides,Single Vial,295.00,CAD,,,CA$295.00,,https://puramass.com/images/products/AOD9604 10mg.jpg,https://puramass.com/images/products/AOD9604 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,aod9604-10mg-vial,puramass,,,
+vyta-5amino-1mq-10mg-case,Vyta- 5Amino(1MQ) 10mg (Case),Peptides,Peptides,Case,900.00,CAD,,,CA$900.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/5-Amino-1MQ%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/5-Amino-1MQ%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,5amino-1mq-10mg-case,puramass,,,
+vyta-5amino-1mq-10mg-vial,Vyta- 5Amino(1MQ) 10mg (Single Vial),Peptides,Peptides,Single Vial,90.00,CAD,,,CA$90.00,,https://puramass.com/images/products/5-Amino-1mq 10 MG.jpg,https://puramass.com/images/products/5-Amino-1mq 10 MG.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,5amino-1mq-10mg-vial,puramass,,,
+vyta-sema-10mg-case,Vyta- Sema 10mg (Case),Peptides,Peptides,Case,1100.00,CAD,,,CA$1100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semaglutide%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semaglutide%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-10mg-case,puramass,,,
+vyta-sema-10mg-vial,Vyta- Sema 10mg (Single Vial),Peptides,Peptides,Single Vial,110.00,CAD,,,CA$110.00,,https://puramass.com/images/products/GLP-1S 10mg.jpg,https://puramass.com/images/products/GLP-1S 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-10mg-vial,puramass,,,
+vyta-glp-3-40mg-case,Vyta- GLP-3 40mg (Case),Peptides,Peptides,Case,4800.00,CAD,,,CA$4800.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Retatrutide%2040mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Retatrutide%2040mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-40mg-case,puramass,,,
+vyta-glp-3-40mg-vial,Vyta- GLP-3 40mg (Single Vial),Peptides,Peptides,Single Vial,480.00,CAD,,,CA$480.00,,https://puramass.com/images/products/GLP-3RT 40mg.jpg,https://puramass.com/images/products/GLP-3RT 40mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-40mg-vial,puramass,,,
+vyta-glp-3-50mg-case,Vyta- GLP-3 50mg (Case),Peptides,Peptides,Case,5800.00,CAD,,,CA$5800.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Retatrutide%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Retatrutide%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-50mg-case,puramass,,,
+vyta-glp-3-50mg-vial,Vyta- GLP-3 50mg (Single Vial),Peptides,Peptides,Single Vial,580.00,CAD,,,CA$580.00,,https://puramass.com/images/products/GLP-3RT 50mg.jpg,https://puramass.com/images/products/GLP-3RT 50mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-50mg-vial,puramass,,,
+vyta-gonadorelin-acetate-2mg-case,Vyta- Gonadorelin Acetate 2mg (Case),Peptides,Peptides,Case,999.90,CAD,,,CA$999.90,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Gonadorelin%20Acetate%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Gonadorelin%20Acetate%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,gonadorelin-acetate-2mg-case,puramass,,,
+vyta-gonadorelin-acetate-2mg-vial,Vyta- Gonadorelin Acetate 2mg (Single Vial),Peptides,Peptides,Single Vial,99.99,CAD,,,CA$99.99,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Gonadorelin%20Acetate%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Gonadorelin%20Acetate%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,gonadorelin-acetate-2mg-vial,puramass,,,
+vyta-pe-2228-10mg-case,Vyta- PE 2228 10mg (Case),Peptides,Peptides,Case,600.00,CAD,,,CA$600.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PE%2022-28%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PE%2022-28%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pe-2228-10mg-case,puramass,,,
+vyta-pe-2228-10mg-vial,Vyta- PE 2228 10mg (Single Vial),Peptides,Peptides,Single Vial,60.00,CAD,,,CA$60.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/PE%2022-28%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/PE%2022-28%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pe-2228-10mg-vial,puramass,,,
+vyta-aod9604-5mg-case,Vyta- AOD9604 5mg (Case),Peptides,Peptides,Case,1900.00,CAD,,,CA$1900.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AOD9604%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AOD9604%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,aod9604-5mg-case,puramass,,,
+vyta-aod9604-5mg-vial,Vyta- AOD9604 5mg (Single Vial),Peptides,Peptides,Single Vial,190.00,CAD,,,CA$190.00,,https://puramass.com/images/products/AOD9604 5mg.jpg,https://puramass.com/images/products/AOD9604 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,aod9604-5mg-vial,puramass,,,
+vyta-igf-1lr3-1mg-case,Vyta- IGF 1LR3 1mg (Case),Peptides,Peptides,Case,950.00,CAD,,,CA$950.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/IGF-1LR3%201mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/IGF-1LR3%201mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,igf-1lr3-1mg-case,puramass,,,
+vyta-igf-1lr3-1mg-vial,Vyta- IGF 1LR3 1mg (Single Vial),Peptides,Peptides,Single Vial,95.00,CAD,,,CA$95.00,,https://puramass.com/images/products/IGF 1mg.jpg,https://puramass.com/images/products/IGF 1mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,igf-1lr3-1mg-vial,puramass,,,
+vyta-mk-677-5mg-case,Vyta- MK(677) 5mg (Case),Peptides,Peptides,Case,1800.00,CAD,,,CA$1800.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MK677%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MK677%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mk-677-5mg-case,puramass,,,
+vyta-mk-677-5mg-vial,Vyta- MK(677) 5mg (Single Vial),Peptides,Peptides,Single Vial,180.00,CAD,,,CA$180.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/MK677%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/MK677%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mk-677-5mg-vial,puramass,,,
+vyta-dihxa-10mg-case,Vyta- Dihxa 10mg (Case),Peptides,Peptides,Case,2350.00,CAD,,,CA$2350.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Dihexa%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Dihexa%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dihxa-10mg-case,puramass,,,
+vyta-dihxa-10mg-vial,Vyta- Dihxa 10mg (Single Vial),Peptides,Peptides,Single Vial,235.00,CAD,,,CA$235.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Dihexa%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Dihexa%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dihxa-10mg-vial,puramass,,,
+vyta-glp-3-10mg-pen-case,Vyta- GLP-3 10mg Pen (Case),Peptides,Peptides,Case,2490.00,CAD,,,CA$2490.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT10.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT10.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-10mg-pen-case,puramass,,,
+vyta-glp-3-10mg-pen-vial,Vyta- GLP-3 10mg Pen (Single Vial),Peptides,Peptides,Single Vial,249.00,CAD,,,CA$249.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT10.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT10.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-10mg-pen-vial,puramass,,,
+vyta-testagen-20mg-case,Vyta- Testagen 20mg (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Testagen%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Testagen%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,testagen-20mg-case,puramass,,,
+vyta-testagen-20mg-vial,Vyta- Testagen 20mg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Testagen%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Testagen%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,testagen-20mg-vial,puramass,,,
+vyta-hexarlin-acetate-5mg-case,Vyta- Hexarlin Acetate 5mg (Case),Peptides,Peptides,Case,1650.00,CAD,,,CA$1650.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Hexarelin%20Acetate%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Hexarelin%20Acetate%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hexarlin-acetate-5mg-case,puramass,,,
+vyta-hexarlin-acetate-5mg-vial,Vyta- Hexarlin Acetate 5mg (Single Vial),Peptides,Peptides,Single Vial,165.00,CAD,,,CA$165.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Hexarelin%20Acetate%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Hexarelin%20Acetate%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hexarlin-acetate-5mg-vial,puramass,,,
+vyta-sema-20mg-case,Vyta- Sema 20mg (Case),Peptides,Peptides,Case,1500.00,CAD,,,CA$1500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semaglutide%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semaglutide%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-20mg-case,puramass,,,
+vyta-sema-20mg-vial,Vyta- Sema 20mg (Single Vial),Peptides,Peptides,Single Vial,150.00,CAD,,,CA$150.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Semaglutide%2020mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Semaglutide%2020mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-20mg-vial,puramass,,,
+vyta-nad-100mg-case,Vyta- NAD 100mg (Case),Peptides,Peptides,Case,600.00,CAD,,,CA$600.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124320469-9dbuh.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124320469-9dbuh.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,nad-100mg-case,puramass,,,
+vyta-nad-100mg-vial,Vyta- NAD 100mg (Single Vial),Peptides,Peptides,Single Vial,60.00,CAD,,,CA$60.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123770586-gnq6n.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123770586-gnq6n.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,nad-100mg-vial,puramass,,,
+vyta-ll37-5mg-case,Vyta- LL37 5mg (Case),Peptides,Peptides,Case,850.00,CAD,,,CA$850.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/LL-37%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/LL-37%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ll37-5mg-case,puramass,,,
+vyta-ll37-5mg-vial,Vyta- LL37 5mg (Single Vial),Peptides,Peptides,Single Vial,85.00,CAD,,,CA$85.00,,https://puramass.com/images/products/LL-37 5mg.jpg,https://puramass.com/images/products/LL-37 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ll37-5mg-vial,puramass,,,
+vyta-ipam-10mg-case,Vyta- IPAM 10mg (Case),Peptides,Peptides,Case,800.00,CAD,,,CA$800.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Ipamorelin%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Ipamorelin%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ipam-10mg-case,puramass,,,
+vyta-ipam-10mg-vial,Vyta- IPAM 10mg (Single Vial),Peptides,Peptides,Single Vial,80.00,CAD,,,CA$80.00,,https://puramass.com/images/products/Ipamorelin 10mg.jpg,https://puramass.com/images/products/Ipamorelin 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ipam-10mg-vial,puramass,,,
+vyta-sema-5mg-case,Vyta- Sema 5mg (Case),Peptides,Peptides,Case,700.00,CAD,,,CA$700.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semaglutide%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semaglutide%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-5mg-case,puramass,,,
+vyta-sema-5mg-vial,Vyta- Sema 5mg (Single Vial),Peptides,Peptides,Single Vial,70.00,CAD,,,CA$70.00,,https://puramass.com/images/products/GLP-1S 5mg.jpg,https://puramass.com/images/products/GLP-1S 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-5mg-vial,puramass,,,
+vyta-mots-c-20mg-case,Vyta- MOTS C 20mg (Case),Peptides,Peptides,Case,900.00,CAD,,,CA$900.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MOTS-C%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MOTS-C%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mots-c-20mg-case,puramass,,,
+vyta-mots-c-20mg-vial,Vyta- MOTS C 20mg (Single Vial),Peptides,Peptides,Single Vial,90.00,CAD,,,CA$90.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/MOTS-C%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/MOTS-C%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mots-c-20mg-vial,puramass,,,
+vyta-tesa-12mg-ipam-6mg-case,Vyta- Tesa 12mg + IPAM 6mg (Case),Peptides,Peptides,Case,1999.90,CAD,,,CA$1999.90,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tesamorelin%2012mg%20+%20Ipamorelin%206mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tesamorelin%2012mg%20+%20Ipamorelin%206mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-12mg-ipam-6mg-case,puramass,,,
+vyta-tesa-12mg-ipam-6mg-vial,Vyta- Tesa 12mg + IPAM 6mg (Single Vial),Peptides,Peptides,Single Vial,199.99,CAD,,,CA$199.99,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Tesamorelin%2012mg%20+%20Ipamorelin%206mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Tesamorelin%2012mg%20+%20Ipamorelin%206mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-12mg-ipam-6mg-vial,puramass,,,
+vyta-selnk-10mg-case,Vyta- Selnk 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Selank%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Selank%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,selnk-10mg-case,puramass,,,
+vyta-selnk-10mg-vial,Vyta- Selnk 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://puramass.com/images/products/Selank 10mg.jpg,https://puramass.com/images/products/Selank 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,selnk-10mg-vial,puramass,,,
+vyta-cjc-1295-without-dac-ipam-10mg-case,Vyta- CJC 1295 without DAC + IPAM 10mg (Case),Peptides,Peptides,Case,800.00,CAD,,,CA$800.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-without-dac-ipam-10mg-case,puramass,,,
+vyta-cjc-1295-without-dac-ipam-10mg-vial,Vyta- CJC 1295 without DAC + IPAM 10mg (Single Vial),Peptides,Peptides,Single Vial,80.00,CAD,,,CA$80.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/CJC-1295%20without%20DAC%20+%20IPA%2010mg.JPG,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/CJC-1295%20without%20DAC%20+%20IPA%2010mg.JPG,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-without-dac-ipam-10mg-vial,puramass,,,
+vyta-thymosin-alpha1-10mg-case,Vyta- Thymosin (Alpha1) 10mg (Case),Peptides,Peptides,Case,750.00,CAD,,,CA$750.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Thymosin%20Alpha-1%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Thymosin%20Alpha-1%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,thymosin-alpha1-10mg-case,puramass,,,
+vyta-thymosin-alpha1-10mg-vial,Vyta- Thymosin (Alpha1) 10mg (Single Vial),Peptides,Peptides,Single Vial,75.00,CAD,,,CA$75.00,,https://puramass.com/images/products/Thymosin Alpha-1 10mg.jpg,https://puramass.com/images/products/Thymosin Alpha-1 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,thymosin-alpha1-10mg-vial,puramass,,,
+vyta-l-carnitine-1200mg-case,Vyta- L Carnitine 1200mg (Case),Peptides,Peptides,Case,1250.00,CAD,,,CA$1250.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/L-Carnitine%201200mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/L-Carnitine%201200mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,l-carnitine-1200mg-case,puramass,,,
+vyta-l-carnitine-1200mg-vial,Vyta- L Carnitine 1200mg (Single Vial),Peptides,Peptides,Single Vial,125.00,CAD,,,CA$125.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/L-Carnitine%201200mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/L-Carnitine%201200mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,l-carnitine-1200mg-vial,puramass,,,
+vyta-glp-3-30mg-pens-case,Vyta- GLP-3 30mg Pens (Case),Peptides,Peptides,Case,4990.00,CAD,,,CA$4990.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT30.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT30.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-30mg-pens-case,puramass,,,
+vyta-glp-3-30mg-pens-vial,Vyta- GLP-3 30mg Pens (Single Vial),Peptides,Peptides,Single Vial,499.00,CAD,,,CA$499.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT30.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT30.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-30mg-pens-vial,puramass,,,
+vyta-sermorlin-acetate-10mg-case,Vyta- Sermorlin Acetate 10mg (Case),Peptides,Peptides,Case,2700.00,CAD,,,CA$2700.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Sermorelin%20Acetate%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Sermorelin%20Acetate%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sermorlin-acetate-10mg-case,puramass,,,
+vyta-sermorlin-acetate-10mg-vial,Vyta- Sermorlin Acetate 10mg (Single Vial),Peptides,Peptides,Single Vial,270.00,CAD,,,CA$270.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Sermorelin%20Acetate%2010mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Sermorelin%20Acetate%2010mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sermorlin-acetate-10mg-vial,puramass,,,
+vyta-peg-mgf-2mg-case,Vyta- PEG MGF 2mg (Case),Peptides,Peptides,Case,1250.00,CAD,,,CA$1250.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PEG%20MGF%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PEG%20MGF%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,peg-mgf-2mg-case,puramass,,,
+vyta-peg-mgf-2mg-vial,Vyta- PEG MGF 2mg (Single Vial),Peptides,Peptides,Single Vial,125.00,CAD,,,CA$125.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/PEG%20MGF%202mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/PEG%20MGF%202mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,peg-mgf-2mg-vial,puramass,,,
+vyta-cjc-1295-with-dac-5mg-case,Vyta- CJC 1295 with DAC 5mg (Case),Peptides,Peptides,Case,750.00,CAD,,,CA$750.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/CJC-1295%20with%20DAC%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/CJC-1295%20with%20DAC%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-with-dac-5mg-case,puramass,,,
+vyta-cjc-1295-with-dac-5mg-vial,Vyta- CJC 1295 with DAC 5mg (Single Vial),Peptides,Peptides,Single Vial,75.00,CAD,,,CA$75.00,,https://puramass.com/images/products/CJC-1295 with DAC 5mg.jpg,https://puramass.com/images/products/CJC-1295 with DAC 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-with-dac-5mg-vial,puramass,,,
+vyta-cagri-5mg-case,Vyta- Cagri 5mg (Case),Peptides,Peptides,Case,1200.00,CAD,,,CA$1200.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/Cagrilintide%205mg.png,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/Cagrilintide%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cagri-5mg-case,puramass,,,
+vyta-cagri-5mg-vial,Vyta- Cagri 5mg (Single Vial),Peptides,Peptides,Single Vial,120.00,CAD,,,CA$120.00,,https://puramass.com/images/products/Cagrilintide 5mg.jpg,https://puramass.com/images/products/Cagrilintide 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cagri-5mg-vial,puramass,,,
+vyta-glutathione-1500mg-case,Vyta- Glutathione 1500mg (Case),Peptides,Peptides,Case,1200.00,CAD,,,CA$1200.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Glutathione%201500mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Glutathione%201500mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glutathione-1500mg-case,puramass,,,
+vyta-glutathione-1500mg-vial,Vyta- Glutathione 1500mg (Single Vial),Peptides,Peptides,Single Vial,120.00,CAD,,,CA$120.00,,https://puramass.com/images/products/Glutathione 1500mg.jpg,https://puramass.com/images/products/Glutathione 1500mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glutathione-1500mg-vial,puramass,,,
+vyta-kisspeptin10-5mg-case,Vyta- KissPeptin10 5mg (Case),Peptides,Peptides,Case,550.00,CAD,,,CA$550.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/KissPeptin-10%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/KissPeptin-10%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kisspeptin10-5mg-case,puramass,,,
+vyta-kisspeptin10-5mg-vial,Vyta- KissPeptin10 5mg (Single Vial),Peptides,Peptides,Single Vial,55.00,CAD,,,CA$55.00,,https://puramass.com/images/products/KissPeptin 5mg.jpg,https://puramass.com/images/products/KissPeptin 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kisspeptin10-5mg-vial,puramass,,,
+vyta-semx-10mg-case,Vyta- Semx 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semax%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Semax%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,semx-10mg-case,puramass,,,
+vyta-semx-10mg-vial,Vyta- Semx 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://puramass.com/images/products/Semax 10mg.jpg,https://puramass.com/images/products/Semax 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,semx-10mg-vial,puramass,,,
+vyta-ahk-cu-50mg-case,Vyta- AHK Cu 50mg (Case),Peptides,Peptides,Case,700.00,CAD,,,CA$700.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AHK-Cu%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AHK-Cu%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ahk-cu-50mg-case,puramass,,,
+vyta-ahk-cu-50mg-vial,Vyta- AHK Cu 50mg (Single Vial),Peptides,Peptides,Single Vial,70.00,CAD,,,CA$70.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/AHK-Cu%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/AHK-Cu%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ahk-cu-50mg-vial,puramass,,,
+vyta-mgf-2mg-case,Vyta- MGF 2mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MGF%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MGF%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mgf-2mg-case,puramass,,,
+vyta-mgf-2mg-vial,Vyta- MGF 2mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/MGF%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/MGF%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mgf-2mg-vial,puramass,,,
+vyta-sermorlin-acetate-5mg-case,Vyta- Sermorlin Acetate 5mg (Case),Peptides,Peptides,Case,1500.00,CAD,,,CA$1500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Sermorelin%20Acetate%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Sermorelin%20Acetate%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sermorlin-acetate-5mg-case,puramass,,,
+vyta-sermorlin-acetate-5mg-vial,Vyta- Sermorlin Acetate 5mg (Single Vial),Peptides,Peptides,Single Vial,150.00,CAD,,,CA$150.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Sermorelin%20Acetate%205mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/Sermorelin%20Acetate%205mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sermorlin-acetate-5mg-vial,puramass,,,
+vyta-bacteriostatic-water-30ml-case,Vyta- Bacteriostatic Water 30mL (Case),Peptides,Peptides,Case,300.00,CAD,,,CA$300.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Bacteriostatic%20Water%2030mL.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Bacteriostatic%20Water%2030mL.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-30ml-case,puramass,,,
+vyta-bacteriostatic-water-30ml-vial,Vyta- Bacteriostatic Water 30mL (Single Vial),Peptides,Peptides,Single Vial,30.00,CAD,,,CA$30.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Bacteriostatic%20Water%2030ML.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Bacteriostatic%20Water%2030ML.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-30ml-vial,puramass,,,
+vyta-cjc-1295-without-dac-5mg-case,Vyta- CJC 1295 without DAC 5mg (Case),Peptides,Peptides,Case,650.00,CAD,,,CA$650.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/CJC-1295%20without%20DAC%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/CJC-1295%20without%20DAC%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-without-dac-5mg-case,puramass,,,
+vyta-cjc-1295-without-dac-5mg-vial,Vyta- CJC 1295 without DAC 5mg (Single Vial),Peptides,Peptides,Single Vial,65.00,CAD,,,CA$65.00,,https://puramass.com/images/products/CJC-1295 WITHOUT DAC 5MG.jpg,https://puramass.com/images/products/CJC-1295 WITHOUT DAC 5MG.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-without-dac-5mg-vial,puramass,,,
+vyta-mt1-10mg-case,Vyta- MT1 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MT-1%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MT-1%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mt1-10mg-case,puramass,,,
+vyta-mt1-10mg-vial,Vyta- MT1 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://puramass.com/images/products/MT-1 10mg.jpg,https://puramass.com/images/products/MT-1 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mt1-10mg-vial,puramass,,,
+vyta-ghrp-2-acetate-10mg-case,Vyta- GHRP 2 Acetate 10mg (Case),Peptides,Peptides,Case,1100.00,CAD,,,CA$1100.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/GHRP-2%20Acetate%2010mg.png,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/GHRP-2%20Acetate%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghrp-2-acetate-10mg-case,puramass,,,
+vyta-ghrp-2-acetate-10mg-vial,Vyta- GHRP 2 Acetate 10mg (Single Vial),Peptides,Peptides,Single Vial,110.00,CAD,,,CA$110.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/GHRP-2%20Acetate%2010mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/GHRP-2%20Acetate%2010mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghrp-2-acetate-10mg-vial,puramass,,,
+vyta-slupp332-5mg-case,Vyta- SLUPP332 5mg (Case),Peptides,Peptides,Case,1400.00,CAD,,,CA$1400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/SLU-PP-332%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/SLU-PP-332%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,slupp332-5mg-case,puramass,,,
+vyta-slupp332-5mg-vial,Vyta- SLUPP332 5mg (Single Vial),Peptides,Peptides,Single Vial,140.00,CAD,,,CA$140.00,,https://puramass.com/images/products/SLU-PP-332 5mg.jpg,https://puramass.com/images/products/SLU-PP-332 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,slupp332-5mg-vial,puramass,,,
+vyta-hgh-191aa-36-iu-case,Vyta- HGH 191AA 36 IU (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2036%20IU.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2036%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-36-iu-case,puramass,,,
+vyta-hgh-191aa-36-iu-vial,Vyta- HGH 191AA 36 IU (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://puramass.com/images/products/HGH 191AA (Somatropin) 36 IU.jpg,https://puramass.com/images/products/HGH 191AA (Somatropin) 36 IU.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-36-iu-vial,puramass,,,
+vyta-thymalin-10mg-case,Vyta- Thymalin 10mg (Case),Peptides,Peptides,Case,750.00,CAD,,,CA$750.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Thymalin%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Thymalin%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,thymalin-10mg-case,puramass,,,
+vyta-thymalin-10mg-vial,Vyta- Thymalin 10mg (Single Vial),Peptides,Peptides,Single Vial,75.00,CAD,,,CA$75.00,,https://puramass.com/images/products/Thymalin 10mg.jpg,https://puramass.com/images/products/Thymalin 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,thymalin-10mg-vial,puramass,,,
+vyta-vip-10mg-case,Vyta- VIP 10mg (Case),Peptides,Peptides,Case,800.00,CAD,,,CA$800.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/VIP%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/VIP%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vip-10mg-case,puramass,,,
+vyta-vip-10mg-vial,Vyta- VIP 10mg (Single Vial),Peptides,Peptides,Single Vial,80.00,CAD,,,CA$80.00,,https://puramass.com/images/products/VIP 10mg.jpg,https://puramass.com/images/products/VIP 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vip-10mg-vial,puramass,,,
+vyta-hgh-191aa-15-iu-case,Vyta- HGH 191AA 15 IU (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2015%20IU.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2015%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-15-iu-case,puramass,,,
+vyta-hgh-191aa-15-iu-vial,Vyta- HGH 191AA 15 IU (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/HGH15IU.jpeg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/HGH15IU.jpeg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-15-iu-vial,puramass,,,
+vyta-sema-30mg-case,Vyta- Sema 30mg (Case),Peptides,Peptides,Case,3000.00,CAD,,,CA$3000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124381635-lcj5b7.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124381635-lcj5b7.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-30mg-case,puramass,,,
+vyta-sema-30mg-vial,Vyta- Sema 30mg (Single Vial),Peptides,Peptides,Single Vial,300.00,CAD,,,CA$300.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123837859-sdpn29.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123837859-sdpn29.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,sema-30mg-vial,puramass,,,
+vyta-tesa-20mg-case,Vyta- Tesa 20mg (Case),Peptides,Peptides,Case,3400.00,CAD,,,CA$3400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tesamorelin%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Tesamorelin%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-20mg-case,puramass,,,
+vyta-tesa-20mg-vial,Vyta- Tesa 20mg (Single Vial),Peptides,Peptides,Single Vial,340.00,CAD,,,CA$340.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Tesamorelin%2020mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Tesamorelin%2020mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tesa-20mg-vial,puramass,,,
+vyta-p21-10mg-case,Vyta- P21 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/P21%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/P21%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,p21-10mg-case,puramass,,,
+vyta-p21-10mg-vial,Vyta- P21 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/P21%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/P21%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,p21-10mg-vial,puramass,,,
+vyta-hcg-10000-iu-case,Vyta- HCG 10000 IU (Case),Peptides,Peptides,Case,2600.00,CAD,,,CA$2600.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HCG%2010000%20IU.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HCG%2010000%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hcg-10000-iu-case,puramass,,,
+vyta-hcg-10000-iu-vial,Vyta- HCG 10000 IU (Single Vial),Peptides,Peptides,Single Vial,260.00,CAD,,,CA$260.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/HCG%2010000%20IU.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/HCG%2010000%20IU.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hcg-10000-iu-vial,puramass,,,
+vyta-kisspeptin10-10mg-case,Vyta- KissPeptin10 10mg (Case),Peptides,Peptides,Case,900.00,CAD,,,CA$900.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/KissPeptin-10%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/KissPeptin-10%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kisspeptin10-10mg-case,puramass,,,
+vyta-kisspeptin10-10mg-vial,Vyta- KissPeptin10 10mg (Single Vial),Peptides,Peptides,Single Vial,90.00,CAD,,,CA$90.00,,https://puramass.com/images/products/KissPeptin 10mg.jpg,https://puramass.com/images/products/KissPeptin 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,kisspeptin10-10mg-vial,puramass,,,
+vyta-hgh-191aa-24-iu-case,Vyta- HGH 191AA 24 IU (Case),Peptides,Peptides,Case,1500.00,CAD,,,CA$1500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2024%20IU.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HGH%20191AA%20(Somatropin)%2024%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-24-iu-case,puramass,,,
+vyta-hgh-191aa-24-iu-vial,Vyta- HGH 191AA 24 IU (Single Vial),Peptides,Peptides,Single Vial,150.00,CAD,,,CA$150.00,,https://puramass.com/images/products/HGH 191AA (Somatropin) 24IU.jpg,https://puramass.com/images/products/HGH 191AA (Somatropin) 24IU.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hgh-191aa-24-iu-vial,puramass,,,
+vyta-vitamin-c-case,Vyta- Vitamin C (Case),Peptides,Peptides,Case,300.00,CAD,,,CA$300.00,,,,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vitamin-c-case,puramass,,,
+vyta-vitamin-c-vial,Vyta- Vitamin C (Single Vial),Peptides,Peptides,Single Vial,30.00,CAD,,,CA$30.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Vitamin%20C.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Vitamin%20C.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,vitamin-c-vial,puramass,,,
+vyta-thymosin-alpha1-5mg-case,Vyta- Thymosin (Alpha1) 5mg (Case),Peptides,Peptides,Case,450.00,CAD,,,CA$450.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Thymosin%20Alpha-1%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Thymosin%20Alpha-1%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,thymosin-alpha1-5mg-case,puramass,,,
+vyta-thymosin-alpha1-5mg-vial,Vyta- Thymosin (Alpha1) 5mg (Single Vial),Peptides,Peptides,Single Vial,45.00,CAD,,,CA$45.00,,https://puramass.com/images/products/Thymosin Alpha-1 5mg.jpg,https://puramass.com/images/products/Thymosin Alpha-1 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,thymosin-alpha1-5mg-vial,puramass,,,
+vyta-epit-50mg-case,Vyta- Epit 50mg (Case),Peptides,Peptides,Case,2950.00,CAD,,,CA$2950.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Epithalon%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Epithalon%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,epit-50mg-case,puramass,,,
+vyta-epit-50mg-vial,Vyta- Epit 50mg (Single Vial),Peptides,Peptides,Single Vial,295.00,CAD,,,CA$295.00,,https://puramass.com/images/products/Epithalon 40mg.jpg,https://puramass.com/images/products/Epithalon 40mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,epit-50mg-vial,puramass,,,
+vyta-pinelon-10mg-case,Vyta- Pinelon 10mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Pinealon%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Pinealon%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pinelon-10mg-case,puramass,,,
+vyta-pinelon-10mg-vial,Vyta- Pinelon 10mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Pinealon%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Pinealon%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pinelon-10mg-vial,puramass,,,
+vyta-glp-3-20mg-pen-case,Vyta- GLP-3 20mg Pen (Case),Peptides,Peptides,Case,3990.00,CAD,,,CA$3990.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT20.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT20.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-20mg-pen-case,puramass,,,
+vyta-glp-3-20mg-pen-vial,Vyta- GLP-3 20mg Pen (Single Vial),Peptides,Peptides,Single Vial,399.00,CAD,,,CA$399.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT20.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/RT20.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,glp-3-20mg-pen-vial,puramass,,,
+vyta-acetic-acid-water-case,Vyta- Acetic Acid Water (Case),Peptides,Peptides,Case,400.00,CAD,,,CA$400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124366292-k9wl3z.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124366292-k9wl3z.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,acetic-acid-water-case,puramass,,,
+vyta-acetic-acid-water-vial,Vyta- Acetic Acid Water (Single Vial),Peptides,Peptides,Single Vial,40.00,CAD,,,CA$40.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123822935-p49gf.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123822935-p49gf.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,acetic-acid-water-vial,puramass,,,
+vyta-tb500-5mg-case,Vyta- TB500 5mg (Case),Peptides,Peptides,Case,650.00,CAD,,,CA$650.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/TB500%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/TB500%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tb500-5mg-case,puramass,,,
+vyta-tb500-5mg-vial,Vyta- TB500 5mg (Single Vial),Peptides,Peptides,Single Vial,65.00,CAD,,,CA$65.00,,https://puramass.com/images/products/TB-500 5mg.jpg,https://puramass.com/images/products/TB-500 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tb500-5mg-vial,puramass,,,
+vyta-hcg-5000-iu-case,Vyta- HCG 5000 IU (Case),Peptides,Peptides,Case,650.00,CAD,,,CA$650.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HCG%205000%20IU.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/HCG%205000%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hcg-5000-iu-case,puramass,,,
+vyta-hcg-5000-iu-vial,Vyta- HCG 5000 IU (Single Vial),Peptides,Peptides,Single Vial,65.00,CAD,,,CA$65.00,,https://puramass.com/images/products/HCG 5000 IU.jpg,https://puramass.com/images/products/HCG 5000 IU.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hcg-5000-iu-vial,puramass,,,
+vyta-mt2-10mg-case,Vyta- MT2 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MT-2%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/MT-2%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mt2-10mg-case,puramass,,,
+vyta-mt2-10mg-vial,Vyta- MT2 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://puramass.com/images/products/MT-2 10mg.jpg,https://puramass.com/images/products/MT-2 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mt2-10mg-vial,puramass,,,
+vyta-5amino-1mq-5mg-case,Vyta- 5Amino(1MQ) 5mg (Case),Peptides,Peptides,Case,550.00,CAD,,,CA$550.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/5-Amino-1MQ%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/5-Amino-1MQ%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,5amino-1mq-5mg-case,puramass,,,
+vyta-5amino-1mq-5mg-vial,Vyta- 5Amino(1MQ) 5mg (Single Vial),Peptides,Peptides,Single Vial,55.00,CAD,,,CA$55.00,,https://puramass.com/images/products/5-Amino-1mq 5 MG.jpg,https://puramass.com/images/products/5-Amino-1mq 5 MG.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,5amino-1mq-5mg-vial,puramass,,,
+vyta-ss31-10mg-case,Vyta- SS31 10mg (Case),Peptides,Peptides,Case,750.00,CAD,,,CA$750.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/SS-31%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/SS-31%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ss31-10mg-case,puramass,,,
+vyta-ss31-10mg-vial,Vyta- SS31 10mg (Single Vial),Peptides,Peptides,Single Vial,75.00,CAD,,,CA$75.00,,https://puramass.com/images/products/SS-31 10mg.jpg,https://puramass.com/images/products/SS-31 10mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ss31-10mg-vial,puramass,,,
+vyta-ahk-cu-100mg-case,Vyta- AHK Cu 100mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AHK-Cu%20100mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/AHK-Cu%20100mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ahk-cu-100mg-case,puramass,,,
+vyta-ahk-cu-100mg-vial,Vyta- AHK Cu 100mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/AHK-Cu%20100mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/AHK-Cu%20100mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ahk-cu-100mg-vial,puramass,,,
+vyta-hcg-2000-iu-case,Vyta- HCG 2000 IU (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/HCG%202000%20IU.png,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/product-boxes/HCG%202000%20IU.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hcg-2000-iu-case,puramass,,,
+vyta-hcg-2000-iu-vial,Vyta- HCG 2000 IU (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/HCG%202000%20I.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/HCG%202000%20I.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,hcg-2000-iu-vial,puramass,,,
+vyta-cjc-1295-without-dac-10mg-case,Vyta- CJC 1295 without DAC 10mg (Case),Peptides,Peptides,Case,1200.00,CAD,,,CA$1200.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/CJC-1295%20without%20DAC%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/CJC-1295%20without%20DAC%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-without-dac-10mg-case,puramass,,,
+vyta-cjc-1295-without-dac-10mg-vial,Vyta- CJC 1295 without DAC 10mg (Single Vial),Peptides,Peptides,Single Vial,120.00,CAD,,,CA$120.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/CJC-1295%20without%20DAC%2010mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/CJC-1295%20without%20DAC%2010mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cjc-1295-without-dac-10mg-vial,puramass,,,
+vyta-tirz-60mg-case,Vyta- Tirz 60mg (Case),Peptides,Peptides,Case,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124291061-qb1dng.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124291061-qb1dng.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-60mg-case,puramass,,,
+vyta-tirz-60mg-vial,Vyta- Tirz 60mg (Single Vial),Peptides,Peptides,Single Vial,0.00,CAD,,,CA$0.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123726734-85j57s.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123726734-85j57s.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,tirz-60mg-vial,puramass,,,
+vyta-oxytocin-acetate-10mg-case,Vyta- Oxytocin Acetate 10mg (Case),Peptides,Peptides,Case,1120.00,CAD,,,CA$1120.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124264001-olfzwg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124264001-olfzwg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,oxytocin-acetate-10mg-case,puramass,,,
+vyta-oxytocin-acetate-10mg-vial,Vyta- Oxytocin Acetate 10mg (Single Vial),Peptides,Peptides,Single Vial,112.00,CAD,,,CA$112.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123679825-05vywj.jpg,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123679825-05vywj.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,oxytocin-acetate-10mg-vial,puramass,,,
+vyta-ipam-5mg-case,Vyta- IPAM 5mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Ipamorelin%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Ipamorelin%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ipam-5mg-case,puramass,,,
+vyta-ipam-5mg-vial,Vyta- IPAM 5mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://puramass.com/images/products/Ipamorelin 5mg.jpg,https://puramass.com/images/products/Ipamorelin 5mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ipam-5mg-vial,puramass,,,
+vyta-bacteriostatic-water-3ml-case,Vyta- Bacteriostatic Water 3mL (Case),Peptides,Peptides,Case,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Bacteriostatic%20Water%203mL.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Bacteriostatic%20Water%203mL.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-3ml-case,puramass,,,
+vyta-bacteriostatic-water-3ml-vial,Vyta- Bacteriostatic Water 3mL (Single Vial),Peptides,Peptides,Single Vial,10.00,CAD,,,CA$10.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Bacteriostatic%20Water%203ml.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Bacteriostatic%20Water%203ml.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-3ml-vial,puramass,,,
+vyta-epit-40mg-case,Vyta- Epit 40mg (Case),Peptides,Peptides,Case,2500.00,CAD,,,CA$2500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Epithalon%2040mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Epithalon%2040mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,epit-40mg-case,puramass,,,
+vyta-epit-40mg-vial,Vyta- Epit 40mg (Single Vial),Peptides,Peptides,Single Vial,250.00,CAD,,,CA$250.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Epithalon%2040mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Epithalon%2040mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,epit-40mg-vial,puramass,,,
+vyta-oxytocin-acetate-2mg-case,Vyta- Oxytocin Acetate 2mg (Case),Peptides,Peptides,Case,700.00,CAD,,,CA$700.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Oxytocin%20Acetate%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Oxytocin%20Acetate%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,oxytocin-acetate-2mg-case,puramass,,,
+vyta-oxytocin-acetate-2mg-vial,Vyta- Oxytocin Acetate 2mg (Single Vial),Peptides,Peptides,Single Vial,70.00,CAD,,,CA$70.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Oxytocin%20Acetate%202mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/Oxytocin%20Acetate%202mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,oxytocin-acetate-2mg-vial,puramass,,,
+vyta-dermorphin-5mg-case,Vyta- Dermorphin 5mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124351779-lt27z.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784124351779-lt27z.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dermorphin-5mg-case,puramass,,,
+vyta-dermorphin-5mg-vial,Vyta- Dermorphin 5mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123804862-yafpas.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/products/1784123804862-yafpas.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dermorphin-5mg-vial,puramass,,,
+vyta-bacteriostatic-water-10ml-case,Vyta- Bacteriostatic Water 10mL (Case),Peptides,Peptides,Case,150.00,CAD,,,CA$150.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Bacteriostatic%20Water%2010mL.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Bacteriostatic%20Water%2010mL.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-10ml-case,puramass,,,
+vyta-bacteriostatic-water-10ml-vial,Vyta- Bacteriostatic Water 10mL (Single Vial),Peptides,Peptides,Single Vial,15.00,CAD,,,CA$15.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Bacteriostatic%20Water%2010ML.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Bacteriostatic%20Water%2010ML.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bacteriostatic-water-10ml-vial,puramass,,,
+vyta-oxytocin-acetate-5mg-case,Vyta- Oxytocin Acetate 5mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Oxytocin%20Acetate%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Oxytocin%20Acetate%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,oxytocin-acetate-5mg-case,puramass,,,
+vyta-oxytocin-acetate-5mg-vial,Vyta- Oxytocin Acetate 5mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Oxytocin%20Acetate%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Oxytocin%20Acetate%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,oxytocin-acetate-5mg-vial,puramass,,,
+vyta-adamax-5mg-case,Vyta- Adamax 5mg (Case),Peptides,Peptides,Case,4000.00,CAD,,,CA$4000.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Adamax%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Adamax%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,adamax-5mg-case,puramass,,,
+vyta-adamax-5mg-vial,Vyta- Adamax 5mg (Single Vial),Peptides,Peptides,Single Vial,400.00,CAD,,,CA$400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Adamax%205mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Adamax%205mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,adamax-5mg-vial,puramass,,,
+vyta-aicar-50mg-case,Vyta- Aicar 50mg (Case),Peptides,Peptides,Case,490.00,CAD,,,CA$490.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Aicar%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Aicar%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,aicar-50mg-case,puramass,,,
+vyta-aicar-50mg-vial,Vyta- Aicar 50mg (Single Vial),Peptides,Peptides,Single Vial,65.00,CAD,,,CA$65.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Aicar%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Aicar%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,aicar-50mg-vial,puramass,,,
+vyta-cerebrolysin-60mg-case,Vyta- Cerebrolysin 60mg (Case),Peptides,Peptides,Case,1200.00,CAD,,,CA$1200.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Cerebrolysin%2060mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/Cerebrolysin%2060mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cerebrolysin-60mg-case,puramass,,,
+vyta-cerebrolysin-60mg-vial,Vyta- Cerebrolysin 60mg (Single Vial),Peptides,Peptides,Single Vial,120.00,CAD,,,CA$120.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Cerebrolysin%2060mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads-2/Cerebrolysin%2060mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,cerebrolysin-60mg-vial,puramass,,,
+vyta-pnc-10mg-case,Vyta- PNC 10mg (Case),Peptides,Peptides,Case,500.00,CAD,,,CA$500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PNC%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/PNC%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pnc-10mg-case,puramass,,,
+vyta-pnc-10mg-vial,Vyta- PNC 10mg (Single Vial),Peptides,Peptides,Single Vial,50.00,CAD,,,CA$50.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/PNC%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/runway-uploads/PNC%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,pnc-10mg-vial,puramass,,,
+vyta-dsip-10mg-case,Vyta- DSIP 10mg (Case),Peptides,Peptides,Case,1400.00,CAD,,,CA$1400.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/DSIP%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/DSIP%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dsip-10mg-case,puramass,,,
+vyta-dsip-10mg-vial,Vyta- DSIP 10mg (Single Vial),Peptides,Peptides,Single Vial,140.00,CAD,,,CA$140.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/DSIP%2010mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/DSIP%2010mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,dsip-10mg-vial,puramass,,,
+vyta-ghrp-6-acetate-10mg-case,Vyta- GHRP 6 Acetate 10mg (Case),Peptides,Peptides,Case,1100.00,CAD,,,CA$1100.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/GHRP-6%20Acetate%2010mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/GHRP-6%20Acetate%2010mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghrp-6-acetate-10mg-case,puramass,,,
+vyta-ghrp-6-acetate-10mg-vial,Vyta- GHRP 6 Acetate 10mg (Single Vial),Peptides,Peptides,Single Vial,110.00,CAD,,,CA$110.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/GHRP-6%20Acetate%2010mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/GHRP-6%20Acetate%2010mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ghrp-6-acetate-10mg-vial,puramass,,,
+vyta-ss31-50mg-case,Vyta- SS31 50mg (Case),Peptides,Peptides,Case,3500.00,CAD,,,CA$3500.00,,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/SS-31%2050mg.png,https://didnmcyrxgubgesiaatj.supabase.co/storage/v1/object/public/product-boxes/SS-31%2050mg.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ss31-50mg-case,puramass,,,
+vyta-ss31-50mg-vial,Vyta- SS31 50mg (Single Vial),Peptides,Peptides,Single Vial,350.00,CAD,,,CA$350.00,,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/SS-31%2050mg.jpg,https://swpcvpkcfxihxmjpjqow.supabase.co/storage/v1/object/public/products/SS-31%2050mg.jpg,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ss31-50mg-vial,puramass,,,
+vyta-ara290-10mg-case,Vyta- ARA290 10mg (Case),Peptides,Peptides,Case,1900.00,CAD,,,CA$1900.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789600237745-6kmr0h.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789600237745-6kmr0h.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ara290-10mg-case,puramass,,,
+vyta-ara290-10mg-vial,Vyta- ARA290 10mg (Single Vial),Peptides,Peptides,Single Vial,190.00,CAD,,,CA$190.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789600223633-hfe0e.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789600223633-hfe0e.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,ara290-10mg-vial,puramass,,,
+vyta-bpc-tb500-10mg-case,Vyta- BPC+ TB500 10mg (Case),Peptides,Peptides,Case,1250.00,CAD,,,CA$1250.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740020114-f463.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740020114-f463.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc-tb500-10mg-case,puramass,,,
+vyta-bpc-tb500-10mg-vial,Vyta- BPC+ TB500 10mg (Single Vial),Peptides,Peptides,Single Vial,125.00,CAD,,,CA$125.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740005400-g8t51.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789740005400-g8t51.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,bpc-tb500-10mg-vial,puramass,,,
+vyta-mots-c-10mg-case,Vyta- MOTS C 10mg (Case),Peptides,Peptides,Case,700.00,CAD,,,CA$700.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746373181-c8kzm4.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746373181-c8kzm4.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mots-c-10mg-case,puramass,,,
+vyta-mots-c-10mg-vial,Vyta- MOTS C 10mg (Single Vial),Peptides,Peptides,Single Vial,70.00,CAD,,,CA$70.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746387408-17h9s4.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746387408-17h9s4.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,mots-c-10mg-vial,puramass,,,
+vyta-nad-1000mg-case,Vyta- NAD 1000mg (Case),Peptides,Peptides,Case,2000.00,CAD,,,CA$2000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746796779-qkjn97.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746796779-qkjn97.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,nad-1000mg-case,puramass,,,
+vyta-nad-1000mg-vial,Vyta- NAD 1000mg (Single Vial),Peptides,Peptides,Single Vial,200.00,CAD,,,CA$200.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746785157-cm1ggf.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746785157-cm1ggf.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,nad-1000mg-vial,puramass,,,
+vyta-nad-500mg-case,Vyta- NAD 500mg (Case),Peptides,Peptides,Case,1000.00,CAD,,,CA$1000.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746943030-v27x8g.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746943030-v27x8g.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,nad-500mg-case,puramass,,,
+vyta-nad-500mg-vial,Vyta- NAD 500mg (Single Vial),Peptides,Peptides,Single Vial,100.00,CAD,,,CA$100.00,,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746955719-ic61dn.png,https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/products/1789746955719-ic61dn.png,,false,,true,,,"codogmjo@gmail.com
+01291978@proton.me
+vytabiosciences@gmail.com",,,,true,nad-500mg-vial,puramass,,,
