@@ -3,6 +3,19 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://swpcvpkcfxihxmjpjqow.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+// A recovery link whose `redirect_to` is missing from Supabase's Redirect URLs
+// allow-list falls back to the Site URL, so the recipient lands on the homepage
+// with `#access_token=…&type=recovery` and is simply signed in — never shown the
+// new-password form. Send that hash on to /reset-password before the client
+// below parses (and strips) it, so the form gets the recovery session.
+if (
+  typeof window !== 'undefined' &&
+  window.location.pathname !== '/reset-password' &&
+  /(^#|&)type=recovery(&|$)/.test(window.location.hash)
+) {
+  window.location.replace(`/reset-password${window.location.hash}`);
+}
+
 // Single shared client for client-side usage
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

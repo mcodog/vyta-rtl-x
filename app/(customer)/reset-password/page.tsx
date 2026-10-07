@@ -24,6 +24,19 @@ function friendlyAuthError(message?: string): string {
   return 'Something went wrong. Please try again.';
 }
 
+// A recovery token_hash is single-use. Share one verification per token so a
+// re-run effect (React Strict Mode, a remount) can't spend it twice and then
+// report the link as expired.
+const recoveryVerifications = new Map<string, ReturnType<typeof supabase.auth.verifyOtp>>();
+function verifyRecoveryToken(tokenHash: string) {
+  let pending = recoveryVerifications.get(tokenHash);
+  if (!pending) {
+    pending = supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' });
+    recoveryVerifications.set(tokenHash, pending);
+  }
+  return pending;
+}
+
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,13 +62,48 @@ function ResetPasswordContent() {
       clearTimeout(timer);
     };
 
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      setSessionError('This password reset link is invalid or has expired. Please request a new one.');
+    };
+
+    // The email template links here directly with `?token_hash=…&type=recovery`
+    // (see supabase/email-templates/README.md). Verifying it on this page means
+    // the link never passes through GoTrue's redirect allow-list, so it cannot
+    // fall back to the homepage. Wait for it before trusting any session: one
+    // already in storage may belong to a different account than the link's.
+    const tokenHash = searchParams.get('token_hash');
+    if (tokenHash && searchParams.get('type') === 'recovery') {
+      verifyRecoveryToken(tokenHash).then(({ error }) => {
+        if (error) {
+          console.error('[Auth] reset-password: verifyOtp error', error.message);
+          fail();
+          return;
+        }
+        // Drop the single-use token from the address bar.
+        window.history.replaceState(null, '', '/reset-password');
+        markReady();
+      });
+      timer = setTimeout(fail, 15000);
+      return () => clearTimeout(timer);
+    }
+
+    // GoTrue reports a spent/expired link in the hash, e.g. #error_code=otp_expired.
+    if (/(^#|&)error(_code)?=/.test(window.location.hash)) {
+      fail();
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         markReady();
       }
     });
 
-    // Also check if there's already an active session (e.g. page reload)
+    // Also check if there's already an active session (e.g. page reload, or
+    // the recovery session forwarded from the homepage by lib/supabase.ts)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) markReady();
     });
