@@ -48,16 +48,16 @@ const BAND_TINT_X =
 const BAND_MASK_X =
   'linear-gradient(90deg, #000 0%, #000 40%, rgba(0,0,0,0.85) 56%, rgba(0,0,0,0.6) 72%, rgba(0,0,0,0.28) 86%, transparent 100%)';
 
-// Stacked, the copy runs the full width, so the ground thins downward instead
-// and hands the frame back above the badge strip. The fade starts lower down
-// than it does across: there is copy all the way to the buttons.
-// It clears out well before the badge strip so the vials in the portrait
-// mobile still (below the copy) read through, and it carries less white than
-// the desktop band so the portrait art shows behind the copy too.
+// Stacked, the copy runs the full width, so the ground thins downward instead.
+// It holds steady to just past the body copy, then clears in a short fade
+// behind the button (which carries its own solid fill), so the vials in the
+// portrait mobile still read through, undimmed, from there down. It carries
+// less white than the desktop band so the portrait art shows behind the copy
+// too.
 const BAND_TINT_Y =
-  'linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.46) 40%, rgba(255,255,255,0.24) 52%, rgba(255,255,255,0.06) 62%, rgba(255,255,255,0) 70%)';
+  'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.5) 46%, rgba(255,255,255,0.18) 52%, rgba(255,255,255,0) 58%)';
 const BAND_MASK_Y =
-  'linear-gradient(180deg, #000 0%, #000 40%, rgba(0,0,0,0.65) 52%, rgba(0,0,0,0.25) 62%, transparent 70%)';
+  'linear-gradient(180deg, #000 0%, #000 46%, rgba(0,0,0,0.4) 52%, transparent 58%)';
 
 const TRUST_BADGES = [
   { icon: ShieldCheck, label: '99%+\nPurity Guaranteed' },
@@ -100,13 +100,14 @@ export default function Hero() {
         className="absolute inset-x-0 -inset-y-[8%]"
       >
         {/* Below lg the hero stacks into a tall, narrow frame, so it gets its
-            own portrait still; from lg up it is the admin-set image. */}
+            own portrait still, shown at full brightness; from lg up it is the
+            admin-set image, settled by the grade. */}
         <picture>
           <source media="(max-width: 1023px)" srcSet={MOBILE_HERO_IMAGE} />
           <img
             src={heroImageUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover object-[center_75%] lg:object-center hero-image-grade"
+            className="absolute inset-0 w-full h-full object-cover object-[center_75%] lg:object-center lg:hero-image-grade"
           />
         </picture>
       </motion.div>
@@ -119,9 +120,10 @@ export default function Hero() {
       />
 
       {/* Scrims — the copy has the frosted band under it, so these only settle
-          the media down behind the nav and the badge strip. */}
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-ink/30 via-ink/20 to-ink/10" />
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-ink/45 via-transparent to-ink/55" />
+          the media down behind the nav and the badge strip. Desktop only: on
+          phones the portrait still is shown undimmed. */}
+      <div aria-hidden="true" className="absolute inset-0 hidden lg:block bg-gradient-to-r from-ink/30 via-ink/20 to-ink/10" />
+      <div aria-hidden="true" className="absolute inset-0 hidden lg:block bg-gradient-to-b from-ink/45 via-transparent to-ink/55" />
 
       {/* Frosted band — full height down the left, dissolving into the media
           before it reaches the middle. */}
