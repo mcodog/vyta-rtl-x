@@ -1,9 +1,9 @@
 id,name,category,categories,description,retailPrice,currency,clinicUsePrice,b2bPrice,price,shippingRate,image,images,badge,requiresConsult,consultProgramId,active,sortOrder,subStore,notificationEmails,shipStationEnabled,shipStationSku,shipStationIntegration,easyShipEnabled,easyShipSku,easyShipIntegration,netSuiteEnabled,netSuiteItemId,netSuiteIntegration
-puramass-vitamin-a-20mg-case,Puramass- Vitamin A 20mg (Case),Peptides,Peptides,Case,1.00,CAD,,,CA$1.00,,,,,false,,true,,,"codogmjo@gmail.com
+puramass-vitamin-a-20mg-case,Puramass- Vitamin A 20mg (Case),Peptides,Peptides,Case,120.00,CAD,,,CA$120.00,,,,,false,,true,,,"codogmjo@gmail.com
 01291978@proton.me",,,,true,vitamin-a-20mg-case,puramass,,,
-puramass-vitamin-a-20mg-vial,Puramass- Vitamin A 20mg (Single Vial),Peptides,Peptides,Single Vial,1.00,CAD,,,CA$1.00,,,,,false,,true,,,"codogmjo@gmail.com
+puramass-vitamin-a-20mg-vial,Puramass- Vitamin A 20mg (Single Vial),Peptides,Peptides,Single Vial,60.00,CAD,,,CA$60.00,,,,,false,,true,,,"codogmjo@gmail.com
 01291978@proton.me",,,,true,vitamin-a-20mg-vial,puramass,,,
-puramass-vitamin-a-10mg-case,Puramass- Vitamin A 10mg (Case),Peptides,Peptides,Case,1.00,CAD,,,CA$1.00,,,,,false,,true,,,"codogmjo@gmail.com
+puramass-vitamin-a-10mg-case,Puramass- Vitamin A 10mg (Case),Peptides,Peptides,Case,90.00,CAD,,,CA$90.00,,,,,false,,true,,,"codogmjo@gmail.com
 01291978@proton.me",,,,true,vitamin-a-10mg-case,puramass,,,
-puramass-vitamin-a-10mg-vial,Puramass- Vitamin A 10mg (Single Vial),Peptides,Peptides,Single Vial,1.00,CAD,,,CA$1.00,,,,,false,,true,,,"codogmjo@gmail.com
+puramass-vitamin-a-10mg-vial,Puramass- Vitamin A 10mg (Single Vial),Peptides,Peptides,Single Vial,45.00,CAD,,,CA$45.00,,,,,false,,true,,,"codogmjo@gmail.com
 01291978@proton.me",,,,true,vitamin-a-10mg-vial,puramass,,,
