@@ -5,7 +5,7 @@ import { LayoutDashboard, Users, DollarSign, UserCircle, ArrowLeft, Mail, Lock, 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { canAccessAdmin, canAccessAdminPage, isAffiliate, adminLandingPage, getRoleName, type UserRole } from '@/lib/permissions';
+import { canAccessAdmin, canAccessAdminPage, adminLandingPage, getRoleName, type UserRole } from '@/lib/permissions';
 import {
   ADMIN_VIEW_META,
   ADMIN_VIEW_MODES,
@@ -16,7 +16,6 @@ import {
   type AdminViewMode,
 } from '@/lib/admin/admin-view';
 import { apiFetch } from '@/lib/api-fetch';
-import AffiliateDashboard from './_components/AffiliateDashboard';
 
 /**
  * The role every page below behaves as.
@@ -157,7 +156,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     checkAdmin();
   }, []);
 
-  // Scoped roles (affiliate, analytics) are confined to their allow-lists —
+  // Scoped roles (analytics) are confined to their allow-lists —
   // bounce them to their landing page if they navigate outside it. Using
   // adminLandingPage (not a hardcoded '/admin') is what stops an analytics
   // user from looping, since it cannot reach '/admin' (the Dashboard).
@@ -598,7 +597,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             value={{ realRole: userRole, view, setView: changeView, canSwitch }}
           >
             <UserRoleContext.Provider value={effectiveRole}>
-              {isAffiliate(userRole) && pathname === '/admin' ? <AffiliateDashboard /> : children}
+              {children}
             </UserRoleContext.Provider>
           </AdminViewContext.Provider>
         </main>

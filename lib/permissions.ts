@@ -11,20 +11,6 @@ export type UserRole =
   | 'analytics';
 
 /**
- * Pages an affiliate is allowed to reach inside /admin (the scoped portal).
- * Affiliates get their own minimized dashboard at /admin plus narrow access
- * to the customer / invoice / order surfaces tied to their own referrals.
- */
-export const AFFILIATE_PAGES = [
-  '/admin',
-  '/admin/orders',
-  '/admin/invoices',
-  '/admin/customers',
-  '/admin/pricing',
-  '/admin/products',
-] as const;
-
-/**
  * Pages an analytics / marketing partner is allowed to reach inside /admin.
  * They read the analytics dashboard, edit product copy (descriptors only),
  * manage the storefront category taxonomy, and edit branding + tracking.
@@ -73,30 +59,22 @@ export const PRODUCT_DESCRIPTOR_FIELDS = [
 
 /**
  * Check if user can access the admin dashboard.
- * admin + assistant have full entry; affiliates and analytics partners enter a
- * scoped portal.
+ * admin + assistant have full entry; analytics partners enter a scoped portal.
+ * Affiliates are deliberately excluded — they use their own /affiliate portal
+ * and never see /admin.
  */
 export function canAccessAdmin(role: UserRole): boolean {
-  return (
-    role === 'admin' ||
-    role === 'assistant' ||
-    role === 'affiliate' ||
-    role === 'analytics'
-  );
+  return role === 'admin' || role === 'assistant' || role === 'analytics';
 }
 
 /**
  * Can the role reach a specific /admin route?
- * admin/assistant: everything. affiliate: only AFFILIATE_PAGES. analytics:
- * only ANALYTICS_PAGES. (exact match or a sub-route of one of those entries.)
+ * admin/assistant: everything. analytics: only ANALYTICS_PAGES (exact match
+ * or a sub-route of one of those entries). Everyone else, affiliates included:
+ * nothing.
  */
 export function canAccessAdminPage(role: UserRole, href: string): boolean {
   if (role === 'admin' || role === 'assistant') return true;
-  if (role === 'affiliate') {
-    return AFFILIATE_PAGES.some(
-      (page) => href === page || href.startsWith(`${page}/`),
-    );
-  }
   if (role === 'analytics') {
     return ANALYTICS_PAGES.some(
       (page) => href === page || href.startsWith(`${page}/`),
