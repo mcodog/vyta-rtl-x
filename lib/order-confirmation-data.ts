@@ -533,7 +533,7 @@ function listUnitPrices(
 }
 
 /** "VYTA20 + 5% limited-time offer" — the promos the checkout recorded. */
-function discountLabelFor(ledger: Record<string, any>): string | null {
+export function discountLabelFor(ledger: Record<string, any>): string | null {
   const parts = [
     str(ledger.discount_code) && num(ledger.discount_code_percent) > 0 ? str(ledger.discount_code) : '',
     num(ledger.ad_discount_percent) > 0 ? `${num(ledger.ad_discount_percent)}% first-order discount` : '',
