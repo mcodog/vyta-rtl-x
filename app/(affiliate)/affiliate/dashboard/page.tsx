@@ -344,7 +344,7 @@ export default function AffiliateDashboard() {
                   <thead>
                     <tr className="border-b border-line">
                       <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                        Order ID
+                        Reference
                       </th>
                       <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
                         Order Total
@@ -361,17 +361,21 @@ export default function AffiliateDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/50">
-                    {recentCommissions.map((commission) => (
+                    {recentCommissions.map((commission) => {
+                      // Storefront sales carry order_id; hosted (Stealth Health)
+                      // sales carry invoice_id instead, with order_id null.
+                      const reference = commission.order_id ?? commission.invoice_id ?? "";
+                      return (
                       <tr
                         key={commission.id}
                         className="hover:bg-surface transition-colors"
                       >
                         <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink font-mono">
                           <span className="hidden sm:inline">
-                            {commission.order_id.substring(0, 12)}...
+                            {reference.substring(0, 12)}...
                           </span>
                           <span className="sm:hidden">
-                            {commission.order_id.substring(0, 8)}...
+                            {reference.substring(0, 8)}...
                           </span>
                         </td>
                         <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink tabular-nums">
@@ -384,14 +388,15 @@ export default function AffiliateDashboard() {
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium border ${statusColors[commission.status] || "bg-surface text-ink-muted border-line"}`}
                           >
-                            {commission.status.toUpperCase()}
+                            {(commission.status ?? "").toUpperCase()}
                           </span>
                         </td>
                         <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink-muted hidden sm:table-cell">
                           {new Date(commission.created_at).toLocaleDateString()}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

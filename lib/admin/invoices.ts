@@ -9,6 +9,7 @@ import type {
   PaymentMethod,
 } from '@/lib/types/ecommerce';
 import type { PuramassInvoiceContext } from '@/lib/admin/puramass-invoice';
+import type { InvoiceBreakdown } from '@/lib/admin/invoice-breakdown';
 
 async function getToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -656,6 +657,24 @@ export async function getInvoiceTracking(
  * RLS, while the hand-off ledger is service-role only — same shape as the
  * tracking snapshot above.
  */
+/**
+ * Price before discount, the discount and the affiliate's cut for the detail
+ * view. Null on any failure — like the Stealth Health block, it is
+ * supplementary and must never break the page.
+ */
+export async function getInvoiceBreakdown(id: string): Promise<InvoiceBreakdown | null> {
+  const token = await getToken();
+  try {
+    const res = await apiFetch<{ breakdown: InvoiceBreakdown | null }>(
+      `/api/admin/invoices/${id}/breakdown`,
+      { headers: authHeaders(token) },
+    );
+    return res.breakdown ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getInvoicePuramass(
   id: string,
 ): Promise<PuramassInvoiceContext | null> {

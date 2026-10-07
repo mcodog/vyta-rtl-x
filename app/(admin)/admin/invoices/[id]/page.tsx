@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft, FileText, CreditCard, Check, DollarSign,
   Edit2, Loader2, X, Download, Eye, Briefcase, Pencil, Send, Trash2,
-  Truck, RefreshCw, Package, Beaker, Store,
+  Truck, RefreshCw, Package, Beaker, Store, Tag, Handshake,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -14,7 +14,7 @@ import { canEdit, canDelete } from '@/lib/permissions';
 import {
   getInvoice, updateInvoice, recordPayment,
   getInvoiceTracking, deleteInvoice, emailInvoice, getInvoicePuramass,
-  type InvoiceTrackingSnapshot,
+  getInvoiceBreakdown, type InvoiceTrackingSnapshot,
 } from '@/lib/admin/invoices';
 import {
   InvoiceSourceBadge,
@@ -36,6 +36,7 @@ import InvoiceEasyshipPanel from '@/components/admin/InvoiceEasyshipPanel';
 import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
 import AdminPaidAlertEmailCard from '@/components/admin/AdminPaidAlertEmailCard';
 import { formatAppDate } from '@/lib/datetime';
+import type { InvoiceBreakdown } from '@/lib/admin/invoice-breakdown';
 
 const statusColors: Record<InvoiceStatus, string> = {
   draft: 'bg-gray-500/10 text-gray-600 border-gray-300',
@@ -94,6 +95,11 @@ export default function InvoiceDetailPage() {
   const [puramass, setPuramass] = useState<PuramassInvoiceContext | null>(null);
   const [puramassLoading, setPuramassLoading] = useState(false);
 
+  // Price before discount, the discount and the affiliate's cut — the same
+  // calculation the paid-order email shows. Server-side for the same reason
+  // as the Stealth Health block.
+  const [breakdown, setBreakdown] = useState<InvoiceBreakdown | null>(null);
+
   // Send email modal
   const [showEmail, setShowEmail] = useState(false);
   const [emailTo, setEmailTo] = useState('');
@@ -125,6 +131,16 @@ export default function InvoiceDetailPage() {
       .then((ctx) => { if (!cancelled) setPuramass(ctx); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setPuramassLoading(false); });
+    return () => { cancelled = true; };
+  }, [data, id]);
+
+  // Re-read with the invoice, so marking it paid picks up a new commission.
+  useEffect(() => {
+    let cancelled = false;
+    if (!data) return;
+    getInvoiceBreakdown(id)
+      .then((b) => { if (!cancelled) setBreakdown(b); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [data, id]);
 
@@ -280,6 +296,20 @@ export default function InvoiceDetailPage() {
   const split = puramassMoneySplit(invoice, puramass);
   const goodsCur: Currency = split?.goodsCurrency ?? cur;
   const goodsMoney = (n: number) => formatMoney(n, goodsCur);
+  const shownSubtotal = split ? split.goods : Number(invoice.subtotal) || 0;
+  // Only show list price and the discount when they add up to the subtotal on
+  // screen — an older two-currency Stealth Health invoice may not.
+  const showDiscount =
+    !!breakdown && breakdown.discount > 0 && Math.abs(breakdown.chargedSubtotal - shownSubtotal) < 0.015;
+  const listPriceByLine = new Map<string, number>(
+    showDiscount ? breakdown!.lines.map((l) => [l.lineId, l.listUnitPrice]) : [],
+  );
+  const affiliate = breakdown?.affiliate ?? null;
+  const affiliateCut = affiliate?.commission
+    ? { name: affiliate.name, ...affiliate.commission }
+    : null;
+  const showDiscountCard =
+    !!breakdown && (breakdown.discountParts.length > 0 || !!breakdown.referralCode || !!affiliate);
 
   return (
     <>
@@ -580,7 +610,14 @@ export default function InvoiceDetailPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-center tabular-nums text-ink-muted">{li.qty}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-ink-muted">{goodsMoney(Number(li.unit_price))}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-ink-muted">
+                          {listPriceByLine.has(li.id) && (
+                            <div className="text-[11px] text-ink-light line-through" title="List price before discount">
+                              {goodsMoney(listPriceByLine.get(li.id)!)}
+                            </div>
+                          )}
+                          {goodsMoney(Number(li.unit_price))}
+                        </td>
                         <td className="px-4 py-3 text-center text-ink-muted">
                           {li.discount_pct > 0 ? `${li.discount_pct}%` : '—'}
                         </td>
@@ -597,20 +634,37 @@ export default function InvoiceDetailPage() {
                 const showFee = ft === 'pickup' && (invoice as any).show_processing_fee !== false && Number((invoice as any).processing_fee ?? 0) > 0;
                 // Goods sit in Stealth Health's currency on a split invoice; the
                 // shipment fee and anything we add here sit in ours.
-                const rows: Array<{ label: string; value: number; currency: Currency }> = [
-                  {
-                    label: 'Subtotal',
-                    value: split ? split.goods : Number(invoice.subtotal) || 0,
-                    currency: goodsCur,
-                  },
-                  { label: 'Tax', value: Number(invoice.tax_total) || 0, currency: goodsCur },
-                ];
-                if (ft === 'shipment') rows.push({ label: 'Shipping', value: Number(invoice.shipping_cost) || 0, currency: cur });
-                if (showFee) rows.push({ label: 'Processing Fee', value: Number((invoice as any).processing_fee) || 0, currency: cur });
-                return rows.map(({ label, value, currency }) => (
-                  <div key={label} className="flex justify-between text-sm">
+                const rows: Array<{ label: React.ReactNode; key: string; value: number; currency: Currency; discount?: boolean }> = [];
+                if (showDiscount) {
+                  // As the paid-order email shows it: list price, then what came off.
+                  rows.push(
+                    { key: 'Subtotal', label: 'Subtotal', value: breakdown!.subtotalBeforeDiscount, currency: goodsCur },
+                    {
+                      key: 'Discount',
+                      label: (
+                        <>
+                          Discount
+                          {breakdown!.discountLabel && (
+                            <span className="ml-1 text-ink-light">({breakdown!.discountLabel})</span>
+                          )}
+                        </>
+                      ),
+                      value: breakdown!.discount,
+                      currency: goodsCur,
+                      discount: true,
+                    },
+                  );
+                } else {
+                  rows.push({ key: 'Subtotal', label: 'Subtotal', value: shownSubtotal, currency: goodsCur });
+                }
+                rows.push({ key: 'Tax', label: 'Tax', value: Number(invoice.tax_total) || 0, currency: goodsCur });
+                if (ft === 'shipment') rows.push({ key: 'Shipping', label: 'Shipping', value: Number(invoice.shipping_cost) || 0, currency: cur });
+                if (showFee) rows.push({ key: 'Processing Fee', label: 'Processing Fee', value: Number((invoice as any).processing_fee) || 0, currency: cur });
+                return rows.map(({ key, label, value, currency, discount }) => (
+                  <div key={key} className="flex justify-between gap-4 text-sm">
                     <span className="text-ink-muted">{label}</span>
-                    <span className="tabular-nums text-ink">
+                    <span className={`tabular-nums whitespace-nowrap ${discount ? 'text-emerald-600' : 'text-ink'}`}>
+                      {discount && '– '}
                       {formatMoney(value, currency)}
                       {split && (
                         <span className="ml-1 text-[10px] font-medium text-ink-muted">{currency}</span>
@@ -623,6 +677,17 @@ export default function InvoiceDetailPage() {
                 <span>Total</span>
                 <InvoiceTotalAmount invoice={invoice} puramass={puramass} />
               </div>
+              {affiliateCut && (
+                <div className="flex justify-between gap-4 text-sm">
+                  <span className="text-ink-muted">
+                    Affiliate cut
+                    <span className="ml-1 text-ink-light">
+                      ({[affiliateCut.name, `${affiliateCut.rate}% of ${goodsMoney(affiliateCut.base)}`].filter(Boolean).join(' · ')})
+                    </span>
+                  </span>
+                  <span className="tabular-nums whitespace-nowrap text-purple-700">{goodsMoney(affiliateCut.amount)}</span>
+                </div>
+              )}
               {amount_paid > 0 && (
                 <>
                   <div className="flex justify-between text-sm text-emerald-600">
@@ -799,6 +864,104 @@ export default function InvoiceDetailPage() {
             }}
             flash={flash}
           />
+
+          {/* Discount & affiliate — what came off and who earns on the sale. */}
+          {showDiscountCard && (
+            <div className="bg-white rounded-xl border border-line p-5">
+              <h2 className="font-semibold text-ink mb-3 text-sm flex items-center gap-2">
+                <Tag className="w-4 h-4 text-emerald-600" /> Discount &amp; Affiliate
+              </h2>
+              <div className="space-y-2 text-sm">
+                {breakdown!.discountParts.map((p) => (
+                  <div key={p.kind} className="flex justify-between gap-3">
+                    <span className="text-ink-muted">{p.label}</span>
+                    <span className="font-medium text-ink text-right">{p.detail}</span>
+                  </div>
+                ))}
+                {breakdown!.referralCode && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-ink-muted">Referral link</span>
+                    <span className="font-mono text-ink">{breakdown!.referralCode}</span>
+                  </div>
+                )}
+                {showDiscount && (
+                  <div className="flex justify-between gap-3 pt-2 border-t border-line/60">
+                    <span className="text-ink-muted">Customer saved</span>
+                    <span className="font-semibold tabular-nums text-emerald-600">
+                      {goodsMoney(breakdown!.discount)}
+                      <span className="ml-1 text-xs font-normal text-ink-muted">
+                        ({Math.round((breakdown!.discount / breakdown!.subtotalBeforeDiscount) * 1000) / 10}%)
+                      </span>
+                    </span>
+                  </div>
+                )}
+                {!breakdown!.discountParts.length && !showDiscount && !breakdown!.referralCode && (
+                  <p className="text-ink-muted">No discount applied.</p>
+                )}
+              </div>
+
+              {affiliate && (
+                <div className="mt-4 pt-4 border-t border-line space-y-2 text-sm">
+                  <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5">
+                    <Handshake className="w-3.5 h-3.5 text-purple-600" /> Affiliate
+                  </p>
+                  <Link
+                    href={`/admin/affiliates/${affiliate.affiliateId}`}
+                    className="block font-medium text-ink hover:text-teal-dark transition-colors"
+                  >
+                    {affiliate.name || affiliate.email || 'View affiliate'}
+                  </Link>
+                  {affiliate.name && affiliate.email && (
+                    <p className="text-ink-muted -mt-1">{affiliate.email}</p>
+                  )}
+                  {affiliate.via && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-ink-muted">Credited via</span>
+                      <span className="text-ink text-right">
+                        {affiliate.via === 'discount_code'
+                          ? 'Discount code'
+                          : affiliate.via === 'referral_code'
+                            ? 'Referral link'
+                            : 'Assigned customer'}
+                        {affiliate.code && <span className="ml-1 font-mono">{affiliate.code}</span>}
+                      </span>
+                    </div>
+                  )}
+                  {affiliate.commission ? (
+                    <>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-ink-muted">Rate</span>
+                        <span className="text-ink tabular-nums">
+                          {affiliate.commission.rate}% of {goodsMoney(affiliate.commission.base)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3 pt-2 border-t border-line/60">
+                        <span className="text-ink-muted">Affiliate cut</span>
+                        <span className="font-semibold tabular-nums text-purple-700">
+                          {goodsMoney(affiliate.commission.amount)}
+                          <span
+                            className={`ml-2 inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                              affiliate.commission.status === 'paid'
+                                ? 'bg-emerald-500/10 text-emerald-700'
+                                : affiliate.commission.status === 'cancelled'
+                                  ? 'bg-red-500/10 text-red-600'
+                                  : 'bg-amber-500/10 text-amber-700'
+                            }`}
+                          >
+                            {affiliate.commission.status}
+                          </span>
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-ink-muted">
+                      No commission recorded{invoice.status === 'paid' ? '' : ' — it is booked when the invoice is paid'}.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Sales Person */}
           {invoice.sales_person_name && (
