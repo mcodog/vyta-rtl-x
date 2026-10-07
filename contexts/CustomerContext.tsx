@@ -78,6 +78,14 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[Auth] onAuthStateChange:', event, 'session:', session ? 'exists' : 'null');
 
+      // A recovery session that arrived anywhere but /reset-password (e.g. the
+      // Site URL fallback) must still end on the new-password form, not leave
+      // the visitor quietly signed in on whatever page they landed.
+      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
+        window.location.assign('/reset-password');
+        return;
+      }
+
       if (event === 'SIGNED_IN') {
         setTimeout(() => {
           loadCustomer();
@@ -92,7 +100,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
         // an order: carry on to that order. The login/signup forms redirect
         // on their own (and clear this), so leave those pages alone.
         const path = window.location.pathname;
-        if (path !== '/login' && path !== '/signup') {
+        if (path !== '/login' && path !== '/signup' && path !== '/reset-password') {
           const pending = takePostAuthRedirect();
           if (pending && pending !== `${path}${window.location.search}`) {
             window.location.assign(pending);
