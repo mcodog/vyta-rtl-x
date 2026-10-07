@@ -18,8 +18,7 @@ import MapleLeaf, { MAPLE_RED } from '@/components/icons/MapleLeaf';
 //
 // docs/hero-media-prompt.md carries the generation brief.
 // ─────────────────────────────────────────────────────────────────────────────
-const DEFAULT_HERO_IMAGE =
-  'https://xbpdqpmdecsoshzttthl.supabase.co/storage/v1/object/public/assets/hero%20image.png';
+const DEFAULT_HERO_IMAGE = '/images/hero-desktop.webp';
 
 // Portrait still for phones and tablets (below lg), where the landscape hero
 // would be cropped to a sliver. Shipped with the site rather than admin-set.
