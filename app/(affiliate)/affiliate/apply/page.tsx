@@ -128,7 +128,7 @@ export default function AffiliateApply() {
         icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />}
         title="You're already an affiliate"
         body="Head to your dashboard to grab your referral link and track commissions."
-        cta={{ href: "/admin", label: "Go to Dashboard" }}
+        cta={{ href: "/affiliate/dashboard", label: "Go to Dashboard" }}
       />
     );
   }

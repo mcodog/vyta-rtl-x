@@ -52,7 +52,7 @@ export default function Navigation() {
   const desktopLinkCls =
     "px-4 py-2 rounded-lg transition-all text-sm font-medium text-ink-muted hover:text-ink hover:bg-surface";
 
-  // Staff (admin / assistant / affiliate) get a shortcut into the admin
+  // Staff (admin / assistant / analytics) get a shortcut into the admin
   // dashboard from the customer-facing account menu.
   const isStaff = !!customer && canAccessAdmin(customer.role);
   // Warehouse staff (and admins, for oversight) get a shortcut into the

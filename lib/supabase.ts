@@ -14,8 +14,8 @@ export function getSupabase() {
   });
 }
 
-// User role type. `affiliate` is a first-class role: affiliates get a scoped
-// /admin portal (see lib/permissions.ts → canAccessAdmin / AFFILIATE_PAGES).
+// User role type. `affiliate` is a first-class role: affiliates use their own
+// /affiliate portal and have no /admin access (see lib/permissions.ts).
 // `warehouse` staff use the /warehouse portal (see canAccessWarehouse).
 // `analytics` is an external marketing/analytics partner with a scoped portal
 // (ANALYTICS_PAGES): read analytics, edit product copy, categories, branding.
