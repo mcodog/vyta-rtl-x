@@ -560,18 +560,17 @@ export async function getAdminStats(): Promise<{
     .from('affiliates')
     .select('*', { count: 'exact', head: true });
 
-  // Get commissions stats
-  const { data: commissions } = await supabase
-    .from('commissions')
-    .select('status, amount');
-
-  const pendingCommissions = (commissions || [])
-    .filter(c => c.status === 'pending')
-    .reduce((sum, c) => sum + c.amount, 0);
-
-  const totalCommissionsPaid = (commissions || [])
-    .filter(c => c.status === 'paid')
-    .reduce((sum, c) => sum + c.amount, 0);
+  // Commission totals come from the server: a browser read of `commissions`
+  // can come back empty under RLS, which showed $0 owed.
+  let pendingCommissions = 0;
+  let totalCommissionsPaid = 0;
+  try {
+    const summary = await apiFetch<{ pending: number; paid: number }>('/api/admin/commissions?summary=1');
+    pendingCommissions = summary.pending;
+    totalCommissionsPaid = summary.paid;
+  } catch (err) {
+    console.error('Error fetching commission totals:', err);
+  }
 
   return {
     totalOrders,

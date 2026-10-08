@@ -1,31 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { resolveAffiliateCaller } from '@/lib/affiliate/route-auth';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-async function getAffiliateCaller(req: NextRequest) {
-  const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return null;
-  const { data: { user } } = await db.auth.getUser(token);
-  if (!user) return null;
-  const { data: customer } = await db
-    .from('customers')
-    .select('id, first_name, role')
-    .eq('id', user.id)
-    .single();
-  if (!customer || customer.role !== 'affiliate') return null;
-  return customer;
-}
-
 // GET - affiliate dashboard summary (combines both commission streams)
 export async function GET(req: NextRequest) {
-  const caller = await getAffiliateCaller(req);
-  if (!caller) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  // Resolves legacy affiliates (own uuid, matched by email) as well as ones
+  // that share the auth user's id — a role check alone missed the former.
+  const caller = await resolveAffiliateCaller(db, req);
+  if (!caller.ok) return NextResponse.json({ error: caller.error }, { status: caller.status });
 
-  const uid = caller.id;
+  const uid = caller.affiliate.id;
 
   const [{ data: code }, { count: boundCustomers }, { data: affCommissions }, { data: salesPerson }] =
     await Promise.all([
@@ -46,11 +35,11 @@ export async function GET(req: NextRequest) {
   }
 
   const all = [...(affCommissions || []), ...salesCommissions];
-  const pendingEarnings = all.filter((c) => c.status === 'pending').reduce((s, c) => s + Number(c.amount), 0);
-  const paidEarnings = all.filter((c) => c.status === 'paid').reduce((s, c) => s + Number(c.amount), 0);
+  const pendingEarnings = all.filter((c) => String(c.status).toLowerCase() === 'pending').reduce((s, c) => s + Number(c.amount), 0);
+  const paidEarnings = all.filter((c) => String(c.status).toLowerCase() === 'paid').reduce((s, c) => s + Number(c.amount), 0);
 
   return NextResponse.json({
-    firstName: caller.first_name,
+    firstName: caller.affiliate.first_name,
     referralCode: code?.code ?? null,
     boundCustomers: boundCustomers ?? 0,
     pendingEarnings: Math.round((pendingEarnings + Number.EPSILON) * 100) / 100,
