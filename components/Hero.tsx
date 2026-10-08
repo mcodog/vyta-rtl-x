@@ -55,9 +55,9 @@ const BAND_MASK_X =
 // less white than the desktop band so the portrait art shows behind the copy
 // too.
 const BAND_TINT_Y =
-  'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.5) 46%, rgba(255,255,255,0.18) 52%, rgba(255,255,255,0) 58%)';
+  'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.5) 51%, rgba(255,255,255,0.18) 57%, rgba(255,255,255,0) 63%)';
 const BAND_MASK_Y =
-  'linear-gradient(180deg, #000 0%, #000 46%, rgba(0,0,0,0.4) 52%, transparent 58%)';
+  'linear-gradient(180deg, #000 0%, #000 51%, rgba(0,0,0,0.4) 57%, transparent 63%)';
 
 const TRUST_BADGES = [
   { icon: ShieldCheck, label: '99%+\nPurity Guaranteed' },
@@ -90,114 +90,122 @@ export default function Hero() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-svh flex flex-col overflow-hidden bg-ink"
+      className="relative lg:min-h-svh flex flex-col overflow-hidden bg-ink"
     >
-      {/* Media layer — oversized vertically so the parallax drift never
-          reveals an edge. */}
-      <motion.div
-        aria-hidden="true"
-        style={prefersReducedMotion ? undefined : { y: mediaY }}
-        className="absolute inset-x-0 -inset-y-[8%]"
-      >
-        {/* Below lg the hero stacks into a tall, narrow frame, so it gets its
-            own portrait still, shown at full brightness; from lg up it is the
-            admin-set image, settled by the grade. */}
-        <picture>
-          <source media="(max-width: 1023px)" srcSet={MOBILE_HERO_IMAGE} />
-          <img
-            src={heroImageUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover object-[center_75%] lg:object-center lg:hero-image-grade"
-          />
-        </picture>
-      </motion.div>
-
-      {/* Film grain */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 opacity-[0.07] mix-blend-soft-light"
-        style={{ backgroundImage: GRAIN_TEXTURE }}
-      />
-
-      {/* Scrims — the copy has the frosted band under it, so these only settle
-          the media down behind the nav and the badge strip. Desktop only: on
-          phones the portrait still is shown undimmed. */}
-      <div aria-hidden="true" className="absolute inset-0 hidden lg:block bg-gradient-to-r from-ink/30 via-ink/20 to-ink/10" />
-      <div aria-hidden="true" className="absolute inset-0 hidden lg:block bg-gradient-to-b from-ink/45 via-transparent to-ink/55" />
-
-      {/* Frosted band — full height down the left, dissolving into the media
-          before it reaches the middle. */}
-      <motion.div
-        aria-hidden="true"
-        style={{
-          backgroundImage: BAND_TINT_Y,
-          maskImage: BAND_MASK_Y,
-          WebkitMaskImage: BAND_MASK_Y,
-          ...(prefersReducedMotion ? {} : { opacity: contentOpacity }),
-        }}
-        className="absolute inset-0 lg:hidden backdrop-blur-2xl"
-      />
-      <motion.div
-        aria-hidden="true"
-        style={{
-          backgroundImage: BAND_TINT_X,
-          maskImage: BAND_MASK_X,
-          WebkitMaskImage: BAND_MASK_X,
-          ...(prefersReducedMotion ? {} : { opacity: contentOpacity }),
-        }}
-        className="absolute inset-y-0 left-0 hidden lg:block w-[78%] xl:w-[74%] backdrop-blur-2xl"
-      />
-
-      {/* Content */}
-      <div className="relative flex-1 flex items-center w-full">
+      {/* The frame the image and copy fill. On phones it is 90% of the screen,
+          so the hero opens near edge to edge with the top of the badge strip
+          showing beneath it; from lg up it goes static, so the layers below
+          position against the section and the strip sits over the image's
+          base. */}
+      <div className="relative lg:static flex-1 flex flex-col min-h-[90svh] lg:min-h-0">
+        {/* Media layer — oversized vertically so the parallax drift never
+            reveals an edge. */}
         <motion.div
-          style={prefersReducedMotion ? undefined : { y: contentY, opacity: contentOpacity }}
-          className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-24 sm:pt-32 pb-10 sm:pb-16"
+          aria-hidden="true"
+          style={prefersReducedMotion ? undefined : { y: mediaY }}
+          className="absolute inset-x-0 -inset-y-[8%]"
         >
-          <div className="grid lg:grid-cols-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="lg:col-span-7 xl:col-span-6"
-            >
-              {/* Vital Blue rather than the eyebrow's default Bio Teal: on a ground
-                  this sheer, the lighter teal drops under 3:1. */}
-              <p className="text-eyebrow !text-teal-dark mb-3 sm:mb-4">Premium Peptides</p>
-
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.2rem] font-bold text-ink leading-[1.06] mb-4 sm:mb-5">
-                A Higher
-                <br />
-                Standard for
-                <br />
-                Your Wellness Journey
-              </h1>
-
-              <p className="text-base sm:text-lg text-ink/80 leading-relaxed max-w-md mb-7 sm:mb-8">
-                Pure compounds. Verified quality. Trusted by a growing community
-                across Canada.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/products" className="w-full sm:w-auto">
-                  <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-ink hover:bg-ocean text-white px-7 py-3.5 font-semibold text-sm rounded-full shadow-card transition-colors">
-                    Shop Peptides
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </Link>
-              </div>
-            </motion.div>
-          </div>
+          {/* Below lg the hero stacks into a tall, narrow frame, so it gets its
+              own portrait still, shown at full brightness; from lg up it is the
+              admin-set image, settled by the grade. */}
+          <picture>
+            <source media="(max-width: 1023px)" srcSet={MOBILE_HERO_IMAGE} />
+            <img
+              src={heroImageUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover object-[center_75%] lg:object-center lg:hero-image-grade"
+            />
+          </picture>
         </motion.div>
+
+        {/* Film grain */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[0.07] mix-blend-soft-light"
+          style={{ backgroundImage: GRAIN_TEXTURE }}
+        />
+
+        {/* Scrims — the copy has the frosted band under it, so these only settle
+            the media down behind the nav and the badge strip. Desktop only: on
+            phones the portrait still is shown undimmed. */}
+        <div aria-hidden="true" className="absolute inset-0 hidden lg:block bg-gradient-to-r from-ink/30 via-ink/20 to-ink/10" />
+        <div aria-hidden="true" className="absolute inset-0 hidden lg:block bg-gradient-to-b from-ink/45 via-transparent to-ink/55" />
+
+        {/* Frosted band — full height down the left, dissolving into the media
+            before it reaches the middle. */}
+        <motion.div
+          aria-hidden="true"
+          style={{
+            backgroundImage: BAND_TINT_Y,
+            maskImage: BAND_MASK_Y,
+            WebkitMaskImage: BAND_MASK_Y,
+            ...(prefersReducedMotion ? {} : { opacity: contentOpacity }),
+          }}
+          className="absolute inset-0 lg:hidden backdrop-blur-2xl"
+        />
+        <motion.div
+          aria-hidden="true"
+          style={{
+            backgroundImage: BAND_TINT_X,
+            maskImage: BAND_MASK_X,
+            WebkitMaskImage: BAND_MASK_X,
+            ...(prefersReducedMotion ? {} : { opacity: contentOpacity }),
+          }}
+          className="absolute inset-y-0 left-0 hidden lg:block w-[78%] xl:w-[74%] backdrop-blur-2xl"
+        />
+
+        {/* Content — centred, but below lg the deep bottom padding lifts the
+            copy into the upper part of the screen, clear of the vials. */}
+        <div className="relative flex-1 flex items-center w-full">
+          <motion.div
+            style={prefersReducedMotion ? undefined : { y: contentY, opacity: contentOpacity }}
+            className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-24 sm:pt-32 pb-[26svh] lg:pb-16"
+          >
+            <div className="grid lg:grid-cols-12">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="lg:col-span-7 xl:col-span-6"
+              >
+                {/* Vital Blue rather than the eyebrow's default Bio Teal: on a ground
+                    this sheer, the lighter teal drops under 3:1. */}
+                <p className="text-eyebrow !text-teal-dark mb-3 sm:mb-4">Premium Peptides</p>
+
+                <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.2rem] font-bold text-ink leading-[1.06] mb-4 sm:mb-5">
+                  A Higher
+                  <br />
+                  Standard for
+                  <br />
+                  Your Wellness Journey
+                </h1>
+
+                <p className="text-base sm:text-lg text-ink/80 leading-relaxed max-w-md mb-7 sm:mb-8">
+                  Pure compounds. Verified quality. Trusted by a growing community
+                  across Canada.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link href="/products" className="w-full sm:w-auto">
+                    <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-ink hover:bg-ocean text-white px-7 py-3.5 font-semibold text-sm rounded-full shadow-card transition-colors">
+                      Shop Peptides
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </Link>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </div>
 
       {/* Trust badges — the promises the storefront is held to, on a frosted
-          strip along the hero's base */}
+          strip along the hero's base (below it, on solid white, on phones) */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="relative border-t border-white/40 bg-white/75 backdrop-blur-md"
+        className="relative border-t border-white/40 bg-white lg:bg-white/75 backdrop-blur-md"
       >
         <ul className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-4 sm:py-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-5 sm:gap-y-6">
           {TRUST_BADGES.map(({ icon: Icon, label, accent }, i) => (
