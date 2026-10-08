@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchEmailHistory, verifyCrmActor } from '@/lib/admin/crm-actions';
 import { fetchLead } from '@/lib/admin/customer-leads';
+import { loadAffiliateReferrals } from '@/lib/admin/affiliate-referrals';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,11 +26,12 @@ const monthKey = (iso: string): string => String(iso ?? '').slice(0, 7);
  *
  * Everything the affiliate profile shows, in one call:
  *   • profile + the linked customer account, when there is one
- *   • lifetime performance: earnings paid vs pending, referrals, bound
+ *   • lifetime performance: earnings paid vs pending, referrals, referred
  *     customers and what those customers have spent
  *   • every referral code they hold
  *   • their commission history, and earnings bucketed by month for the chart
- *   • the customers bound to them, with each one's spend
+ *   • the customers they brought in — bound to them or credited through a
+ *     commissioned sale — with each one's spend
  *   • what those referrals actually buy, so you know what to tell them to push
  *   • the affiliate's own browsing journey, when they have a site account
  *   • the lead record and the outreach emails sent to them
@@ -64,13 +66,13 @@ export async function GET(
         .limit(ROW_LIMIT),
       db
         .from('commissions')
-        .select('id, order_id, amount, order_total, commission_rate, status, paid_at, created_at')
+        .select('id, order_id, invoice_id, amount, order_total, commission_rate, status, paid_at, created_at')
         .eq('affiliate_id', id)
         .order('created_at', { ascending: false })
         .limit(ROW_LIMIT),
       db
         .from('customers')
-        .select('id, first_name, last_name, email, created_at, has_completed_first_order')
+        .select('id, affiliate_id, first_name, last_name, email, created_at, has_completed_first_order')
         .eq('affiliate_id', id)
         .order('created_at', { ascending: false })
         .limit(ROW_LIMIT),
@@ -102,60 +104,20 @@ export async function GET(
   const commissions = (commissionsRes.data ?? []) as any[];
   const boundCustomers = (boundRes.data ?? []) as any[];
 
-  // --- what the bound customers have actually spent ----------------------
-  const boundIds = boundCustomers.map((c) => c.id);
-  const revenueByCustomer = new Map<string, { revenue: number; orders: number }>();
-  const productTally = new Map<
-    string,
-    { key: string; name: string; quantity: number; revenue: number; orders: number; lastAt: string }
-  >();
-  if (boundIds.length > 0) {
-    const { data: orders } = await db
-      .from('orders')
-      .select('customer_id, total, status, items, created_at')
-      .in('customer_id', boundIds)
-      .neq('status', 'cancelled')
-      .limit(ROW_LIMIT);
-    for (const o of (orders ?? []) as any[]) {
-      if (!o.customer_id) continue;
-      const entry = revenueByCustomer.get(o.customer_id) ?? { revenue: 0, orders: 0 };
-      entry.revenue += num(o.total);
-      entry.orders += 1;
-      revenueByCustomer.set(o.customer_id, entry);
+  // --- who they brought in, and what those people spent ----------------
+  // Bound customers plus buyers credited through a commission (a referral- or
+  // discount-code buyer is never bound), across orders AND invoices — a hosted
+  // sale is an invoice. The affiliate's own account, bound to itself, is not a
+  // referral.
+  const referred = (
+    await loadAffiliateReferrals(db, [affiliate as any], {
+      boundCustomers,
+      commissions: commissions.map((c) => ({ ...c, affiliate_id: id })),
+      withProducts: true,
+    })
+  ).get(id) ?? { customers: [], revenue: 0, sales: 0, products: [] };
 
-      // What this affiliate's referrals actually buy — the affiliate-side
-      // answer to the customer page's "products bought". Useful for telling
-      // them what to push.
-      for (const it of Array.isArray(o.items) ? o.items : []) {
-        const label = [it.name ?? it.product_name, it.strength].filter(Boolean).join(' ').trim();
-        if (!label) continue;
-        const key = label.toLowerCase().replace(/\s+/g, ' ');
-        const qty = Math.max(1, Math.round(num(it.quantity) || 1));
-        const unit = num(it.price ?? it.price_at_time ?? it.unit_price);
-        const bucket = productTally.get(key) ?? {
-          key, name: label, quantity: 0, revenue: 0, orders: 0, lastAt: o.created_at,
-        };
-        bucket.quantity += qty;
-        bucket.revenue += unit * qty;
-        bucket.orders += 1;
-        if (o.created_at && o.created_at > bucket.lastAt) bucket.lastAt = o.created_at;
-        productTally.set(key, bucket);
-      }
-    }
-  }
-
-  const customers = boundCustomers.map((c) => {
-    const spend = revenueByCustomer.get(c.id) ?? { revenue: 0, orders: 0 };
-    return {
-      id: c.id,
-      name: `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.email,
-      email: c.email,
-      created_at: c.created_at,
-      has_ordered: Boolean(c.has_completed_first_order) || spend.orders > 0,
-      orders: spend.orders,
-      revenue: round2(spend.revenue),
-    };
-  });
+  const customers = referred.customers;
 
   // --- earnings ----------------------------------------------------------
   let pending = 0;
@@ -179,12 +141,9 @@ export async function GET(
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([month, v]) => ({ month, earned: round2(v.earned), count: v.count }));
 
-  const customerRevenue = customers.reduce((sum, c) => sum + c.revenue, 0);
-
+  const customerRevenue = referred.revenue;
   // Biggest seller first — the order the chart reads best in.
-  const products = [...productTally.values()]
-    .map((p) => ({ ...p, revenue: round2(p.revenue) }))
-    .sort((a, b) => b.quantity - a.quantity);
+  const products = referred.products;
 
   // --- the affiliate's own site journey ----------------------------------
   const activity = (activityRes.data ?? []) as any[];
@@ -258,6 +217,7 @@ export async function GET(
     commissions: commissions.slice(0, 200).map((c) => ({
       id: c.id,
       order_id: c.order_id,
+      invoice_id: c.invoice_id ?? null,
       amount: round2(num(c.amount)),
       order_total: round2(num(c.order_total)),
       commission_rate: num(c.commission_rate),

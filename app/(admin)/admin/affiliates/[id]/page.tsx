@@ -78,6 +78,7 @@ interface Insights {
   commissions: {
     id: string;
     order_id: string | null;
+    invoice_id: string | null;
     amount: number;
     order_total: number;
     commission_rate: number;
@@ -86,10 +87,14 @@ interface Insights {
     created_at: string;
   }[];
   customers: {
-    id: string;
+    key: string;
+    /** Null for a guest buyer credited through a sale, with no account. */
+    id: string | null;
     name: string;
-    email: string;
-    created_at: string;
+    email: string | null;
+    created_at: string | null;
+    /** False when they were only credited through a sale, never bound. */
+    bound: boolean;
     has_ordered: boolean;
     orders: number;
     revenue: number;
@@ -508,7 +513,7 @@ export default function AffiliateProfilePage() {
           icon={<TrendingUp className="h-4 w-4 text-teal-dark" />}
           label="Customer sales"
           value={fmtAmount(data.stats.customerRevenue)}
-          hint="Spend by everyone bound to them"
+          hint="Spend by everyone they referred"
         />
         <StatCard
           icon={<Tag className="h-4 w-4 text-teal-dark" />}
@@ -821,7 +826,7 @@ export default function AffiliateProfilePage() {
       {/* Referred customers */}
       <Panel icon={<UserPlus className="h-4 w-4 text-teal-dark" />} title="Customers referred" count={data.customers.length}>
         {data.customers.length === 0 ? (
-          <Empty>Nobody is bound to this affiliate yet.</Empty>
+          <Empty>Nobody has been referred by this affiliate yet.</Empty>
         ) : (
           <TableScroll>
             <thead>
@@ -834,16 +839,27 @@ export default function AffiliateProfilePage() {
             </thead>
             <tbody className="divide-y divide-line/60">
               {data.customers.map((c) => (
-                <tr key={c.id} className="hover:bg-surface">
+                <tr key={c.key} className="hover:bg-surface">
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/customers/${c.id}`}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-ink hover:text-teal-dark"
-                    >
-                      {c.name}
-                      <ExternalLink className="h-3 w-3" />
-                    </Link>
-                    <span className="mt-0.5 block text-xs text-ink-muted">{c.email}</span>
+                    {c.id ? (
+                      <Link
+                        href={`/admin/customers/${c.id}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink hover:text-teal-dark"
+                      >
+                        {c.name}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    ) : (
+                      <span className="text-sm font-medium text-ink">{c.name}</span>
+                    )}
+                    <span className="mt-0.5 block text-xs text-ink-muted">
+                      {c.email}
+                      {!c.bound && (
+                        <span className="ml-1.5 text-ink-light" title="Credited to this affiliate through a sale; not bound to them">
+                          · via code
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-ink-muted">{fmtDate(c.created_at)}</td>
                   <td className="px-4 py-3 text-right text-sm tabular-nums text-ink-muted">

@@ -32,6 +32,8 @@ export interface InvoiceBreakdownLine {
   lineId: string;
   /** Unit price before any discount. */
   listUnitPrice: number;
+  /** How far below list the line was charged, as a percentage (e.g. 20). */
+  discountPct: number;
 }
 
 export interface InvoiceAffiliateCredit {
@@ -67,6 +69,13 @@ export interface InvoiceBreakdown {
   discountParts: InvoiceDiscountPart[];
   /** Per-line list price, only for lines whose list price differs from the charged one. */
   lines: InvoiceBreakdownLine[];
+  /**
+   * What the line items' Disc. column shows on a line that has no list price
+   * of its own: the checkout's order-wide promo percentages, e.g. "20%" or
+   * "20% + 5%". Set only for a hosted sale whose list prices can't be
+   * recovered, where it is the one record of the discount. Null otherwise.
+   */
+  lineDiscountFallback: string | null;
   /** Referral code the buyer arrived with (hosted checkout), if any. */
   referralCode: string | null;
   affiliate: InvoiceAffiliateCredit | null;
@@ -125,7 +134,11 @@ export function buildInvoiceBreakdown(input: BreakdownInput): InvoiceBreakdown {
       // A manual invoice's unit price already is the list price (its discount
       // is the line's %), so only lines charged below list get one.
       if (item.price - num(l.unit_price) >= 0.005) {
-        breakdownLines.push({ lineId: String(l.id), listUnitPrice: round2(item.price) });
+        breakdownLines.push({
+          lineId: String(l.id),
+          listUnitPrice: round2(item.price),
+          discountPct: Math.round((1 - num(l.unit_price) / item.price) * 1000) / 10,
+        });
       }
     });
   }
@@ -153,6 +166,16 @@ export function buildInvoiceBreakdown(input: BreakdownInput): InvoiceBreakdown {
     if (pcts.length > 0) {
       parts.push({ kind: 'line', label: 'Line discount', detail: pcts.map(pct).join(', ') });
     }
+  }
+
+  // No list prices to compare against, but the checkout recorded the promos:
+  // the lines were still charged below list, by these.
+  let lineDiscountFallback: string | null = null;
+  if (ledger && discount <= 0) {
+    const pcts = [ledger.discount_code_percent, ledger.ad_discount_percent, ledger.cart_offer_percent]
+      .map(num)
+      .filter((p) => p > 0);
+    if (pcts.length > 0) lineDiscountFallback = pcts.map(pct).join(' + ');
   }
 
   let discountLabel: string | null = summary.discountLabel ?? (ledger ? discountLabelFor(ledger) : null);
@@ -190,6 +213,7 @@ export function buildInvoiceBreakdown(input: BreakdownInput): InvoiceBreakdown {
     discountLabel: discount > 0 ? discountLabel : null,
     discountParts: discount > 0 || parts.some((p) => p.kind === 'discount_code') ? parts : [],
     lines: breakdownLines,
+    lineDiscountFallback,
     referralCode: str(ledger?.referral_code),
     affiliate,
   };

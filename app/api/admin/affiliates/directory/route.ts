@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from '@/lib/permissions';
 import { fetchLeads, type Lead } from '@/lib/admin/customer-leads';
+import { loadAffiliateReferrals } from '@/lib/admin/affiliate-referrals';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +40,11 @@ export interface AffiliateDirectoryRow {
   pending_earnings: number;
   paid_earnings: number;
   commission_count: number;
-  /** Customers bound to this affiliate, and what those customers have spent. */
+  /**
+   * Customers this affiliate brought in — bound to them, or credited through a
+   * commissioned sale — and what those customers have spent. The affiliate's
+   * own account is never one of them.
+   */
   bound_customers: number;
   customer_revenue: number;
   last_commission_at: string | null;
@@ -63,7 +68,8 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
  *
  * Replaces the page's previous three calls — one of which ran a referral-code
  * and a commissions query PER AFFILIATE. Everything here is batched: five
- * queries total regardless of how many affiliates there are.
+ * queries plus a handful of batched order/invoice reads, regardless of how
+ * many affiliates there are.
  */
 export async function GET(req: NextRequest) {
   if (!(await verifyStaff(req))) {
@@ -88,11 +94,11 @@ export async function GET(req: NextRequest) {
     db.from('referral_codes').select('affiliate_id, code, active, uses_count').limit(ROW_LIMIT),
     db
       .from('commissions')
-      .select('affiliate_id, amount, status, created_at')
+      .select('affiliate_id, order_id, invoice_id, amount, status, created_at')
       .limit(ROW_LIMIT),
     db
       .from('customers')
-      .select('id, affiliate_id')
+      .select('id, affiliate_id, email, first_name, last_name, created_at, has_completed_first_order')
       .not('affiliate_id', 'is', null)
       .limit(ROW_LIMIT),
     fetchLeads(db, { scope: 'affiliate' }),
@@ -129,40 +135,19 @@ export async function GET(req: NextRequest) {
     commissionInfo.set(c.affiliate_id, entry);
   }
 
-  // --- bound customers and their revenue ---------------------------------
-  const customersByAffiliate = new Map<string, string[]>();
-  for (const c of (boundRes.data ?? []) as any[]) {
-    const list = customersByAffiliate.get(c.affiliate_id) ?? [];
-    list.push(c.id);
-    customersByAffiliate.set(c.affiliate_id, list);
-  }
-
-  const allBoundIds = [...customersByAffiliate.values()].flat();
-  const revenueByCustomer = new Map<string, number>();
-  if (allBoundIds.length > 0) {
-    // One query for every bound customer's orders, rather than one per
-    // affiliate. Cancelled orders are excluded — they aren't revenue.
-    const { data: orders } = await db
-      .from('orders')
-      .select('customer_id, total, status')
-      .in('customer_id', allBoundIds)
-      .neq('status', 'cancelled')
-      .limit(ROW_LIMIT);
-    for (const o of (orders ?? []) as any[]) {
-      if (!o.customer_id) continue;
-      revenueByCustomer.set(
-        o.customer_id,
-        (revenueByCustomer.get(o.customer_id) ?? 0) + num(o.total),
-      );
-    }
-  }
+  // --- referred customers and their revenue -----------------------------
+  // Bound customers AND buyers credited through a commission, with their
+  // orders and paid invoices — a hosted sale is an invoice, never an order.
+  const referrals = await loadAffiliateReferrals(db, (affiliates ?? []) as any[], {
+    boundCustomers: (boundRes.data ?? []) as any[],
+    commissions: (commissionsRes.data ?? []) as any[],
+  });
 
   const rows: AffiliateDirectoryRow[] = ((affiliates ?? []) as any[]).map((a) => {
     const email = String(a.email ?? '').trim().toLowerCase();
     const codes = codeInfo.get(a.id) ?? { code: null, uses: 0, count: 0 };
     const comm = commissionInfo.get(a.id) ?? { pending: 0, paid: 0, count: 0, lastAt: null };
-    const boundIds = customersByAffiliate.get(a.id) ?? [];
-    const revenue = boundIds.reduce((sum, id) => sum + (revenueByCustomer.get(id) ?? 0), 0);
+    const referred = referrals.get(a.id);
 
     return {
       id: a.id,
@@ -180,8 +165,8 @@ export async function GET(req: NextRequest) {
       pending_earnings: round2(comm.pending),
       paid_earnings: round2(comm.paid),
       commission_count: comm.count,
-      bound_customers: boundIds.length,
-      customer_revenue: round2(revenue),
+      bound_customers: referred?.customers.length ?? 0,
+      customer_revenue: referred?.revenue ?? 0,
       last_commission_at: comm.lastAt,
       lead: leadData.leads.get(email) ?? null,
     };
