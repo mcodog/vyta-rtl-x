@@ -153,11 +153,12 @@ export default function Hero() {
           className="absolute inset-y-0 left-0 hidden lg:block w-[78%] xl:w-[74%] backdrop-blur-2xl"
         />
 
-        {/* Content */}
+        {/* Content — centred, but below lg the deep bottom padding lifts the
+            copy into the upper part of the screen, clear of the vials. */}
         <div className="relative flex-1 flex items-center w-full">
           <motion.div
             style={prefersReducedMotion ? undefined : { y: contentY, opacity: contentOpacity }}
-            className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-24 sm:pt-32 pb-10 sm:pb-16"
+            className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-24 sm:pt-32 pb-[30svh] lg:pb-16"
           >
             <div className="grid lg:grid-cols-12">
               <motion.div
