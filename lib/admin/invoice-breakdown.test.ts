@@ -46,9 +46,10 @@ test('Stealth Health: list prices, discount and label match the email', () => {
   assert.equal(b.discount, 182.4);
   assert.equal(b.chargedSubtotal, 577.6);
   assert.deepEqual(b.lines, [
-    { lineId: 'l1', listUnitPrice: 133 },
-    { lineId: 'l2', listUnitPrice: 494 },
+    { lineId: 'l1', listUnitPrice: 133, discountPct: 24 },
+    { lineId: 'l2', listUnitPrice: 494, discountPct: 24 },
   ]);
+  assert.equal(b.lineDiscountFallback, null);
   assert.deepEqual(b.discountParts, [
     { kind: 'discount_code', label: 'Discount code', detail: 'VYTA20 · 20%' },
     { kind: 'cart_offer', label: 'Limited-time offer', detail: '5%' },
@@ -105,6 +106,16 @@ test('no discount: charged prices, no parts, no per-line list price', () => {
   assert.equal(b.discountLabel, null);
   assert.deepEqual(b.discountParts, []);
   assert.deepEqual(b.lines, []);
+  assert.equal(b.lineDiscountFallback, null);
+});
+
+test('promos recorded but no list prices: the Disc. column falls back to them', () => {
+  // An older hand-off whose items carry no list_unit_price_cents.
+  const noList = { ...ledger, items: ledger.items.map((it) => ({ ...it, list_unit_price_cents: 0 })) };
+  const b = buildInvoiceBreakdown({ invoice, lines, ledger: noList });
+  assert.equal(b.discount, 0);
+  assert.deepEqual(b.lines, []);
+  assert.equal(b.lineDiscountFallback, '20% + 5%');
 });
 
 test('manual invoice: line discounts become the discount row', () => {
@@ -118,6 +129,7 @@ test('manual invoice: line discounts become the discount row', () => {
   assert.equal(b.chargedSubtotal, 180);
   // Its unit price already is the list price; the Disc. column shows the 10%.
   assert.deepEqual(b.lines, []);
+  assert.equal(b.lineDiscountFallback, null);
   assert.deepEqual(b.discountParts, [{ kind: 'line', label: 'Line discount', detail: '10%' }]);
   assert.equal(b.discountLabel, '10% line discount');
   assert.equal(b.referralCode, null);

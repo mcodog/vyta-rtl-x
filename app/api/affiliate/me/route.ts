@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
   const [{ data: code }, { count: boundCustomers }, { data: affCommissions }, { data: salesPerson }] =
     await Promise.all([
       db.from('referral_codes').select('code').eq('affiliate_id', uid).eq('active', true).limit(1).maybeSingle(),
-      db.from('customers').select('id', { count: 'exact', head: true }).eq('affiliate_id', uid),
+      // Their own account is bound to itself; that isn't a referral.
+      db.from('customers').select('id', { count: 'exact', head: true }).eq('affiliate_id', uid).neq('id', uid),
       db.from('commissions').select('amount, status').eq('affiliate_id', uid),
       db.from('sales_persons').select('id, first_name, last_name, commission_rate, total_earnings').eq('user_id', uid).maybeSingle(),
     ]);

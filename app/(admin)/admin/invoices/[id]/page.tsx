@@ -304,6 +304,19 @@ export default function InvoiceDetailPage() {
   const listPriceByLine = new Map<string, number>(
     showDiscount ? breakdown!.lines.map((l) => [l.lineId, l.listUnitPrice]) : [],
   );
+  // A checkout discount (code, first-order, limited-time offer) is priced into
+  // the unit price, so the line's own discount_pct is 0. The Disc. column shows
+  // how far below list each line went instead. A ratio, so it holds even on a
+  // two-currency invoice where the list prices above are withheld.
+  const discountPctByLine = new Map<string, number>(
+    (breakdown?.lines ?? []).filter((l) => l.discountPct > 0).map((l) => [l.lineId, l.discountPct]),
+  );
+  const lineDiscount = (li: { id: string; discount_pct: number }): string | null => {
+    if (li.discount_pct > 0) return `${li.discount_pct}%`;
+    const p = discountPctByLine.get(li.id);
+    if (p != null) return `${p}%`;
+    return breakdown?.lineDiscountFallback ?? null;
+  };
   const affiliate = breakdown?.affiliate ?? null;
   const affiliateCut = affiliate?.commission
     ? { name: affiliate.name, ...affiliate.commission }
@@ -618,8 +631,11 @@ export default function InvoiceDetailPage() {
                           )}
                           {goodsMoney(Number(li.unit_price))}
                         </td>
-                        <td className="px-4 py-3 text-center text-ink-muted">
-                          {li.discount_pct > 0 ? `${li.discount_pct}%` : '—'}
+                        <td
+                          className="px-4 py-3 text-center tabular-nums text-ink-muted whitespace-nowrap"
+                          title={li.discount_pct > 0 ? undefined : breakdown?.discountLabel ?? undefined}
+                        >
+                          {lineDiscount(li) ?? '—'}
                         </td>
                         <td className="px-4 py-3 text-right font-medium tabular-nums text-ink">{goodsMoney(Number(li.line_total))}</td>
                       </tr>
