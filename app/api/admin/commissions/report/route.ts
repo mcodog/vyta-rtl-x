@@ -23,6 +23,14 @@ function fmtDate(s: string | null) {
 function esc(s: string | null | undefined) {
   return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 }
+/** Buyer name, else email, else "Guest" — guest checkouts have no account. */
+function customerCell(r: LedgerCommission): string {
+  const primary = r.customer_name || r.customer_email;
+  if (!primary) return '<span class="muted">Guest</span>';
+  const guest = r.customer_is_guest ? ' <span class="muted">(guest)</span>' : '';
+  const sub = r.customer_name && r.customer_email ? `<div class="muted">${esc(r.customer_email)}</div>` : '';
+  return `${esc(primary)}${guest}${sub}`;
+}
 const sum = (rows: LedgerCommission[], status: string) =>
   rows.filter((r) => r.status === status).reduce((s, r) => s + r.amount, 0);
 
@@ -64,7 +72,7 @@ export async function GET(req: NextRequest) {
   if (q) {
     rows = rows.filter((r) => {
       const rec = byKey.get(r.recipient_key);
-      return [rec?.name, rec?.email, rec?.referral_code, r.customer_name, commissionReference(r), r.order_number]
+      return [rec?.name, rec?.email, rec?.referral_code, r.customer_name, r.customer_email, commissionReference(r), r.order_number]
         .some((v) => (v ?? '').toLowerCase().includes(q));
     });
   }
@@ -82,7 +90,7 @@ export async function GET(req: NextRequest) {
         <td>${fmtDate(r.created_at)}</td>
         ${single ? '' : `<td>${esc(rec?.name)}<div class="muted">${esc(rec?.email)}</div></td>`}
         <td class="mono">${esc(ref)}${r.order_number && r.invoice_number ? `<div class="muted">Order ${esc(r.order_number)}</div>` : ''}</td>
-        <td>${esc(r.customer_name) || '<span class="muted">—</span>'}</td>
+        <td>${customerCell(r)}</td>
         <td class="num">${money(r.base)}</td>
         <td class="num">${r.rate ? `${r.rate}%` : '—'}</td>
         <td class="num"><b>${money(r.amount)}</b></td>

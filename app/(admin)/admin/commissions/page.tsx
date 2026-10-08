@@ -106,7 +106,7 @@ export default function AdminCommissions() {
       const recipient = recipientByKey.get(c.recipient_key);
       if (!recipient) continue;
       if (q) {
-        const hay = [recipient.name, recipient.email, recipient.referral_code, c.customer_name, reference(c), c.order_number];
+        const hay = [recipient.name, recipient.email, recipient.referral_code, c.customer_name, c.customer_email, reference(c), c.order_number];
         if (!hay.some((v) => (v ?? '').toLowerCase().includes(q))) continue;
       }
       const g = map.get(c.recipient_key) ?? { recipient, rows: [], pending: 0, paid: 0, latest: c.created_at };
@@ -428,7 +428,9 @@ function CommissionDetail({
                     <span className="text-ink">{reference(c)}</span>
                   )}
                 </td>
-                <td className="py-2.5 pr-4 text-sm text-ink">{c.customer_name || <span className="text-ink-muted">—</span>}</td>
+                <td className="py-2.5 pr-4 text-sm">
+                  <CustomerCell c={c} />
+                </td>
                 <td className="py-2.5 pr-4 text-sm text-ink text-right tabular-nums">{money(c.base)}</td>
                 <td className="py-2.5 pr-4 text-sm text-ink-muted text-right tabular-nums">{c.rate ? `${c.rate}%` : '—'}</td>
                 <td className="py-2.5 pr-4 text-sm font-semibold text-ink text-right tabular-nums">{money(c.amount)}</td>
@@ -465,6 +467,26 @@ function CommissionDetail({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Buyer name, else email, else "Guest" — guest checkouts have no account. */
+function CustomerCell({ c }: { c: LedgerCommission }) {
+  const primary = c.customer_name || c.customer_email;
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5">
+        <span className={primary ? 'text-ink truncate' : 'text-ink-muted'}>{primary || 'Guest'}</span>
+        {c.customer_is_guest && primary && (
+          <span className="inline-flex px-1.5 py-0.5 rounded bg-surface border border-line text-[10px] font-medium text-ink-muted">
+            Guest
+          </span>
+        )}
+      </div>
+      {c.customer_name && c.customer_email && (
+        <div className="text-xs text-ink-muted truncate">{c.customer_email}</div>
+      )}
     </div>
   );
 }

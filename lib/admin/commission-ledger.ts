@@ -32,7 +32,15 @@ export interface LedgerCommission {
   invoice_number: string | null;
   order_id: string | null;
   order_number: string | null;
+  /**
+   * Who bought. Falls back through the customer account, the invoice's
+   * snapshot, the hosted-checkout ledger and the order's shipping address, so
+   * guest checkouts (no account) still show a name or at least an email.
+   */
   customer_name: string | null;
+  customer_email: string | null;
+  /** No customer account behind the sale — a guest checkout. */
+  customer_is_guest: boolean;
 }
 
 export interface LedgerRecipient {
@@ -89,6 +97,87 @@ async function selectIn(
   return out;
 }
 
+const INVOICE_COLS = 'id, invoice_number, order_id, customer_id, customer_name, customer_email';
+
+const clean = (v: unknown): string | null => {
+  const t = typeof v === 'string' ? v.trim() : '';
+  return t ? t : null;
+};
+
+/**
+ * Buyer details from the hosted-checkout ledger, keyed by invoice id. A
+ * PuraMass guest has no customer account; this is where their name lives.
+ * `customer_name` arrived in a later migration, so retry without it.
+ */
+async function loadHostedBuyers(db: SupabaseClient, invoiceIds: string[]): Promise<Map<string, Row>> {
+  const out = new Map<string, Row>();
+  const unique = [...new Set(invoiceIds.filter(Boolean))];
+  for (let i = 0; i < unique.length; i += IN_CHUNK) {
+    const chunk = unique.slice(i, i + IN_CHUNK);
+    let res = await db
+      .from('puramass_orders')
+      .select('invoice_id, customer_name, customer_email')
+      .in('invoice_id', chunk)
+      .limit(ROW_LIMIT);
+    if (res.error) {
+      res = (await db
+        .from('puramass_orders')
+        .select('invoice_id, customer_email')
+        .in('invoice_id', chunk)
+        .limit(ROW_LIMIT)) as typeof res;
+    }
+    if (res.error) {
+      console.error('[commission-ledger] puramass_orders:', res.error.message);
+      continue;
+    }
+    for (const r of (res.data ?? []) as Row[]) if (r.invoice_id && !out.has(r.invoice_id)) out.set(r.invoice_id, r);
+  }
+  return out;
+}
+
+/** Name from a shipping-address blob, whichever key style it was saved with. */
+function addressName(addr: unknown): string | null {
+  if (!addr || typeof addr !== 'object') return null;
+  const a = addr as Row;
+  return (
+    clean(`${a.firstName ?? a.first_name ?? ''} ${a.lastName ?? a.last_name ?? ''}`) ??
+    clean(a.name) ??
+    clean(a.full_name) ??
+    clean(a.fullName)
+  );
+}
+
+/**
+ * Best available name and email for a sale's buyer: the customer account,
+ * then the invoice's snapshot, then the hosted-checkout ledger, then the
+ * order's shipping address. A sale with no account is a guest checkout.
+ */
+export function resolveBuyer(src: {
+  account: Row | null;
+  invoice: Row | null;
+  hosted: Row | null;
+  order: Row | null;
+}): Pick<LedgerCommission, 'customer_name' | 'customer_email' | 'customer_is_guest'> {
+  const { account, invoice, hosted, order } = src;
+  const ship = order?.shipping_address && typeof order.shipping_address === 'object' ? (order.shipping_address as Row) : null;
+  const name =
+    (account ? clean(fullName(account)) : null) ??
+    clean(invoice?.customer_name) ??
+    clean(hosted?.customer_name) ??
+    addressName(ship);
+  const email =
+    clean(account?.email) ??
+    clean(invoice?.customer_email) ??
+    clean(hosted?.customer_email) ??
+    clean(order?.email) ??
+    clean(ship?.email);
+  return {
+    customer_name: name,
+    customer_email: email,
+    customer_is_guest: !account && !!(invoice || order),
+  };
+}
+
 export async function loadCommissionLedger(
   db: SupabaseClient,
   opts: { source?: CommissionSource; recipientId?: string } = {},
@@ -133,10 +222,10 @@ export async function loadCommissionLedger(
   ].filter(Boolean) as string[];
 
   const [orders, invoicesById, invoicesByOrder] = await Promise.all([
-    selectIn(db, 'orders', 'id, order_number, customer_id', 'id', orderIds),
-    selectIn(db, 'invoices', 'id, invoice_number, order_id, customer_id', 'id', directInvoiceIds),
+    selectIn(db, 'orders', 'id, order_number, customer_id, email, shipping_address', 'id', orderIds),
+    selectIn(db, 'invoices', INVOICE_COLS, 'id', directInvoiceIds),
     // A storefront order usually has an invoice too; prefer linking to it.
-    selectIn(db, 'invoices', 'id, invoice_number, order_id, customer_id', 'order_id', orderIds),
+    selectIn(db, 'invoices', INVOICE_COLS, 'order_id', orderIds),
   ]);
   const orderMap = new Map(orders.map((o) => [o.id, o]));
   const invoiceMap = new Map(invoicesById.map((i) => [i.id, i]));
@@ -167,8 +256,20 @@ export async function loadCommissionLedger(
     ...invoicesById.map((i) => i.customer_id),
     ...invoicesByOrder.map((i) => i.customer_id),
   ].filter(Boolean) as string[];
-  const customers = await selectIn(db, 'customers', 'id, first_name, last_name, email', 'id', customerIds);
-  const customerName = new Map(customers.map((c) => [c.id, fullName(c) || c.email || null]));
+  const allInvoiceIds = [...invoicesById, ...invoicesByOrder].map((i) => i.id) as string[];
+  const [customers, hosted] = await Promise.all([
+    selectIn(db, 'customers', 'id, first_name, last_name, email', 'id', customerIds),
+    loadHostedBuyers(db, allInvoiceIds),
+  ]);
+  const customerById = new Map(customers.map((c) => [c.id, c]));
+
+  const buyerFor = (invoice: Row | null | undefined, order: Row | null | undefined) =>
+    resolveBuyer({
+      account: customerById.get(invoice?.customer_id ?? order?.customer_id) ?? null,
+      invoice: invoice ?? null,
+      hosted: invoice?.id ? hosted.get(invoice.id) ?? null : null,
+      order: order ?? null,
+    });
 
   const recipients = new Map<string, LedgerRecipient>();
   for (const a of affiliates) {
@@ -220,7 +321,7 @@ export async function loadCommissionLedger(
       : c.order_id
         ? invoiceForOrder.get(c.order_id)
         : null;
-    const customerId = invoice?.customer_id ?? order?.customer_id ?? null;
+    const buyer = buyerFor(invoice, order);
     commissions.push({
       id: c.id,
       source: 'affiliate',
@@ -235,7 +336,7 @@ export async function loadCommissionLedger(
       invoice_number: invoice?.invoice_number ?? null,
       order_id: c.order_id ?? null,
       order_number: order?.order_number ?? null,
-      customer_name: customerId ? customerName.get(customerId) ?? null : null,
+      ...buyer,
     });
   }
 
@@ -267,7 +368,7 @@ export async function loadCommissionLedger(
       invoice_number: invoice?.invoice_number ?? null,
       order_id: null,
       order_number: null,
-      customer_name: invoice?.customer_id ? customerName.get(invoice.customer_id) ?? null : null,
+      ...buyerFor(invoice, null),
     });
   }
 
