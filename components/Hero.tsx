@@ -55,9 +55,9 @@ const BAND_MASK_X =
 // less white than the desktop band so the portrait art shows behind the copy
 // too.
 const BAND_TINT_Y =
-  'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.5) 46%, rgba(255,255,255,0.18) 52%, rgba(255,255,255,0) 58%)';
+  'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.5) 51%, rgba(255,255,255,0.18) 57%, rgba(255,255,255,0) 63%)';
 const BAND_MASK_Y =
-  'linear-gradient(180deg, #000 0%, #000 46%, rgba(0,0,0,0.4) 52%, transparent 58%)';
+  'linear-gradient(180deg, #000 0%, #000 51%, rgba(0,0,0,0.4) 57%, transparent 63%)';
 
 const TRUST_BADGES = [
   { icon: ShieldCheck, label: '99%+\nPurity Guaranteed' },
@@ -92,11 +92,12 @@ export default function Hero() {
       ref={sectionRef}
       className="relative lg:min-h-svh flex flex-col overflow-hidden bg-ink"
     >
-      {/* The frame the image and copy fill. On phones it is a full screen of its
-          own, so the hero opens edge to edge and the badge strip waits below
-          the fold; from lg up it goes static, so the layers below position
-          against the section and the strip sits over the image's base. */}
-      <div className="relative lg:static flex-1 flex flex-col min-h-svh lg:min-h-0">
+      {/* The frame the image and copy fill. On phones it is 90% of the screen,
+          so the hero opens near edge to edge with the top of the badge strip
+          showing beneath it; from lg up it goes static, so the layers below
+          position against the section and the strip sits over the image's
+          base. */}
+      <div className="relative lg:static flex-1 flex flex-col min-h-[90svh] lg:min-h-0">
         {/* Media layer — oversized vertically so the parallax drift never
             reveals an edge. */}
         <motion.div
@@ -158,7 +159,7 @@ export default function Hero() {
         <div className="relative flex-1 flex items-center w-full">
           <motion.div
             style={prefersReducedMotion ? undefined : { y: contentY, opacity: contentOpacity }}
-            className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-24 sm:pt-32 pb-[30svh] lg:pb-16"
+            className="w-full max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-24 sm:pt-32 pb-[26svh] lg:pb-16"
           >
             <div className="grid lg:grid-cols-12">
               <motion.div
