@@ -50,6 +50,9 @@ export default function InvoicesIndex() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
+  // Default view is paid invoices only; "Show all" unlocks the status filter.
+  const [showAll, setShowAll] = useState(false);
+  const effectiveStatusFilter: InvoiceStatus | 'all' = showAll ? statusFilter : 'paid';
   // Origin filter — Stealth Health hand-offs read very differently from invoices
   // raised here, and reconciling one against Stealth Health means seeing only those.
   const [sourceFilter, setSourceFilter] = useState<'all' | 'puramass' | 'manual'>('all');
@@ -90,14 +93,14 @@ export default function InvoicesIndex() {
   // Reset to the first page whenever a scope filter changes.
   useEffect(() => {
     setPage(0);
-  }, [statusFilter, sourceFilter]);
+  }, [effectiveStatusFilter, sourceFilter]);
 
   // Server-side paginated fetch (status + search + page).
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     getInvoices({
-      status: statusFilter !== 'all' ? statusFilter : undefined,
+      status: effectiveStatusFilter !== 'all' ? effectiveStatusFilter : undefined,
       source: sourceFilter !== 'all' ? sourceFilter : undefined,
       q: debouncedSearch || undefined,
       limit: PAGE_SIZE,
@@ -122,7 +125,7 @@ export default function InvoicesIndex() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [statusFilter, sourceFilter, debouncedSearch, page, refreshKey]);
+  }, [effectiveStatusFilter, sourceFilter, debouncedSearch, page, refreshKey]);
 
   // Aging report is an admin/assistant tool; load it once for them only.
   useEffect(() => {
@@ -134,7 +137,7 @@ export default function InvoicesIndex() {
   const rangeStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const rangeEnd = Math.min(total, (page + 1) * PAGE_SIZE);
   const hasFilters =
-    debouncedSearch.length > 0 || statusFilter !== 'all' || sourceFilter !== 'all';
+    debouncedSearch.length > 0 || effectiveStatusFilter !== 'all' || sourceFilter !== 'all';
 
   const openPdf = async (id: string, download = false) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -733,9 +736,11 @@ export default function InvoicesIndex() {
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" />
           <select
-            value={statusFilter}
+            value={effectiveStatusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="w-full sm:w-auto pl-10 pr-8 py-2.5 bg-white border border-line rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 appearance-none"
+            disabled={!showAll}
+            title={showAll ? undefined : 'Turn on "Show all" to filter by other statuses'}
+            className="w-full sm:w-auto pl-10 pr-8 py-2.5 bg-white border border-line rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <option value="all">All Statuses</option>
             {INVOICE_STATUSES.map((s) => (
@@ -756,6 +761,15 @@ export default function InvoicesIndex() {
             <option value="manual">Created here</option>
           </select>
         </div>
+        <label className="inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-line rounded-lg text-sm text-ink cursor-pointer select-none whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={(e) => setShowAll(e.target.checked)}
+            className="w-4 h-4 rounded border-line text-teal-dark focus:ring-teal/40 cursor-pointer"
+          />
+          Show all
+        </label>
       </div>
 
       {/* Bulk actions */}
