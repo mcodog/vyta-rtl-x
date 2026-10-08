@@ -5,12 +5,10 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAffiliate } from "@/contexts/AffiliateContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import {
-  getAffiliateStats,
-  getAffiliateCommissions,
-  getReferralCodes,
-} from "@/lib/affiliate/api";
-import type { Commission, ReferralCode } from "@/lib/supabase";
+import { getReferralCodes } from "@/lib/affiliate/api";
+import type { ReferralCode } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api-fetch";
+import type { AffiliateCommissionRow } from "@/lib/affiliate/types";
 import { formatCurrency } from "@/lib/affiliate/utils";
 import {
   DollarSign,
@@ -30,6 +28,17 @@ import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 
+type CommissionsResponse = {
+  rows: AffiliateCommissionRow[];
+  paid: number;
+  pending: number;
+  total: number;
+  commissionCount: number;
+  referrals: number;
+};
+
+type StatusView = "all" | "pending" | "paid";
+
 const statusColors: Record<string, string> = {
   paid: "bg-emerald-50 text-emerald-700 border-emerald-100",
   pending: "bg-amber-50 text-amber-700 border-amber-100",
@@ -46,7 +55,9 @@ export default function AffiliateDashboard() {
     totalReferrals: 0,
     totalCommissions: 0,
   });
-  const [recentCommissions, setRecentCommissions] = useState<Commission[]>([]);
+  const [commissions, setCommissions] = useState<AffiliateCommissionRow[]>([]);
+  const [statusView, setStatusView] = useState<StatusView>("all");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,23 +79,39 @@ export default function AffiliateDashboard() {
     if (!affiliate) return;
 
     setIsLoading(true);
+    setLoadError(null);
+    // Commissions come from the server (service role, scoped to the caller):
+    // reading them from the browser could come back empty under RLS.
+    const [commissionsRes, codesRes] = await Promise.allSettled([
+      apiFetch<CommissionsResponse>("/api/affiliate/commissions", { timeoutMs: 20_000 }),
+      getReferralCodes(affiliate.id),
+    ]);
     try {
-      const [statsData, commissions, codes] = await Promise.all([
-        getAffiliateStats(affiliate.id),
-        getAffiliateCommissions(affiliate.id),
-        getReferralCodes(affiliate.id),
-      ]);
-      setStats(statsData);
-      setRecentCommissions(commissions.slice(0, 10));
-      setReferralCodes(codes);
-    } catch {
-      // leave state as defaults
+      if (commissionsRes.status === "fulfilled") {
+        const data = commissionsRes.value;
+        setStats({
+          totalEarnings: data.paid,
+          pendingEarnings: data.pending,
+          totalReferrals: data.referrals,
+          totalCommissions: data.commissionCount,
+        });
+        setCommissions(data.rows);
+      } else {
+        setLoadError("We couldn't load your commissions. Please refresh to try again.");
+      }
+      if (codesRes.status === "fulfilled") setReferralCodes(codesRes.value);
     } finally {
       setIsLoading(false);
     }
   };
 
   const primaryCode = referralCodes.find((c) => c.active);
+
+  const visibleCommissions =
+    statusView === "all" ? commissions : commissions.filter((c) => c.status === statusView);
+  const visibleTotal = visibleCommissions
+    .filter((c) => c.status !== "cancelled")
+    .reduce((sum, c) => sum + c.amount, 0);
 
   const copyToClipboard = async (code: string) => {
     try {
@@ -176,7 +203,7 @@ export default function AffiliateDashboard() {
                 {formatCurrency(stats.totalEarnings)}
               </div>
               <p className="text-[10px] sm:text-xs text-ink-muted">
-                Total Earnings
+                Paid Out
               </p>
             </motion.div>
 
@@ -235,7 +262,7 @@ export default function AffiliateDashboard() {
                   <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5 text-purple-500" />
                 </div>
                 <span className="text-[8px] sm:text-[10px] font-semibold text-ink-muted uppercase tracking-wider">
-                  Orders
+                  Sales
                 </span>
               </div>
               <div className="text-lg sm:text-2xl md:text-3xl font-bold text-ink mb-0.5 sm:mb-1 tabular-nums">
@@ -306,18 +333,31 @@ export default function AffiliateDashboard() {
             </motion.div>
           )}
 
-          {/* Recent Commissions */}
+          {/* Commissions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="bg-white rounded-xl border border-line overflow-hidden"
           >
-            <div className="p-4 sm:p-5 md:p-6 border-b border-line">
+            <div className="p-4 sm:p-5 md:p-6 border-b border-line flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-base sm:text-lg font-bold text-ink flex items-center gap-2">
                 <Receipt className="w-4 sm:w-5 h-4 sm:h-5 text-teal-dark" />
-                Recent Commissions
+                Your Commissions
               </h2>
+              <div className="inline-flex rounded-lg border border-line bg-white p-0.5 self-start">
+                {(["all", "pending", "paid"] as StatusView[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setStatusView(v)}
+                    className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${
+                      statusView === v ? "bg-ink text-white" : "text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {v === "all" ? "All" : v === "pending" ? "Pending" : "Paid"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {isLoading ? (
@@ -326,17 +366,25 @@ export default function AffiliateDashboard() {
                   Loading commissions...
                 </div>
               </div>
-            ) : recentCommissions.length === 0 ? (
+            ) : loadError ? (
+              <div className="p-8 sm:p-12 text-center text-xs sm:text-sm text-red-600">{loadError}</div>
+            ) : visibleCommissions.length === 0 ? (
               <div className="p-8 sm:p-12 text-center">
                 <div className="w-12 sm:w-14 h-12 sm:h-14 bg-surface rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
                   <Beaker className="w-6 sm:w-7 h-6 sm:h-7 text-line" />
                 </div>
                 <p className="text-ink-muted text-xs sm:text-sm mb-1 sm:mb-2">
-                  No commissions yet
+                  {commissions.length === 0
+                    ? "No commissions yet"
+                    : statusView === "pending"
+                      ? "Nothing pending right now"
+                      : "No paid commissions yet"}
                 </p>
-                <p className="text-ink-muted text-[10px] sm:text-xs">
-                  Share your referral code to start earning commissions!
-                </p>
+                {commissions.length === 0 && (
+                  <p className="text-ink-muted text-[10px] sm:text-xs">
+                    Share your referral code to start earning commissions!
+                  </p>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -344,60 +392,74 @@ export default function AffiliateDashboard() {
                   <thead>
                     <tr className="border-b border-line">
                       <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                        Reference
+                        Date
                       </th>
                       <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                        Order Total
+                        Invoice
                       </th>
-                      <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                      <th className="text-right py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider hidden sm:table-cell">
+                        Sale
+                      </th>
+                      <th className="text-right py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider hidden md:table-cell">
+                        Rate
+                      </th>
+                      <th className="text-right py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
                         Commission
                       </th>
-                      <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider hidden sm:table-cell">
+                      <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
                         Status
-                      </th>
-                      <th className="text-left py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider hidden sm:table-cell">
-                        Date
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/50">
-                    {recentCommissions.map((commission) => {
-                      // Storefront sales carry order_id; hosted (Stealth Health)
-                      // sales carry invoice_id instead, with order_id null.
-                      const reference = commission.order_id ?? commission.invoice_id ?? "";
-                      return (
+                    {visibleCommissions.map((commission) => (
                       <tr
-                        key={commission.id}
+                        key={`${commission.source}-${commission.id}`}
                         className="hover:bg-surface transition-colors"
                       >
+                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink-muted whitespace-nowrap">
+                          {new Date(commission.created_at).toLocaleDateString()}
+                        </td>
                         <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink font-mono">
-                          <span className="hidden sm:inline">
-                            {reference.substring(0, 12)}...
-                          </span>
-                          <span className="sm:hidden">
-                            {reference.substring(0, 8)}...
-                          </span>
+                          {commission.reference}
                         </td>
-                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink tabular-nums">
-                          {formatCurrency(Number(commission.order_total))}
+                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink text-right tabular-nums hidden sm:table-cell">
+                          {formatCurrency(commission.base)}
                         </td>
-                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm font-semibold text-emerald-600 tabular-nums">
-                          {formatCurrency(Number(commission.amount))}
+                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink-muted text-right tabular-nums hidden md:table-cell">
+                          {commission.rate ? `${commission.rate}%` : "—"}
                         </td>
-                        <td className="py-2 sm:py-3 px-3 sm:px-5 hidden sm:table-cell">
+                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm font-semibold text-emerald-600 text-right tabular-nums">
+                          {formatCurrency(commission.amount)}
+                        </td>
+                        <td className="py-2 sm:py-3 px-3 sm:px-5">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium border ${statusColors[commission.status] || "bg-surface text-ink-muted border-line"}`}
                           >
-                            {(commission.status ?? "").toUpperCase()}
+                            {commission.status.toUpperCase()}
                           </span>
-                        </td>
-                        <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm text-ink-muted hidden sm:table-cell">
-                          {new Date(commission.created_at).toLocaleDateString()}
+                          {commission.status === "paid" && commission.paid_at && (
+                            <span className="ml-2 text-[10px] sm:text-xs text-ink-muted hidden sm:inline">
+                              {new Date(commission.paid_at).toLocaleDateString()}
+                            </span>
+                          )}
                         </td>
                       </tr>
-                      );
-                    })}
+                    ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t border-line bg-surface/50">
+                      <td colSpan={2} className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                        {visibleCommissions.length} {visibleCommissions.length === 1 ? "commission" : "commissions"}
+                      </td>
+                      <td className="hidden sm:table-cell" />
+                      <td className="hidden md:table-cell" />
+                      <td className="py-2 sm:py-3 px-3 sm:px-5 text-[10px] sm:text-sm font-bold text-ink text-right tabular-nums">
+                        {formatCurrency(visibleTotal)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             )}
