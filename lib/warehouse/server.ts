@@ -15,6 +15,7 @@ import {
   renderFulfillmentEmailHtml,
   renderFulfillmentEmailText,
   type FulfillmentEmailData,
+  type FulfillmentTracking,
 } from '@/lib/fulfillment-email';
 import type {
   FulfillmentStatus,
@@ -491,12 +492,49 @@ function trimmed(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
+/**
+ * Shipment details typed into the send modal — usually because the label was
+ * bought outside Easyship and nothing is on file yet. Used for this email
+ * only (not saved); a blank field falls back to what's stored.
+ */
+export interface ShipmentDetailsInput {
+  trackingNumber?: string | null;
+  carrier?: string | null;
+  trackingUrl?: string | null;
+  /** Estimated delivery window, YYYY-MM-DD. */
+  deliveryFrom?: string | null;
+  deliveryTo?: string | null;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Shipment details from query params / a JSON body, cleaned up. */
+export function parseShipmentDetails(source: { get(key: string): unknown }): ShipmentDetailsInput {
+  const text = (key: string, max = 200) => {
+    const v = trimmed(source.get(key));
+    return v ? v.slice(0, max) : null;
+  };
+  const date = (key: string) => {
+    const v = trimmed(source.get(key));
+    return v && DATE_RE.test(v) ? v : null;
+  };
+  const url = text('tracking_url', 1000);
+  return {
+    trackingNumber: text('tracking_number', 100),
+    carrier: text('carrier', 100),
+    trackingUrl: url && /^https?:\/\//i.test(url) ? url : null,
+    deliveryFrom: date('delivery_from'),
+    deliveryTo: date('delivery_to'),
+  };
+}
+
 /** Everything needed to render (and address) one packed / shipped email. */
 async function buildFulfillmentEmail(
   db: SupabaseClient,
   invoiceId: string,
   kind: 'packed' | 'shipped',
-): Promise<{ data: FulfillmentEmailData; to: string | null } | null> {
+  details: ShipmentDetailsInput = {},
+): Promise<{ data: FulfillmentEmailData; to: string | null; stored: FulfillmentTracking } | null> {
   // `*`: the invoice's own shipment columns arrive with a later migration.
   const { data: inv } = await db.from('invoices').select('*').eq('id', invoiceId).maybeSingle();
   if (!inv) return null;
@@ -514,13 +552,25 @@ async function buildFulfillmentEmail(
   const shown = content?.data;
 
   // The parcel: the order's shipment first, else the invoice's own.
-  const trackingNumber = trimmed(order?.tracking_number) ?? trimmed(inv.tracking_number);
-  const tracking = {
-    number: trackingNumber,
+  const stored: FulfillmentTracking = {
+    number: trimmed(order?.tracking_number) ?? trimmed(inv.tracking_number),
     carrier:
       trimmed(order?.carrier) ?? trimmed(order?.shipping_carrier) ?? trimmed(inv.carrier),
     url: trimmed(order?.tracking_url) ?? trimmed(inv.tracking_url),
   };
+  // A typed tracking number makes the stored link stale, so it only keeps the
+  // stored URL when the number is unchanged.
+  const typedNumber = trimmed(details.trackingNumber);
+  const numberChanged = !!typedNumber && typedNumber !== stored.number;
+  const tracking: FulfillmentTracking = {
+    number: typedNumber ?? stored.number,
+    carrier: trimmed(details.carrier) ?? stored.carrier,
+    url: trimmed(details.trackingUrl) ?? (numberChanged ? null : stored.url),
+  };
+  const estimatedDelivery =
+    details.deliveryFrom || details.deliveryTo
+      ? { from: details.deliveryFrom ?? null, to: details.deliveryTo ?? null }
+      : null;
 
   const data: FulfillmentEmailData = {
     kind,
@@ -532,19 +582,21 @@ async function buildFulfillmentEmail(
     items: shown?.items ?? [],
     shipTo: shown?.shipTo,
     tracking,
+    estimatedDelivery,
     viewOrderUrl: shown?.viewOrderUrl,
   };
   const to =
     shown?.to ?? pickDeliverableEmail(...(content?.emails ?? []), inv.customer_email) ?? trimmed(inv.customer_email);
-  return { data, to };
+  return { data, to, stored };
 }
 
 export async function buildNotificationPreview(
   db: SupabaseClient,
   invoiceId: string,
   kind: 'packed' | 'shipped',
+  details: ShipmentDetailsInput = {},
 ): Promise<NotificationPreview | null> {
-  const built = await buildFulfillmentEmail(db, invoiceId, kind);
+  const built = await buildFulfillmentEmail(db, invoiceId, kind, details);
   if (!built) return null;
   const subject = fulfillmentEmailSubject(built.data);
   return {
@@ -554,6 +606,7 @@ export async function buildNotificationPreview(
     to: built.to,
     defaults: { subject },
     trackingNumber: built.data.tracking?.number ?? null,
+    stored: built.stored,
   };
 }
 
@@ -577,14 +630,14 @@ export async function sendFulfillmentEmail(
   actor: WarehouseAuth,
   invoiceId: string,
   kind: 'packed' | 'shipped',
-  overrides: { subject?: string; to?: string } = {},
+  overrides: { subject?: string; to?: string; details?: ShipmentDetailsInput } = {},
 ): Promise<{
   ok: boolean;
   message_id: string | null;
   emailed_at: string | null;
   error?: string;
 }> {
-  const built = await buildFulfillmentEmail(db, invoiceId, kind);
+  const built = await buildFulfillmentEmail(db, invoiceId, kind, overrides.details);
   if (!built) {
     return { ok: false, message_id: null, emailed_at: null, error: 'invoice not found' };
   }

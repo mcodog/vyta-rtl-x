@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  formatDeliveryWindow,
   fulfillmentEmailSubject,
   renderFulfillmentEmailHtml,
   renderFulfillmentEmailText,
@@ -85,4 +86,23 @@ test('plain text carries the essentials', () => {
   assert.match(text, /Carrier: UPS/);
   assert.match(text, /Track your order: https:\/\/www\.ups\.com/);
   assert.match(text, /SS-31 50mg \(Single vial\) × 2 — \$258\.00/);
+});
+
+test('formatDeliveryWindow: range, single date, or nothing', () => {
+  assert.equal(formatDeliveryWindow({ from: '2026-03-27', to: '2026-03-31' }), 'Mar 27, 2026 – Mar 31, 2026');
+  assert.equal(formatDeliveryWindow({ from: '2026-03-27', to: null }), 'Mar 27, 2026');
+  assert.equal(formatDeliveryWindow({ from: null, to: '2026-03-31' }), 'Mar 31, 2026');
+  assert.equal(formatDeliveryWindow({ from: '2026-03-27', to: '2026-03-27' }), 'Mar 27, 2026');
+  assert.equal(formatDeliveryWindow({ from: 'soon', to: null }), null);
+  assert.equal(formatDeliveryWindow(null), null);
+});
+
+test('shipped email shows the estimated delivery in the card, next steps and text', () => {
+  const data: FulfillmentEmailData = { ...shipped, estimatedDelivery: { from: '2026-03-27', to: '2026-03-31' } };
+  const html = renderFulfillmentEmailHtml(data, SITE);
+  assert.match(html, /Estimated Delivery/);
+  assert.match(html, /Estimated delivery Mar 27, 2026 – Mar 31, 2026\./);
+  assert.match(renderFulfillmentEmailText(data), /Estimated delivery: Mar 27, 2026 – Mar 31, 2026/);
+  // Not on a packed email.
+  assert.doesNotMatch(renderFulfillmentEmailHtml({ ...data, kind: 'packed' }, SITE), /Estimated Delivery/);
 });

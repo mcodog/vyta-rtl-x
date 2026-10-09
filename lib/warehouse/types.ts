@@ -112,6 +112,19 @@ export interface NotificationPreview {
   defaults: { subject: string };
   /** Null on a shipped email means it goes out without a tracking number. */
   trackingNumber: string | null;
+  /** What's on file for the parcel — prefills the modal's shipment fields. */
+  stored: { number: string | null; carrier: string | null; url: string | null };
+}
+
+/** Shipment details typed into the send modal (snake_case, as sent on the wire). */
+export interface ShipmentDetailsFields {
+  tracking_number?: string;
+  carrier?: string;
+  tracking_url?: string;
+  /** YYYY-MM-DD */
+  delivery_from?: string;
+  /** YYYY-MM-DD */
+  delivery_to?: string;
 }
 
 // ---------- Step state machines ----------

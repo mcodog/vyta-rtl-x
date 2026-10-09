@@ -7,7 +7,8 @@ import FulfillmentEmailModal from '@/components/FulfillmentEmailModal';
 /**
  * Admin sidebar card for the customer's "order packed" / "order shipped"
  * emails (lib/fulfillment-email.ts). Manual only — nothing sends these on a
- * status change; each button opens the preview-and-send modal. Shows when
+ * status change; each button opens the preview-and-send modal (where the
+ * shipped email also takes carrier, tracking and estimated delivery). Shows when
  * each was last sent, from the invoice's packed_emailed_at / shipped_emailed_at.
  */
 export default function FulfillmentEmailCard({
@@ -51,7 +52,9 @@ export default function FulfillmentEmailCard({
         <Mail className="w-4 h-4 text-ink-muted" />
         <h3 className="font-semibold text-ink text-sm">Packed &amp; shipped emails</h3>
       </div>
-      <p className="text-[11px] text-ink-muted mb-3">Sent by hand only — preview before sending.</p>
+      <p className="text-[11px] text-ink-muted mb-3">
+        Sent by hand only. Preview first{pickup ? '' : ' — add the carrier, tracking number and estimated delivery there'}.
+      </p>
 
       <ul className="space-y-2">
         {rows.map((r) => (
@@ -79,7 +82,7 @@ export default function FulfillmentEmailCard({
                 className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal/10 border border-teal/20 text-teal-dark rounded-lg text-xs hover:bg-teal/20 transition-colors"
               >
                 {r.sentAt ? <RotateCw className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
-                {r.sentAt ? 'Resend' : 'Send'}
+                {r.sentAt ? 'Preview & resend' : 'Preview & send'}
               </button>
             )}
           </li>

@@ -8,6 +8,7 @@ import type {
   QueueViewer,
   FulfillmentStatus,
   NotificationPreview,
+  ShipmentDetailsFields,
 } from './types';
 
 export * from './types';
@@ -203,9 +204,12 @@ export async function fetchInvoicePdfHtml(
 export async function previewNotification(
   invoiceId: string,
   kind: 'packed' | 'shipped',
+  details: ShipmentDetailsFields = {},
 ): Promise<NotificationPreview> {
+  const params = new URLSearchParams({ preview: '1', kind });
+  for (const [k, v] of Object.entries(details)) if (v) params.set(k, v);
   const res = await fetch(
-    `/api/warehouse/queue/${invoiceId}/notify?preview=1&kind=${kind}`,
+    `/api/warehouse/queue/${invoiceId}/notify?${params.toString()}`,
     {
       headers: await authHeader(),
     },
@@ -243,7 +247,7 @@ export async function sendPackingList(
 export async function sendNotification(
   invoiceId: string,
   kind: 'packed' | 'shipped',
-  overrides?: { subject?: string; to?: string },
+  overrides?: { subject?: string; to?: string } & ShipmentDetailsFields,
 ): Promise<{
   ok: boolean;
   message_id: string | null;

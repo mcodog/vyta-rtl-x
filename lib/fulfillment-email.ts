@@ -45,6 +45,8 @@ export interface FulfillmentEmailData {
   items: ConfirmationLine[];
   shipTo?: ConfirmationShipTo;
   tracking?: FulfillmentTracking;
+  /** Delivery window (YYYY-MM-DD each; either may be missing) — shipped emails only. */
+  estimatedDelivery?: { from: string | null; to: string | null } | null;
   /** "View Order Details" target (customer account), when the order has one. */
   viewOrderUrl?: string;
 }
@@ -87,6 +89,23 @@ export function trackingUrlFor(tracking: FulfillmentTracking | null | undefined)
   if (!number || !carrier) return null;
   const hit = CARRIER_TRACKING.find((c) => c.match.test(carrier));
   return hit ? hit.url(encodeURIComponent(number)) : null;
+}
+
+function shortDate(value: string | null | undefined): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** "Mar 27, 2026 – Mar 31, 2026", one date when only one is set, or null. */
+export function formatDeliveryWindow(
+  window: FulfillmentEmailData['estimatedDelivery'],
+): string | null {
+  const from = shortDate(window?.from);
+  const to = shortDate(window?.to);
+  if (from && to) return from === to ? from : `${from} – ${to}`;
+  return from ?? to;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +189,13 @@ function copyFor(data: FulfillmentEmailData): Copy {
         title: 'Track in Real Time',
         body: trackingUrlFor(data.tracking) ? 'Click the button above to view tracking details.' : 'Use the tracking number above with the carrier.',
       },
-      { icon: 'package-open-blue', title: 'Enjoy Your Order', body: 'Thank you for choosing VYTA.' },
+      {
+        icon: 'package-open-blue',
+        title: 'Enjoy Your Order',
+        body: formatDeliveryWindow(data.estimatedDelivery)
+          ? `Estimated delivery ${formatDeliveryWindow(data.estimatedDelivery)}.`
+          : 'Thank you for choosing VYTA.',
+      },
     ],
   };
 }
@@ -230,6 +255,8 @@ function orderCard(site: string, data: FulfillmentEmailData, copy: Copy): string
       rows.push(detailRow('Tracking Number', `<span style="font-family: ${MONO}; font-weight: 600; word-break: break-all;">${esc(t.number)}</span>`, rows.length === 0));
     }
     if (t?.carrier) rows.push(detailRow('Carrier', esc(t.carrier), rows.length === 0));
+    const eta = formatDeliveryWindow(data.estimatedDelivery);
+    if (eta) rows.push(detailRow('Estimated Delivery', esc(eta), rows.length === 0));
   }
 
   return cardTable(`
@@ -429,6 +456,9 @@ export function renderFulfillmentEmailText(data: FulfillmentEmailData): string {
     date ? `Placed on ${date}` : null,
     data.kind === 'shipped' && data.tracking?.number ? `Tracking number: ${data.tracking.number}` : null,
     data.kind === 'shipped' && data.tracking?.carrier ? `Carrier: ${data.tracking.carrier}` : null,
+    data.kind === 'shipped' && formatDeliveryWindow(data.estimatedDelivery)
+      ? `Estimated delivery: ${formatDeliveryWindow(data.estimatedDelivery)}`
+      : null,
     trackUrl ? `Track your order: ${trackUrl}` : null,
     lines.length ? '' : null,
     lines.length ? `${copy.itemsHeading}:` : null,
