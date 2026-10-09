@@ -6,8 +6,8 @@
  *   - the base is the goods SUBTOTAL, never the total with shipping;
  *   - a stored rate of 0.10 and one of 10 mean the same thing;
  *   - a bound customer beats a raw referral code, and self-referral pays nobody;
- *   - a referral link carrying an affiliate's discount code, or a code they
- *     have since renamed, still credits that affiliate;
+ *   - a referral link carrying an affiliate's discount code still credits
+ *     that affiliate, and codes match exactly — nothing is corrected;
  *   - a repeat webhook/poll for the same sale never pays twice, including when
  *     the duplicate is caught by the database rather than the pre-check.
  *
@@ -138,7 +138,7 @@ test('a customer referred by their own code credits nobody', async () => {
   assert.equal(got, null);
 });
 
-test('an unbound buyer is attributed by referral code, normalized', async () => {
+test('an unbound buyer is attributed by referral code, matched case-insensitively', async () => {
   const seen: unknown[] = [];
   const { db } = makeDb((call) => {
     if (call.table === 'customers') return ok({ affiliate_id: null });
@@ -152,13 +152,12 @@ test('an unbound buyer is attributed by referral code, normalized', async () => 
 
   const got = await resolveAffiliateAttribution(db, {
     customerId: 'cust-2',
-    referralCode: 'promo-5',
+    referralCode: ' promo5 ',
   });
 
   assert.equal(got?.affiliateId, 'aff-9');
   assert.equal(got?.referralCodeId, 'code-9');
-  // Normalized, not merely uppercased: punctuation is stripped, so a code
-  // typed with a dash still matches the stored one.
+  // Trimmed and upper-cased (stored codes are upper case), nothing else.
   assert.deepEqual(seen, ['PROMO5']);
 });
 
@@ -539,26 +538,28 @@ test('a switched-off discount code on a referral link credits nobody', async () 
   assert.equal(inserted.length, 0);
 });
 
-test('a code the affiliate has since renamed still credits them, on their live code', async () => {
+test('a code is looked up exactly as entered — punctuation is not stripped', async () => {
+  const seen: unknown[] = [];
   const { db } = makeDb((call) => {
-    if (call.table === 'referral_codes') {
-      // The old code is gone; looking up by affiliate finds the renamed row.
-      return ok(filterValue(call, 'affiliate_id') === 'aff-r' ? { id: 'code-new' } : null);
+    if (call.table === 'referral_codes' || call.table === 'discount_codes') {
+      seen.push(filterValue(call, 'code'));
     }
-    if (call.table === 'referral_code_requests') {
-      assert.equal(filterValue(call, 'previous_code'), 'OLDNAME10');
-      assert.equal(filterValue(call, 'status'), 'approved');
-      return ok({ affiliate_id: 'aff-r' });
-    }
+    return empty;
+  });
+
+  assert.equal(await resolveReferralCodeOwner(db, 'palm-bella10'), null);
+  assert.deepEqual(seen, ['PALM-BELLA10', 'PALM-BELLA10']);
+});
+
+test("a code the affiliate used to hold is not matched", async () => {
+  const { db, calls } = makeDb((call) => {
+    if (call.table === 'referral_code_requests') return ok({ affiliate_id: 'aff-r' });
     if (call.table === 'affiliates') return ok({ active: true });
     return empty;
   });
 
-  const owner = await resolveReferralCodeOwner(db, 'oldname10');
-
-  assert.equal(owner?.affiliateId, 'aff-r');
-  assert.equal(owner?.via, 'retired_referral_code');
-  assert.equal(owner?.referralCodeId, 'code-new');
+  assert.equal(await resolveReferralCodeOwner(db, 'OLDNAME10'), null);
+  assert.equal(calls.some((c) => c.table === 'referral_code_requests'), false);
 });
 
 test('a live referral code wins over a discount code with the same name', async () => {

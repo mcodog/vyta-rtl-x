@@ -9,7 +9,6 @@ import {
   ATTRIBUTION_MAX_AGE,
   VISITOR_COOKIE,
 } from '@/lib/analytics/attribution';
-import { isValidReferralCodeFormat, normalizeReferralCode } from '@/lib/affiliate/utils';
 import {
   LANDING_COOKIE,
   LANDING_COOKIE_MAX_AGE,
@@ -19,6 +18,8 @@ import {
 
 const REF_COOKIE = 'ref_code';
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+/** Longer than any real code; just keeps junk out of the cookie. */
+const REF_CODE_MAX_CHARS = 64;
 
 /** Per-visit id. No max-age — it dies with the browser session, which is the point. */
 const SESSION_COOKIE = 'aminocan_sid';
@@ -64,11 +65,11 @@ function randomId(): string {
 export function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const ref = url.searchParams.get('ref');
-  // The format lives in lib/affiliate/utils. An inline `{8}` here would drop
-  // the cookie for every vanity code with no error anywhere, and the affiliate
-  // would simply never be credited.
-  const refCode = ref ? normalizeReferralCode(ref) : null;
-  const validRef = !!refCode && isValidReferralCodeFormat(refCode);
+  // Kept exactly as the link carried it — no case change, nothing stripped —
+  // so the checkout shows the code the affiliate actually handed out, and it
+  // is matched (or not) as is. Only a blank or absurdly long value is ignored.
+  const refCode = ref ? ref.trim() : null;
+  const validRef = !!refCode && refCode.length <= REF_CODE_MAX_CHARS;
 
   // A valid ?ref= is stripped from the address bar, which means a redirect.
   // Everything else continues, with cookies attached to the passthrough.

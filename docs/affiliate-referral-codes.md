@@ -153,10 +153,10 @@ request is open, and the last five decided rows.
 
 ## Integration points
 
-- **`middleware.ts`** captures `?ref=`; a newer link's code replaces the stored one. It now normalizes the
-  candidate and measures it against the shared validator. Left as `{8}`, every
-  `AMCSMITH10` link silently drops its cookie and the affiliate is never
-  credited, with no error anywhere.
+- **`middleware.ts`** captures `?ref=` exactly as the link carries it — no case
+  change, nothing stripped — and a newer link's code replaces the stored one.
+  The checkout shows that code in its affiliate field and checks it with an
+  exact match (`resolveReferralCodeOwner`), never correcting it.
 - **`lib/analytics/attribution.ts`** stores `ref_code` on a touch and had the
   same stale pattern. Same fix.
 - **Checkout** bounds the field by `REFERRAL_CODE_MAX_LENGTH`, normalizes the

@@ -37,7 +37,6 @@ import { trackBeginCheckout } from "@/lib/analytics/ecommerce";
 import { cartItemToAnalytics } from "@/lib/analytics/cart";
 import { trackActivity } from "@/lib/customer/activity";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
-import { normalizeReferralCode } from "@/lib/affiliate/utils";
 import {
   SHIPPING_COUNTRIES,
   postalLabel,
@@ -292,12 +291,16 @@ function readReferralCode(): string {
   const row = document.cookie.split("; ").find((r) => r.startsWith("ref_code="));
   if (!row) return "";
   const raw = row.slice(row.indexOf("=") + 1);
+  // Exactly as the link carried it — no case change, nothing stripped.
   try {
-    return normalizeReferralCode(decodeURIComponent(raw));
+    return decodeURIComponent(raw).trim();
   } catch {
-    return normalizeReferralCode(raw);
+    return raw.trim();
   }
 }
+
+/** Whether the affiliate code in the field credits anyone. */
+type ReferralStatus = "idle" | "checking" | "match" | "no-match" | "error";
 
 /**
  * Stealth Health hosted-checkout screen. Collects contact info, shows the cart
@@ -349,6 +352,7 @@ export default function PuramassCheckoutContent({
   const [error, setError] = useState<string | null>(null);
   const [unmapped, setUnmapped] = useState<string[]>([]);
   const [referralCode, setReferralCode] = useState("");
+  const [referralStatus, setReferralStatus] = useState<ReferralStatus>("idle");
   const [addons, setAddons] = useState<AddonProduct[]>([]);
 
   // ---- Discount code ----
@@ -379,12 +383,46 @@ export default function PuramassCheckoutContent({
   const [addonsLoading, setAddonsLoading] = useState(true);
 
   // The affiliate field starts with the code the latest `?ref=` link left in
-  // the cookie (middleware strips it from the address bar on arrival). It is
-  // sent with the order as typed; whether it credits anyone is decided when
-  // the sale is paid.
+  // the cookie (middleware strips it from the address bar on arrival), and is
+  // sent with the order exactly as it stands — never corrected.
   useEffect(() => {
     setReferralCode(readReferralCode());
   }, []);
+
+  // Check the code as it settles, against the same exact-match rules the paid
+  // sale is credited by, so "matched" here means the affiliate gets credited.
+  // It only reports; it never changes what is in the field.
+  useEffect(() => {
+    const code = referralCode.trim();
+    if (!code) {
+      setReferralStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setReferralStatus("checking");
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/checkout/referral-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        if (cancelled) return;
+        if (!res.ok) {
+          setReferralStatus("error");
+          return;
+        }
+        const json = await res.json();
+        if (!cancelled) setReferralStatus(json?.match ? "match" : "no-match");
+      } catch {
+        if (!cancelled) setReferralStatus("error");
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [referralCode]);
 
   const applyDiscountCode = async (raw: string, opts: { fromLanding?: boolean } = {}) => {
     const code = raw.trim();
@@ -808,7 +846,7 @@ export default function PuramassCheckoutContent({
               courier_id: selectedRate?.courier_id ?? null,
             }
           : undefined,
-        referralCode: referralCode || undefined,
+        referralCode: referralCode.trim() || undefined,
         discountCode: appliedCode?.code || undefined,
         // Only sent when the buyer removed the landing page's code themselves.
         declineLandingOffer: landingDeclined && !appliedCode ? true : undefined,
@@ -1572,17 +1610,47 @@ export default function PuramassCheckoutContent({
                       Affiliate code
                       <span className="font-normal text-ink-muted">(optional)</span>
                     </label>
-                    <input
-                      id="affiliate-code"
-                      value={referralCode}
-                      onChange={(e) => setReferralCode(normalizeReferralCode(e.target.value))}
-                      placeholder="Who referred you?"
-                      autoComplete="off"
-                      maxLength={32}
-                      className="w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-sm uppercase text-ink placeholder:font-sans placeholder:normal-case placeholder:text-ink-muted focus:border-teal focus:outline-none"
-                    />
-                    <p className="mt-1.5 text-xs text-ink-muted">
-                      Credits whoever referred you. It doesn&apos;t change your total.
+                    <div className="relative">
+                      <input
+                        id="affiliate-code"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value)}
+                        placeholder="Who referred you?"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        maxLength={64}
+                        aria-describedby="affiliate-code-status"
+                        className={`w-full rounded-lg border bg-white px-3 py-2 pr-9 font-mono text-sm text-ink placeholder:font-sans placeholder:text-ink-muted focus:outline-none ${
+                          referralStatus === "match"
+                            ? "border-emerald-300 focus:border-emerald-500"
+                            : referralStatus === "no-match"
+                              ? "border-amber-300 focus:border-amber-500"
+                              : "border-line focus:border-teal"
+                        }`}
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                        {referralStatus === "checking" && (
+                          <Loader2 className="h-4 w-4 animate-spin text-ink-muted" />
+                        )}
+                        {referralStatus === "match" && <Check className="h-4 w-4 text-emerald-600" />}
+                        {referralStatus === "no-match" && <AlertCircle className="h-4 w-4 text-amber-600" />}
+                      </span>
+                    </div>
+                    <p id="affiliate-code-status" aria-live="polite" className="mt-1.5 text-xs">
+                      {referralStatus === "match" && (
+                        <span className="text-emerald-700">Affiliate matched — they&apos;ll be credited for this order.</span>
+                      )}
+                      {referralStatus === "no-match" && (
+                        <span className="text-amber-700">No affiliate matches this code.</span>
+                      )}
+                      {referralStatus === "error" && (
+                        <span className="text-ink-muted">Couldn&apos;t check this code right now — it will still be sent with your order.</span>
+                      )}
+                      {(referralStatus === "idle" || referralStatus === "checking") && (
+                        <span className="text-ink-muted">Credits whoever referred you.</span>
+                      )}
                     </p>
                   </div>
 

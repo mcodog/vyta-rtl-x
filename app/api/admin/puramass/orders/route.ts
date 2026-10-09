@@ -212,8 +212,8 @@ export async function GET(req: NextRequest) {
       console.warn('[puramass] referral code lookup failed:', codeError.message);
     } else {
       // A code with no referral_codes row may still name an affiliate — their
-      // discount code shared as a ?ref= link, or a code since renamed — and
-      // is credited as such (see resolveReferralCodeOwner).
+      // discount code shared as a ?ref= link — and is credited as such (see
+      // resolveReferralCodeOwner).
       const known = new Set((codeRows ?? []).map((c: any) => String(c.code).toUpperCase()));
       const fallback = (
         await Promise.all(
