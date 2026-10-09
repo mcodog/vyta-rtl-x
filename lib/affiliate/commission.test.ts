@@ -6,6 +6,8 @@
  *   - the base is the goods SUBTOTAL, never the total with shipping;
  *   - a stored rate of 0.10 and one of 10 mean the same thing;
  *   - a bound customer beats a raw referral code, and self-referral pays nobody;
+ *   - a referral link carrying an affiliate's discount code, or a code they
+ *     have since renamed, still credits that affiliate;
  *   - a repeat webhook/poll for the same sale never pays twice, including when
  *     the duplicate is caught by the database rather than the pre-check.
  *
@@ -19,6 +21,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeCommissionRate,
   resolveAffiliateAttribution,
+  resolveReferralCodeOwner,
   recordAffiliateCommission,
   AFFILIATE_COMMISSION_RATE,
   round2,
@@ -50,6 +53,7 @@ function makeDb(handler: Handler) {
       eq: (column: string, value: unknown) =>
         build({ ...call, filters: [...call.filters, [column, value]] }),
       limit: () => build(call),
+      order: () => build(call),
       maybeSingle: settle,
       single: settle,
     };
@@ -474,4 +478,100 @@ test('an affiliate using their own discount code earns nothing from it', async (
 
   assert.equal(res.recorded, false);
   assert.equal(inserted.length, 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Referral links that are not a live referral code                   */
+/* ------------------------------------------------------------------ */
+
+test("a referral link carrying an affiliate's discount code credits that affiliate", async () => {
+  // The buyer arrived on ?ref=PALMBELLA10 — Palm Bella's discount code, not a
+  // referral code — then typed the store's VYTA20, which credits nobody.
+  const { db, inserted } = paidSale({
+    code: null,
+    discountCode: { id: 'dc-pb', code: 'PALMBELLA10', affiliate_id: 'aff-pb', commission_rate: null, active: true },
+    affiliate: { commission_rate: 0.1, active: true },
+  });
+
+  const res = await recordAffiliateCommission(db, {
+    invoiceId: 'inv-ref-dc',
+    subtotalCents: 10000,
+    referralCode: 'PALMBELLA10',
+  });
+
+  assert.equal(res.recorded, true);
+  assert.equal(inserted[0].affiliate_id, 'aff-pb');
+  assert.equal(inserted[0].amount, 10);
+  // Not booked against the discount code: it took nothing off this sale.
+  assert.equal(inserted[0].discount_code_id, undefined);
+});
+
+test("that discount code's own commission rate applies", async () => {
+  const { db, inserted } = paidSale({
+    code: null,
+    discountCode: { id: 'dc-pb', code: 'PALMBELLA10', affiliate_id: 'aff-pb', commission_rate: 15, active: true },
+    affiliate: { commission_rate: 0.1, active: true },
+  });
+
+  await recordAffiliateCommission(db, {
+    invoiceId: 'inv-ref-dc-rate',
+    subtotalCents: 20000,
+    referralCode: 'PALMBELLA10',
+  });
+
+  assert.equal(inserted[0].amount, 30);
+  assert.equal(inserted[0].commission_rate, 15);
+});
+
+test('a switched-off discount code on a referral link credits nobody', async () => {
+  const { db, inserted } = paidSale({
+    code: null,
+    discountCode: { id: 'dc-off', code: 'OLD10', affiliate_id: 'aff-pb', commission_rate: null, active: false },
+  });
+
+  const res = await recordAffiliateCommission(db, {
+    invoiceId: 'inv-ref-dc-off',
+    subtotalCents: 10000,
+    referralCode: 'OLD10',
+  });
+
+  assert.equal(res.recorded === false && res.reason, 'no-attribution');
+  assert.equal(inserted.length, 0);
+});
+
+test('a code the affiliate has since renamed still credits them, on their live code', async () => {
+  const { db } = makeDb((call) => {
+    if (call.table === 'referral_codes') {
+      // The old code is gone; looking up by affiliate finds the renamed row.
+      return ok(filterValue(call, 'affiliate_id') === 'aff-r' ? { id: 'code-new' } : null);
+    }
+    if (call.table === 'referral_code_requests') {
+      assert.equal(filterValue(call, 'previous_code'), 'OLDNAME10');
+      assert.equal(filterValue(call, 'status'), 'approved');
+      return ok({ affiliate_id: 'aff-r' });
+    }
+    if (call.table === 'affiliates') return ok({ active: true });
+    return empty;
+  });
+
+  const owner = await resolveReferralCodeOwner(db, 'oldname10');
+
+  assert.equal(owner?.affiliateId, 'aff-r');
+  assert.equal(owner?.via, 'retired_referral_code');
+  assert.equal(owner?.referralCodeId, 'code-new');
+});
+
+test('a live referral code wins over a discount code with the same name', async () => {
+  const { db, calls } = makeDb((call) => {
+    if (call.table === 'referral_codes') return ok({ id: 'code-1', code: 'SAME10', affiliate_id: 'aff-ref', active: true });
+    if (call.table === 'discount_codes') return ok({ id: 'dc', code: 'SAME10', affiliate_id: 'aff-dc', active: true });
+    if (call.table === 'affiliates') return ok({ active: true });
+    return empty;
+  });
+
+  const owner = await resolveReferralCodeOwner(db, 'SAME10');
+
+  assert.equal(owner?.affiliateId, 'aff-ref');
+  assert.equal(owner?.via, 'referral_code');
+  assert.equal(calls.some((c) => c.table === 'discount_codes'), false);
 });

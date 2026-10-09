@@ -20,6 +20,147 @@ export interface AffiliateAttribution {
   affiliateId: string;
   referralCodeId: string | null;
   referralCode: string | null;
+  /**
+   * Percentage override from the affiliate discount code the referral link
+   * carried (see `resolveReferralCodeOwner`); null = the affiliate's own rate.
+   */
+  commissionRate?: number | null;
+}
+
+/** Who a `?ref=` code belongs to, and how it was recognised. */
+export interface ReferralCodeOwner {
+  affiliateId: string;
+  /**
+   * - `referral_code`: a live `referral_codes` row — the normal case.
+   * - `discount_code`: an affiliate's discount code handed out as a `?ref=`
+   *   link. It took nothing off (the cookie never reaches the discount field),
+   *   but it names the affiliate as plainly as their referral code does.
+   * - `retired_referral_code`: a code the affiliate used to hold, renamed by
+   *   an approved change request. Links and cookies outlive the rename.
+   */
+  via: 'referral_code' | 'discount_code' | 'retired_referral_code';
+  /** The code as stored. */
+  code: string;
+  /** The affiliate's live referral code row, when they have one. */
+  referralCodeId: string | null;
+  /** Percentage override on a matched discount code; null otherwise. */
+  commissionRate: number | null;
+}
+
+/**
+ * Resolve a referral code captured at checkout to the affiliate it names.
+ *
+ * The `ref_code` cookie is whatever `?ref=` carried, unvalidated, and a lot
+ * of what affiliates share is not a live referral code: their discount code
+ * (`?ref=PALMBELLA10` instead of `?discount=`), or the code they held before a
+ * rename. Matching only `referral_codes` dropped those sales on the floor —
+ * the order showed the code, and nobody was credited. So, in order:
+ *
+ *   1. an active `referral_codes` row;
+ *   2. an active, affiliate-assigned `discount_codes` row;
+ *   3. an approved `referral_code_requests` rename away from this code.
+ *
+ * The owner must still be an active affiliate. Never throws; null = nobody.
+ */
+export async function resolveReferralCodeOwner(
+  db: SupabaseClient,
+  raw: string | null | undefined,
+): Promise<ReferralCodeOwner | null> {
+  const code = normalizeReferralCode(raw);
+  if (!code) return null;
+
+  let owner: ReferralCodeOwner | null = null;
+  try {
+    // (1) A live referral code.
+    const { data: ref } = await db
+      .from('referral_codes')
+      .select('id, code, affiliate_id, active')
+      .eq('code', code)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle();
+    if (ref?.affiliate_id) {
+      owner = {
+        affiliateId: ref.affiliate_id,
+        via: 'referral_code',
+        code: ref.code ?? code,
+        referralCodeId: ref.id ?? null,
+        commissionRate: null,
+      };
+    }
+
+    // (2) An affiliate's discount code, shared as a referral link.
+    if (!owner) {
+      const { data: dc } = await db
+        .from('discount_codes')
+        .select('id, code, affiliate_id, commission_rate, active')
+        .eq('code', code)
+        .limit(1)
+        .maybeSingle();
+      if (dc?.affiliate_id && dc.active !== false) {
+        const rate = dc.commission_rate == null ? null : Number(dc.commission_rate);
+        owner = {
+          affiliateId: dc.affiliate_id,
+          via: 'discount_code',
+          code: dc.code ?? code,
+          referralCodeId: null,
+          commissionRate: rate != null && Number.isFinite(rate) ? rate : null,
+        };
+      }
+    }
+
+    // (3) A code the affiliate has since renamed. Approving a change renames
+    //     the referral_codes row in place, so the old code survives only in
+    //     the request history.
+    if (!owner) {
+      const { data: renamed } = await db
+        .from('referral_code_requests')
+        .select('affiliate_id')
+        .eq('previous_code', code)
+        .eq('status', 'approved')
+        .order('decided_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (renamed?.affiliate_id) {
+        owner = {
+          affiliateId: renamed.affiliate_id,
+          via: 'retired_referral_code',
+          code,
+          referralCodeId: null,
+          commissionRate: null,
+        };
+      }
+    }
+
+    if (!owner) return null;
+
+    // A code is only honoured while the affiliate who owns it is active.
+    // Without this a switched-off partner's code still books a commission
+    // nobody intends to pay.
+    const { data: affiliate } = await db
+      .from('affiliates')
+      .select('active')
+      .eq('id', owner.affiliateId)
+      .maybeSingle();
+    if (!affiliate || affiliate.active === false) return null;
+
+    // Credit lands on the affiliate's live referral code (its uses_count and
+    // history), whichever code the buyer actually arrived with.
+    if (!owner.referralCodeId) {
+      const { data: live } = await db
+        .from('referral_codes')
+        .select('id')
+        .eq('affiliate_id', owner.affiliateId)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+      owner.referralCodeId = live?.id ?? null;
+    }
+    return owner;
+  } catch (err) {
+    console.error('[affiliate] resolving referral code %s failed:', code, err);
+    return null;
+  }
 }
 
 /**
@@ -28,7 +169,7 @@ export interface AffiliateAttribution {
  * Priority:
  *   1. Bound customer — `customers.affiliate_id`. If that affiliate has an
  *      active referral code, it is credited too.
- *   2. Referral code — an active `referral_codes` row.
+ *   2. Referral code — see `resolveReferralCodeOwner` for what counts.
  *
  * Self-referral (the buying customer is also the affiliate) is rejected.
  */
@@ -61,32 +202,16 @@ export async function resolveAffiliateAttribution(
     }
   }
 
-  // (2) Fall back to an explicit referral code.
+  // (2) Fall back to the referral code the buyer arrived with.
   if (referralCode) {
-    const { data: code } = await db
-      .from('referral_codes')
-      .select('id, code, affiliate_id, active')
-      .eq('code', normalizeReferralCode(referralCode))
-      .eq('active', true)
-      .maybeSingle();
-
-    if (code?.affiliate_id && code.affiliate_id !== customerId) {
-      // A code is only honoured while the affiliate who owns it is active.
-      // Without this a switched-off partner's code still discounts an order
-      // and books a commission nobody intends to pay.
-      const { data: owner } = await db
-        .from('affiliates')
-        .select('active')
-        .eq('id', code.affiliate_id)
-        .maybeSingle();
-
-      if (owner && owner.active !== false) {
-        return {
-          affiliateId: code.affiliate_id,
-          referralCodeId: code.id,
-          referralCode: code.code,
-        };
-      }
+    const owner = await resolveReferralCodeOwner(db, referralCode);
+    if (owner && owner.affiliateId !== customerId) {
+      return {
+        affiliateId: owner.affiliateId,
+        referralCodeId: owner.referralCodeId,
+        referralCode: owner.code,
+        commissionRate: owner.commissionRate,
+      };
     }
   }
 
@@ -217,12 +342,14 @@ export async function recordAffiliateCommission(
       .eq('id', attribution.affiliateId)
       .maybeSingle();
 
-    // A code's own rate wins; 0% is a legitimate "discount only" code. It is
-    // a percentage, so it is not run through normalizeCommissionRate, which
-    // would read 1 (1%) as a fraction (100%).
+    // A code's own rate wins — the code typed at checkout, else an affiliate
+    // discount code the referral link carried; 0% is a legitimate "discount
+    // only" code. It is a percentage, so it is not run through
+    // normalizeCommissionRate, which would read 1 (1%) as a fraction (100%).
+    const codeRate = codeCredit ? codeCredit.commissionRate : attribution.commissionRate ?? null;
     const rate =
-      codeCredit?.commissionRate != null
-        ? Math.min(1, Math.max(0, codeCredit.commissionRate / 100))
+      codeRate != null
+        ? Math.min(1, Math.max(0, codeRate / 100))
         : normalizeCommissionRate(affiliate?.commission_rate);
     const amount = round2(base * rate);
 

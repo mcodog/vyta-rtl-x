@@ -9,6 +9,7 @@ import {
   RECOVERABLE_STATUSES,
 } from '@/lib/payments/puramass-abandoned';
 import { confirmationSummariesByInvoice } from '@/lib/order-confirmation';
+import { resolveReferralCodeOwner } from '@/lib/affiliate/commission';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -210,8 +211,24 @@ export async function GET(req: NextRequest) {
     if (codeError) {
       console.warn('[puramass] referral code lookup failed:', codeError.message);
     } else {
+      // A code with no referral_codes row may still name an affiliate — their
+      // discount code shared as a ?ref= link, or a code since renamed — and
+      // is credited as such (see resolveReferralCodeOwner).
+      const known = new Set((codeRows ?? []).map((c: any) => String(c.code).toUpperCase()));
+      const fallback = (
+        await Promise.all(
+          codes
+            .filter((c) => !known.has(c))
+            .map(async (c) => {
+              const owner = await resolveReferralCodeOwner(db, c);
+              return owner ? { code: c, active: true, affiliate_id: owner.affiliateId } : null;
+            }),
+        )
+      ).filter(Boolean) as { code: string; active: boolean; affiliate_id: string }[];
+      const allCodeRows = [...(codeRows ?? []), ...fallback];
+
       const affiliateIds = [
-        ...new Set((codeRows ?? []).map((c: any) => c.affiliate_id).filter(Boolean)),
+        ...new Set(allCodeRows.map((c: any) => c.affiliate_id).filter(Boolean)),
       ] as string[];
       let nameById: Record<string, string | null> = {};
       if (affiliateIds.length > 0) {
@@ -231,7 +248,7 @@ export async function GET(req: NextRequest) {
         }
       }
       affiliateByCode = Object.fromEntries(
-        (codeRows ?? []).map((c: any) => [
+        allCodeRows.map((c: any) => [
           String(c.code).toUpperCase(),
           {
             id: c.affiliate_id,
