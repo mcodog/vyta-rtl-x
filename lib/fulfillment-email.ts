@@ -11,9 +11,9 @@
  * (public/images/email/shipped-hero.jpg — with the truck — or packed-hero.jpg,
  * the same photo cropped above it), so it shows in Outlook too.
  *
- * Pure (type-only imports), so it renders under `node --test`.
+ * Pure (no server imports), so it renders under `node --test`.
  */
-import type { ConfirmationLine, ConfirmationShipTo } from './order-confirmation-data';
+import { deliverableEmail, type ConfirmationLine, type ConfirmationShipTo } from './order-confirmation-data';
 import {
   SUPPORT_EMAIL,
   esc,
@@ -106,6 +106,22 @@ export function formatDeliveryWindow(
   const to = shortDate(window?.to);
   if (from && to) return from === to ? from : `${from} – ${to}`;
   return from ?? to;
+}
+
+/**
+ * The recipient box: one address or several, comma / semicolon / space
+ * separated. `invalid` lists anything that isn't a deliverable address.
+ */
+export function parseRecipients(raw: unknown): { emails: string[]; invalid: string[] } {
+  const parts = typeof raw === 'string' ? raw.split(/[\s,;]+/).filter(Boolean) : [];
+  const emails: string[] = [];
+  const invalid: string[] = [];
+  for (const part of parts) {
+    const email = deliverableEmail(part);
+    if (!email) invalid.push(part);
+    else if (!emails.some((e) => e.toLowerCase() === email.toLowerCase())) emails.push(email);
+  }
+  return { emails, invalid };
 }
 
 // ---------------------------------------------------------------------------
@@ -390,7 +406,19 @@ function greet(name: string, intro: string): string {
   return `Hi ${name}, ${intro.charAt(0).toLowerCase()}${intro.slice(1)}`;
 }
 
-export function renderFulfillmentEmailHtml(data: FulfillmentEmailData, siteUrl: string): string {
+export interface FulfillmentEmailRenderOptions {
+  /**
+   * A bar above the cover — set on the admin team's copy ("sent to … by …")
+   * so it can't be mistaken for the customer's own email. Plain text.
+   */
+  notice?: string;
+}
+
+export function renderFulfillmentEmailHtml(
+  data: FulfillmentEmailData,
+  siteUrl: string,
+  options: FulfillmentEmailRenderOptions = {},
+): string {
   const site = siteUrl.replace(/\/$/, '');
   const copy = copyFor(data);
   // The shipped photo ends in the delivery truck; the packed one is cropped above it.
@@ -435,7 +463,19 @@ export function renderFulfillmentEmailHtml(data: FulfillmentEmailData, siteUrl: 
     <td align="center" style="padding: 28px 10px; font-family: ${FONT};">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 640px; border-collapse: separate;">
 
-        <!-- Cover -->
+${
+  options.notice
+    ? `        <!-- Admin notice -->
+        <tr>
+          <td style="padding: 0 0 12px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; background: #FFF7E6; border: 1px solid #F3D49B; border-radius: 12px;">
+              <tr><td style="padding: 12px 16px; font-size: 13px; line-height: 19px; color: #7A4B00;"><strong>Admin copy</strong> — ${esc(options.notice)}</td></tr>
+            </table>
+          </td>
+        </tr>
+`
+    : ''
+}        <!-- Cover -->
         <tr>
           <td style="background: #DCEBF4; border-radius: 20px 20px 0 0; line-height: 0; font-size: 0;">
             <a href="${site}" style="text-decoration: none;"><img src="${hero.src}" width="640" alt="VYTA Biosciences" style="display: block; width: 100%; max-width: 640px; height: auto; border: 0; border-radius: 20px 20px 0 0;"></a>

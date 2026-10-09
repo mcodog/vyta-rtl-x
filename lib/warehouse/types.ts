@@ -114,6 +114,8 @@ export interface NotificationPreview {
   trackingNumber: string | null;
   /** What's on file for the parcel — prefills the modal's shipment fields. */
   stored: { number: string | null; carrier: string | null; url: string | null };
+  /** Who gets the admin copy (Admin → Settings alert recipients). */
+  adminRecipients: string[];
 }
 
 /** Shipment details typed into the send modal (snake_case, as sent on the wire). */

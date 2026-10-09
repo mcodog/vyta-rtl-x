@@ -10,8 +10,10 @@ import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import { SITE_URL } from '@/lib/config';
 import { loadOrderEmailForInvoice } from '@/lib/order-confirmation';
 import { pickDeliverableEmail } from '@/lib/order-confirmation-data';
+import { getAdminAlertEmails } from '@/lib/admin/alert-recipients';
 import {
   fulfillmentEmailSubject,
+  parseRecipients,
   renderFulfillmentEmailHtml,
   renderFulfillmentEmailText,
   type FulfillmentEmailData,
@@ -607,6 +609,7 @@ export async function buildNotificationPreview(
     defaults: { subject },
     trackingNumber: built.data.tracking?.number ?? null,
     stored: built.stored,
+    adminRecipients: await getAdminAlertEmails(db),
   };
 }
 
@@ -625,6 +628,15 @@ function buildTransport() {
   return null;
 }
 
+const FROM_ADDRESS = () =>
+  process.env.SMTP_FROM || process.env.EMAIL_FROM || 'VYTA <orders@aminocan.com>';
+
+export interface AdminCopyResult {
+  sent: boolean;
+  to: string[];
+  error?: string;
+}
+
 export async function sendFulfillmentEmail(
   db: SupabaseClient,
   actor: WarehouseAuth,
@@ -636,15 +648,35 @@ export async function sendFulfillmentEmail(
   message_id: string | null;
   emailed_at: string | null;
   error?: string;
+  /** The admin team's copy — only attempted once the customer's send worked. */
+  admin_copy?: AdminCopyResult;
 }> {
   const built = await buildFulfillmentEmail(db, invoiceId, kind, overrides.details);
   if (!built) {
     return { ok: false, message_id: null, emailed_at: null, error: 'invoice not found' };
   }
-  const to = trimmed(overrides.to) ?? built.to;
-  if (!to) {
+  // The sender may redirect this one email (e.g. a better address than the one
+  // on file). Nothing is written back to the invoice or customer.
+  const typed = trimmed(overrides.to);
+  let recipients: string[];
+  if (typed) {
+    const parsed = parseRecipients(typed);
+    if (parsed.invalid.length > 0) {
+      return {
+        ok: false,
+        message_id: null,
+        emailed_at: null,
+        error: `invalid recipient: ${parsed.invalid.join(', ')}`,
+      };
+    }
+    recipients = parsed.emails;
+  } else {
+    recipients = built.to ? [built.to] : [];
+  }
+  if (recipients.length === 0) {
     return { ok: false, message_id: null, emailed_at: null, error: 'no recipient' };
   }
+  const to = recipients.join(', ');
   const subject = trimmed(overrides.subject) ?? fulfillmentEmailSubject(built.data);
   const html = renderFulfillmentEmailHtml(built.data, SITE_URL);
   const text = renderFulfillmentEmailText(built.data);
@@ -660,8 +692,8 @@ export async function sendFulfillmentEmail(
   } else {
     try {
       const sent = await transport.sendMail({
-        from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'VYTA <orders@aminocan.com>',
-        to,
+        from: FROM_ADDRESS(),
+        to: recipients,
         subject,
         text,
         html,
@@ -688,6 +720,35 @@ export async function sendFulfillmentEmail(
     });
   } catch {}
 
+  // The admin team gets the same email as its own message (so the customer
+  // never sees their addresses), flagged as a copy. Not logged to
+  // fulfillment_email_log, which is the customer's send history. A failed
+  // copy never fails the customer's send.
+  let adminCopy: AdminCopyResult | undefined;
+  if (success && transport) {
+    const adminTo = (await getAdminAlertEmails(db)).filter(
+      (e) => !recipients.some((r) => r.toLowerCase() === e.toLowerCase()),
+    );
+    adminCopy = { sent: false, to: adminTo };
+    if (adminTo.length > 0) {
+      const who = actor.actorEmail ? ` by ${actor.actorEmail}` : '';
+      const notice = `this ${kind === 'packed' ? 'packed' : 'shipped'} email was sent to ${to}${who}.`;
+      try {
+        await transport.sendMail({
+          from: FROM_ADDRESS(),
+          to: adminTo,
+          subject: `[Copy] ${subject} → ${to}`,
+          text: `ADMIN COPY — ${notice}\n\n${text}`,
+          html: renderFulfillmentEmailHtml(built.data, SITE_URL, { notice }),
+        });
+        adminCopy.sent = true;
+      } catch (e: any) {
+        adminCopy.error = e?.message ?? 'send failed';
+        console.error(`[warehouse] admin copy of the ${kind} email for invoice ${invoiceId} failed:`, e);
+      }
+    }
+  }
+
   if (success) {
     const stamp = kind === 'packed' ? 'packed_emailed_at' : 'shipped_emailed_at';
     try {
@@ -709,6 +770,7 @@ export async function sendFulfillmentEmail(
     message_id: messageId,
     emailed_at: success ? sentAt : null,
     error: errorMsg ?? undefined,
+    admin_copy: adminCopy,
   };
 }
 

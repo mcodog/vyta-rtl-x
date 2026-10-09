@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {
   formatDeliveryWindow,
   fulfillmentEmailSubject,
+  parseRecipients,
   renderFulfillmentEmailHtml,
   renderFulfillmentEmailText,
   trackingUrlFor,
@@ -121,4 +122,25 @@ test('carriers without a logo file show just their name', () => {
   );
   assert.match(html, /Canada Post/);
   assert.doesNotMatch(html, /carrier-/);
+});
+
+test('parseRecipients: one or several addresses, deduped, invalid ones reported', () => {
+  assert.deepEqual(parseRecipients('sam@x.com'), { emails: ['sam@x.com'], invalid: [] });
+  assert.deepEqual(parseRecipients(' sam@x.com, ops@y.ca;SAM@x.com  lab@z.org '), {
+    emails: ['sam@x.com', 'ops@y.ca', 'lab@z.org'],
+    invalid: [],
+  });
+  assert.deepEqual(parseRecipients('sam@x.com, nope, a@b.test'), {
+    emails: ['sam@x.com'],
+    invalid: ['nope', 'a@b.test'],
+  });
+  assert.deepEqual(parseRecipients(''), { emails: [], invalid: [] });
+  assert.deepEqual(parseRecipients(undefined), { emails: [], invalid: [] });
+});
+
+test('admin copy carries a notice bar above the cover; the customer email has none', () => {
+  const copy = renderFulfillmentEmailHtml(shipped, SITE, { notice: 'this shipped email was sent to <sam@x.com> by ops@vytabio.com.' });
+  assert.match(copy, /Admin copy<\/strong> — this shipped email was sent to &lt;sam@x\.com&gt;/);
+  assert.ok(copy.indexOf('Admin copy') < copy.indexOf('shipped-hero.jpg'));
+  assert.doesNotMatch(renderFulfillmentEmailHtml(shipped, SITE), /Admin copy/);
 });

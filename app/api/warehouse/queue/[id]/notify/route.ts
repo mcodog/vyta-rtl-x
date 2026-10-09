@@ -46,7 +46,8 @@ export async function GET(
 }
 
 // POST /api/warehouse/queue/[id]/notify
-// body: { kind, subject?, to?, tracking_number?, carrier?, tracking_url?,
+// body: { kind, subject?, to? (one or more addresses, this email only),
+//         tracking_number?, carrier?, tracking_url?,
 //         delivery_from?, delivery_to? } — the body is the branded template;
 // the shipment details go into this email only (not saved).
 export async function POST(
@@ -78,7 +79,9 @@ export async function POST(
   });
 
   if (!result.ok) {
-    return NextResponse.json(result, { status: result.error === 'no recipient' ? 400 : 500 });
+    const badInput =
+      result.error === 'no recipient' || !!result.error?.startsWith('invalid recipient');
+    return NextResponse.json(result, { status: badInput ? 400 : 500 });
   }
   return NextResponse.json(result);
 }
