@@ -253,6 +253,7 @@ export async function sendNotification(
   message_id: string | null;
   emailed_at: string | null;
   error?: string;
+  admin_copy?: { sent: boolean; to: string[]; error?: string };
 }> {
   const res = await fetch(`/api/warehouse/queue/${invoiceId}/notify`, {
     method: 'POST',

@@ -53,7 +53,8 @@ export default function FulfillmentEmailCard({
         <h3 className="font-semibold text-ink text-sm">Packed &amp; shipped emails</h3>
       </div>
       <p className="text-[11px] text-ink-muted mb-3">
-        Sent by hand only. Preview first{pickup ? '' : ' — add the carrier, tracking number and estimated delivery there'}.
+        Sent by hand only. Preview first{pickup ? '' : ' — add the carrier, tracking number and estimated delivery there'};
+        you can change who it goes to, and the admin team gets a copy.
       </p>
 
       <ul className="space-y-2">

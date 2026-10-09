@@ -1,13 +1,20 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Send, Loader2, RotateCcw, Mail, AlertCircle, AlertTriangle, Truck } from 'lucide-react';
+import { X, Send, Loader2, RotateCcw, Mail, AlertCircle, AlertTriangle, Truck, Users, Check } from 'lucide-react';
 import {
   previewNotification,
   sendNotification,
   type NotificationPreview,
   type ShipmentDetailsFields,
 } from '@/lib/warehouse/api';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The recipient box split into addresses (comma / semicolon / space). */
+function splitRecipients(raw: string): string[] {
+  return raw.split(/[\s,;]+/).filter(Boolean);
+}
 
 const CARRIERS = ['Canada Post', 'UPS', 'FedEx', 'Purolator', 'DHL', 'USPS'];
 
@@ -39,6 +46,11 @@ export interface FulfillmentEmailModalProps {
  * Labels are often bought outside Easyship, so these are usually typed in.
  * They go into this email only (they aren't saved) and the preview follows
  * them as they're typed.
+ *
+ * The recipient defaults to the customer's address on file. Changing it (or
+ * adding more, comma-separated) redirects this one email only — the invoice
+ * and customer account are untouched. Every send also goes to the admin team
+ * (Admin → Settings alert recipients) as a separate "Admin copy".
  */
 export default function FulfillmentEmailModal({
   invoiceId,
@@ -60,6 +72,10 @@ export default function FulfillmentEmailModal({
   const [deliveryFrom, setDeliveryFrom] = useState('');
   const [deliveryTo, setDeliveryTo] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  /** The customer's address on file — what "To" resets to. */
+  const [customerEmail, setCustomerEmail] = useState('');
+  /** Set when the customer's email went out but the admin copy didn't. */
+  const [sentWarning, setSentWarning] = useState('');
   const requestId = useRef(0);
 
   const withShipment = kind === 'shipped' && fulfillmentType !== 'pickup';
@@ -85,6 +101,7 @@ export default function FulfillmentEmailModal({
         if (cancelled || id !== requestId.current) return;
         setPreview(p);
         setTo(p.to ?? '');
+        setCustomerEmail(p.to ?? '');
         setSubject(p.subject ?? p.defaults.subject);
         setCarrier(p.stored?.carrier ?? '');
         setTrackingNumber(p.stored?.number ?? '');
@@ -123,6 +140,12 @@ export default function FulfillmentEmailModal({
 
   const missingTracking = withShipment && !!preview && !trackingNumber.trim();
   const badWindow = !!deliveryFrom && !!deliveryTo && deliveryTo < deliveryFrom;
+  const recipients = splitRecipients(to);
+  const badRecipients = recipients.filter((r) => !EMAIL_RE.test(r));
+  const redirected =
+    !!customerEmail &&
+    recipients.map((r) => r.toLowerCase()).join(',') !== customerEmail.toLowerCase();
+  const adminRecipients = preview?.adminRecipients ?? [];
 
   async function handleSend() {
     setSending(true);
@@ -139,6 +162,12 @@ export default function FulfillmentEmailModal({
         return;
       }
       onSent?.({ message_id: res.message_id ?? null, emailed_at: res.emailed_at ?? null });
+      if (res.admin_copy?.error) {
+        // Keep the modal up so the failed copy is seen.
+        setSentWarning(`Sent to ${recipients.join(', ')}, but the admin copy failed: ${res.admin_copy.error}`);
+        setSending(false);
+        return;
+      }
       onClose();
     } catch (e: any) {
       setError(e?.message ?? 'Failed to send email');
@@ -192,14 +221,60 @@ export default function FulfillmentEmailModal({
               </div>
             )}
 
+            {sentWarning && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{sentWarning}</span>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1">To</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-ink-muted">Send to</label>
+                {redirected && (
+                  <button
+                    type="button"
+                    onClick={() => setTo(customerEmail)}
+                    className="inline-flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink"
+                    title="Send to the customer's email on file"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Use customer&apos;s email
+                  </button>
+                )}
+              </div>
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="off"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
+                placeholder="customer@example.com"
                 className={inputClass}
               />
+              {badRecipients.length > 0 ? (
+                <p className="mt-1 text-[11px] text-red-600">
+                  Not a valid email: {badRecipients.join(', ')}
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-ink-muted">
+                  For this email only — the invoice and customer account aren&apos;t changed
+                  {customerEmail ? ` (on file: ${customerEmail})` : ''}. Separate several addresses with commas.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-start gap-2 px-3 py-2 bg-surface border border-line rounded-lg text-xs text-ink-muted">
+              <Users className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              {adminRecipients.length > 0 ? (
+                <span>
+                  A copy also goes to the admin team:{' '}
+                  <span className="text-ink">{adminRecipients.join(', ')}</span>
+                </span>
+              ) : (
+                <span>
+                  No admin alert emails are set in Admin → Settings, so no admin copy will be sent.
+                </span>
+              )}
             </div>
 
             <div>
@@ -322,11 +397,14 @@ export default function FulfillmentEmailModal({
             disabled={sending}
             className="px-4 py-2 bg-white border border-line text-ink rounded-lg text-sm font-medium hover:bg-surface disabled:opacity-50"
           >
-            Cancel
+            {sentWarning ? 'Close' : 'Cancel'}
           </button>
           <button
             onClick={handleSend}
-            disabled={sending || loading || refreshing || badWindow || !preview || !to.trim() || !subject.trim()}
+            disabled={
+              sending || loading || refreshing || badWindow || !!sentWarning || !preview ||
+              recipients.length === 0 || badRecipients.length > 0 || !subject.trim()
+            }
             className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:bg-ink/90 disabled:opacity-50"
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
