@@ -6,7 +6,6 @@
  * referral code, and never credits a self-referral.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { normalizeReferralCode } from './utils';
 
 export const AFFILIATE_DISCOUNT_RATE = 0.10;
 export const AFFILIATE_COMMISSION_RATE = 0.10;
@@ -27,6 +26,15 @@ export interface AffiliateAttribution {
   commissionRate?: number | null;
 }
 
+/**
+ * The form a captured code is looked up in: exactly as entered, only trimmed
+ * and upper-cased (every stored code is upper case). Nothing is stripped or
+ * corrected, so "PALM-BELLA10" never quietly becomes "PALMBELLA10".
+ */
+export function referralLookupCode(raw: string | null | undefined): string {
+  return (raw ?? '').trim().toUpperCase();
+}
+
 /** Who a `?ref=` code belongs to, and how it was recognised. */
 export interface ReferralCodeOwner {
   affiliateId: string;
@@ -35,10 +43,8 @@ export interface ReferralCodeOwner {
    * - `discount_code`: an affiliate's discount code handed out as a `?ref=`
    *   link. It took nothing off (the cookie never reaches the discount field),
    *   but it names the affiliate as plainly as their referral code does.
-   * - `retired_referral_code`: a code the affiliate used to hold, renamed by
-   *   an approved change request. Links and cookies outlive the rename.
    */
-  via: 'referral_code' | 'discount_code' | 'retired_referral_code';
+  via: 'referral_code' | 'discount_code';
   /** The code as stored. */
   code: string;
   /** The affiliate's live referral code row, when they have one. */
@@ -50,23 +56,23 @@ export interface ReferralCodeOwner {
 /**
  * Resolve a referral code captured at checkout to the affiliate it names.
  *
- * The `ref_code` cookie is whatever `?ref=` carried, unvalidated, and a lot
- * of what affiliates share is not a live referral code: their discount code
- * (`?ref=PALMBELLA10` instead of `?discount=`), or the code they held before a
- * rename. Matching only `referral_codes` dropped those sales on the floor —
- * the order showed the code, and nobody was credited. So, in order:
+ * The `ref_code` cookie is whatever `?ref=` carried, unvalidated, and
+ * affiliates often share their discount code as a referral link
+ * (`?ref=PALMBELLA10` instead of `?discount=`). Matching only `referral_codes`
+ * dropped those sales on the floor. So, in order:
  *
  *   1. an active `referral_codes` row;
- *   2. an active, affiliate-assigned `discount_codes` row;
- *   3. an approved `referral_code_requests` rename away from this code.
+ *   2. an active, affiliate-assigned `discount_codes` row.
  *
- * The owner must still be an active affiliate. Never throws; null = nobody.
+ * Exact matches only (see `referralLookupCode`): no punctuation stripped, no
+ * near-misses, no codes the affiliate has since given up. The owner must still
+ * be an active affiliate. Never throws; null = nobody.
  */
 export async function resolveReferralCodeOwner(
   db: SupabaseClient,
   raw: string | null | undefined,
 ): Promise<ReferralCodeOwner | null> {
-  const code = normalizeReferralCode(raw);
+  const code = referralLookupCode(raw);
   if (!code) return null;
 
   let owner: ReferralCodeOwner | null = null;
@@ -105,29 +111,6 @@ export async function resolveReferralCodeOwner(
           code: dc.code ?? code,
           referralCodeId: null,
           commissionRate: rate != null && Number.isFinite(rate) ? rate : null,
-        };
-      }
-    }
-
-    // (3) A code the affiliate has since renamed. Approving a change renames
-    //     the referral_codes row in place, so the old code survives only in
-    //     the request history.
-    if (!owner) {
-      const { data: renamed } = await db
-        .from('referral_code_requests')
-        .select('affiliate_id')
-        .eq('previous_code', code)
-        .eq('status', 'approved')
-        .order('decided_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (renamed?.affiliate_id) {
-        owner = {
-          affiliateId: renamed.affiliate_id,
-          via: 'retired_referral_code',
-          code,
-          referralCodeId: null,
-          commissionRate: null,
         };
       }
     }

@@ -5,8 +5,8 @@
  * `recordAffiliateCommission` runs on every webhook/poll pass of a paid order,
  * but the poller stops revisiting an order once it has seen `paid`. So a sale
  * whose attribution failed at the time — most often a referral link carrying
- * an affiliate's discount code or a renamed code, which the resolver used not
- * to recognise — stays uncredited for good. This re-runs the same recorder,
+ * an affiliate's discount code, which the resolver used not to recognise —
+ * stays uncredited for good. This re-runs the same recorder,
  * with the same inputs the payment pass used, for one invoice or for every
  * paid sale without a commission.
  *

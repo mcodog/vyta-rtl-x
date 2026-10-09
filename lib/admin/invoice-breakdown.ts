@@ -17,8 +17,7 @@ import {
   manualInvoiceOrderSummary,
   stealthHealthOrderSummary,
 } from '@/lib/order-confirmation-data';
-import { normalizeReferralCode } from '@/lib/affiliate/utils';
-import { resolveReferralCodeOwner } from '@/lib/affiliate/commission';
+import { referralLookupCode, resolveReferralCodeOwner } from '@/lib/affiliate/commission';
 
 /** One promo that went into the discount, as recorded at checkout. */
 export interface InvoiceDiscountPart {
@@ -271,12 +270,12 @@ export async function loadInvoiceBreakdown(
   const discountCode =
     (await maybeOne(db, 'discount_codes', 'id', commission?.discount_code_id ?? ledger?.discount_code_id)) ?? null;
   // The code the buyer arrived with, as they saw it — which may be an
-  // affiliate's discount code or a code since renamed, not a live referral
-  // code (see resolveReferralCodeOwner). Else the commission's own code.
+  // affiliate's discount code rather than a live referral code (see
+  // resolveReferralCodeOwner). Else the commission's own code.
   let referral: Row | null = null;
   const arrivedWith = str(ledger?.referral_code);
   if (arrivedWith) {
-    referral = await maybeOne(db, 'referral_codes', 'code', normalizeReferralCode(arrivedWith));
+    referral = await maybeOne(db, 'referral_codes', 'code', referralLookupCode(arrivedWith));
     if (!referral) {
       const owner = await resolveReferralCodeOwner(db, arrivedWith);
       if (owner) referral = { affiliate_id: owner.affiliateId, code: owner.code };
