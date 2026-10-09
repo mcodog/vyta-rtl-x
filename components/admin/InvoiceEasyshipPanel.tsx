@@ -33,6 +33,10 @@ import {
   type ShippingReadinessResult,
   type ShippingReadinessRate,
 } from '@/lib/admin/invoices';
+import {
+  DEFAULT_COURIER_PREFERENCE,
+  type CourierPreference,
+} from '@/lib/shipping/courier-pick';
 
 /** Where a server-resolved destination came from. An address Stealth Health reported
  *  and one typed into this admin must never read the same to whoever packs. */
@@ -102,7 +106,7 @@ export default function InvoiceEasyshipPanel({
   const [readinessLoading, setReadinessLoading] = useState(false);
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [courierPreference, setCourierPreference] =
-    useState<'cheapest' | 'ups' | 'fedex'>('cheapest');
+    useState<CourierPreference>(DEFAULT_COURIER_PREFERENCE);
   const [handover, setHandover] =
     useState<'dropoff' | 'collection' | 'free_collection'>('dropoff');
   const [insured, setInsured] = useState(false);
@@ -150,7 +154,7 @@ export default function InvoiceEasyshipPanel({
       return;
     }
     setSelectedRateId(null);
-    setCourierPreference(value.slice(5) as 'cheapest' | 'ups' | 'fedex');
+    setCourierPreference(value.slice(5) as CourierPreference);
   }
 
   async function createShipment() {
@@ -324,6 +328,49 @@ export default function InvoiceEasyshipPanel({
               <span className="font-mono text-xs text-ink truncate max-w-[10rem]">{t.number}</span>
             </div>
           )}
+          {t?.record?.service && (
+            <div className="flex justify-between gap-2">
+              <span className="text-ink-muted">Service</span>
+              <span className="text-ink text-right">{t.record.service}</span>
+            </div>
+          )}
+          {t?.record?.label_cost != null && (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Label cost</span>
+              <span className="text-ink">
+                ${t.record.label_cost.toFixed(2)} {t.record.label_currency ?? ''}
+              </span>
+            </div>
+          )}
+          {(t?.record?.est_delivery_min_days || t?.record?.est_delivery_max_days) && (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Est. transit</span>
+              <span className="text-ink">
+                {(() => {
+                  const min = t.record!.est_delivery_min_days;
+                  const max = t.record!.est_delivery_max_days;
+                  const days = min && max && min !== max ? `${min}–${max}` : `${max ?? min}`;
+                  return `${days} business day${days === '1' ? '' : 's'}`;
+                })()}
+              </span>
+            </div>
+          )}
+          {t?.record?.label_generated_at && (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Label generated</span>
+              <span className="text-ink">{new Date(t.record.label_generated_at).toLocaleString()}</span>
+            </div>
+          )}
+          {t?.label_state === 'generated' && t?.record && (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Shipped email</span>
+              <span className={t.record.shipped_emailed_at ? 'text-emerald-700' : 'text-amber-600'}>
+                {t.record.shipped_emailed_at
+                  ? `Sent ${new Date(t.record.shipped_emailed_at).toLocaleString()}`
+                  : 'Not sent yet'}
+              </span>
+            </div>
+          )}
           {t?.url && (
             <a
               href={t.url}
@@ -418,9 +465,9 @@ export default function InvoiceEasyshipPanel({
                   onChange={(e) => selectCourierOption(e.target.value)}
                   className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/40"
                 >
-                  <option value="pref:cheapest">Cheapest allowed courier</option>
-                  <option value="pref:ups">UPS — cheapest UPS service</option>
-                  <option value="pref:fedex">FedEx — cheapest FedEx service</option>
+                  <option value="pref:best_value">Best value — cheapest UPS / Canada Post within 2 days</option>
+                  <option value="pref:ups">UPS — best-value UPS service</option>
+                  <option value="pref:canada_post">Canada Post — best-value Canada Post service</option>
                   {readiness && readiness.rates.length > 0 && (
                     <optgroup label="Quoted services">
                       {readiness.rates.map((r: ShippingReadinessRate) => (

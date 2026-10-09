@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getShippingConfig, getShippingQuoteOrFallback } from '@/lib/easyship';
+import { getShippingConfig, getShippingQuoteOrFallback, parcelQuantity } from '@/lib/easyship';
+import { computeScaledWeight, unitWeightKg } from '@/lib/shipping/auto-shipment';
 import type { EasyshipRateRequest } from '@/lib/types/ecommerce';
 
 const db = createClient(
@@ -17,7 +18,7 @@ async function verifyAdmin(req: NextRequest) {
   return data?.role === 'admin' || data?.role === 'assistant';
 }
 
-// GET /api/admin/orders/[id]/rates — per-order live rates (UPS/FedEx, handling fee folded).
+// GET /api/admin/orders/[id]/rates — per-order live rates (UPS / Canada Post, handling fee folded).
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -28,7 +29,7 @@ export async function GET(
 
   const { data: order, error } = await db
     .from('orders')
-    .select('id, shipping_address')
+    .select('id, shipping_address, items')
     .eq('id', params.id)
     .maybeSingle();
   if (error || !order) {
@@ -40,6 +41,8 @@ export async function GET(
   }
 
   const cfg = await getShippingConfig(db);
+  const items = Array.isArray((order as any).items) ? (order as any).items : [];
+  const weight = computeScaledWeight(items, unitWeightKg(cfg));
   const payload: EasyshipRateRequest = {
     origin_country_alpha2: cfg.origin.country_alpha2 || 'CA',
     origin_postal_code: cfg.origin.postal_code || '',
@@ -51,13 +54,16 @@ export async function GET(
     destination_postal_code: dest.postalCode,
     destination_city: dest.city ?? '',
     destination_state: dest.state || undefined,
-    total_actual_weight: cfg.box.weight ?? 0.5,
+    // Same parcel the shipment is created with (lib/shipping/auto-shipment.ts):
+    // the unit count at the per-unit weight; blank box sides go out as 1 cm.
+    total_actual_weight: weight,
+    quantity: parcelQuantity(items),
     boxes: [
       {
-        length: cfg.box.length ?? 15,
-        width: cfg.box.width ?? 10,
-        height: cfg.box.height ?? 5,
-        weight: cfg.box.weight ?? 0.5,
+        length: cfg.box.length ?? 0,
+        width: cfg.box.width ?? 0,
+        height: cfg.box.height ?? 0,
+        weight,
       },
     ],
   };

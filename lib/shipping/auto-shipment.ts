@@ -5,6 +5,8 @@ import {
   isAllowedCourier,
   createEasyshipShipment,
   buyEasyshipLabel,
+  parcelQuantity,
+  type ShippingConfig,
 } from '@/lib/easyship';
 import type { EasyshipRateRequest, EasyshipHandover } from '@/lib/types/ecommerce';
 import {
@@ -14,9 +16,11 @@ import {
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
 import {
   COURIER_PREFERENCES,
+  DEFAULT_COURIER_PREFERENCE,
   pickCourier,
   type CourierPreference,
 } from '@/lib/shipping/courier-pick';
+import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
 
 export type { CourierPreference };
 
@@ -26,7 +30,7 @@ export type { CourierPreference };
  * site-wide preference instead of silently shipping with a bogus carrier.
  */
 export function normalizeCourierPreference(value: unknown): CourierPreference | undefined {
-  const v = typeof value === 'string' ? value.toLowerCase() : '';
+  const v = typeof value === 'string' ? value.toLowerCase().replace(/[\s-]+/g, '_') : '';
   return COURIER_PREFERENCES.includes(v as CourierPreference)
     ? (v as CourierPreference)
     : undefined;
@@ -41,7 +45,7 @@ export const MIN_SHIPMENT_WEIGHT_KG = 0.05;
  * (`/api/shipping/rates`) and the actual shipment created here so the quoted
  * rate and the purchased label are computed from the SAME weight.
  *
- * `baseWeight` is the configured per-box weight (`cfg.box.weight`); it is
+ * `baseWeight` is the per-unit weight (`unitWeightKg(cfg)`); it is
  * multiplied by the total item quantity (min factor 1) and floored at a sane
  * minimum. Items may carry `quantity` (order/cart items) or `qty`.
  */
@@ -58,6 +62,15 @@ export function computeScaledWeight(
   return Math.max(base * itemFactor, MIN_SHIPMENT_WEIGHT_KG);
 }
 
+/**
+ * Per-unit parcel weight (kg): Settings → Default parcel "Per-vial weight",
+ * else the configured box weight, else 0.05.
+ */
+export function unitWeightKg(cfg: Pick<ShippingConfig, 'itemWeightKg' | 'box'>): number {
+  const configured = Number(cfg.itemWeightKg) || Number(cfg.box?.weight) || 0;
+  return configured > 0 ? configured : MIN_SHIPMENT_WEIGHT_KG;
+}
+
 export interface AutoShipmentSettings {
   autoCreate: boolean;
   courierPreference: CourierPreference;
@@ -70,20 +83,21 @@ export async function getAutoShipmentSettings(
   try {
     const { data } = await db
       .from('site_settings')
-      .select(
-        'easyship_auto_create_shipment, easyship_auto_courier_preference, easyship_auto_buy_label',
-      )
+      .select('easyship_auto_create_shipment, easyship_auto_buy_label')
       .limit(1)
       .maybeSingle();
     return {
       autoCreate: !!data?.easyship_auto_create_shipment,
-      courierPreference:
-        normalizeCourierPreference(data?.easyship_auto_courier_preference) ??
-        'cheapest',
+      // Shipping is free and the buyer never sees or picks a rate, so every
+      // shipment nobody chose a service for books the best value: the
+      // cheapest UPS / Canada Post service that arrives within 2 days.
+      // (easyship_auto_courier_preference is no longer read — its column
+      // default was 'cheapest', which would book slow services.)
+      courierPreference: DEFAULT_COURIER_PREFERENCE,
       autoBuyLabel: !!data?.easyship_auto_buy_label,
     };
   } catch {
-    return { autoCreate: false, courierPreference: 'cheapest', autoBuyLabel: false };
+    return { autoCreate: false, courierPreference: DEFAULT_COURIER_PREFERENCE, autoBuyLabel: false };
   }
 }
 
@@ -196,10 +210,8 @@ export interface AutoShipmentOptions {
   courierIdOverride?: string;
   /**
    * Courier preference for this shipment only, overriding the site-wide
-   * `easyship_auto_courier_preference`. Used when the admin picked a carrier
-   * (UPS / FedEx / cheapest) without a specific live rate — the cheapest
-   * matching service from the fresh quote wins — and by checkout orders that
-   * shipped on the flat / free rate, which book the fastest service.
+   * best-value default. Used when the admin picked a carrier (UPS / Canada
+   * Post / cheapest) without a specific live rate.
    */
   courierPreference?: CourierPreference;
   /** Purchase Easyship parcel insurance (default false). */
@@ -226,7 +238,7 @@ interface ShipmentSubject {
   phone?: string | null;
   /** Contact name on the record, when the address itself carries none. */
   contactName?: string | null;
-  /** Declared customs value (must end up > 0). */
+  /** Order total. Not declared to Easyship — every unit is declared at 1. */
   total: number | string | null;
   /** Courier already chosen for this parcel (customer's checkout pick). */
   storedCourierId: string | null;
@@ -276,10 +288,13 @@ async function createShipmentForSubject(
       return;
     }
 
-    // Quantity-scaled weight — must match the storefront quote
-    // (/api/shipping/rates), otherwise the bought label diverges from the rate
-    // the customer saw.
-    const scaledWeight = computeScaledWeight(subject.items, cfg.box.weight ?? 0.5);
+    // The parcel: the real unit count, each at the configured per-unit
+    // weight. The quote and the shipment are built from the same numbers, so
+    // the service picked on price is bought at that price. Box sides left
+    // blank in Settings go out as 1 cm (lib/easyship.ts parcelDimensions).
+    const units = parcelQuantity(subject.items);
+    const unitWeight = unitWeightKg(cfg);
+    const scaledWeight = computeScaledWeight(subject.items, unitWeight);
 
     const ratePayload: EasyshipRateRequest = {
       origin_country_alpha2: cfg.origin.country_alpha2 || 'CA',
@@ -294,11 +309,12 @@ async function createShipmentForSubject(
       destination_city: dest.city ?? '',
       destination_state: dest.state ?? '',
       total_actual_weight: scaledWeight,
+      quantity: units,
       boxes: [
         {
-          length: cfg.box.length ?? 15,
-          width: cfg.box.width ?? 10,
-          height: cfg.box.height ?? 5,
+          length: cfg.box.length ?? 0,
+          width: cfg.box.width ?? 0,
+          height: cfg.box.height ?? 0,
           weight: scaledWeight,
         },
       ],
@@ -340,21 +356,22 @@ async function createShipmentForSubject(
     );
     // Courier is chosen BEFORE creation: an explicit service override (admin
     // picked a live rate) wins, then a per-shipment carrier preference (admin
-    // picked UPS / FedEx / cheapest without a live rate), then the courier
-    // stored on the subject (customer's checkout choice), then the configured
-    // auto preference. The chosen id is baked into the shipment via
+    // picked UPS / Canada Post / cheapest without a live rate), then the
+    // courier stored on the subject (customer's checkout choice), then best
+    // value (cheapest service within 2 days). The chosen id is baked into the shipment via
     // courier_settings.courier_service_id.
     const chosenCourierId =
       opts.courierIdOverride ||
       (opts.courierPreference ? null : subject.storedCourierId) ||
       null;
     let pick: { courier_id: string; courier_name: string } | null = null;
-    if (chosenCourierId) {
-      pick =
-        rates.find((r) => r.courier_id === chosenCourierId) ?? {
-          courier_id: chosenCourierId,
-          courier_name: '',
-        };
+    // A stored choice only stands while it is still a UPS / Canada Post
+    // service on this lane; an admin's explicit pick always stands.
+    const chosenRate = chosenCourierId
+      ? rates.find((r) => r.courier_id === chosenCourierId)
+      : undefined;
+    if (chosenCourierId && (chosenRate || opts.courierIdOverride)) {
+      pick = chosenRate ?? { courier_id: chosenCourierId, courier_name: '' };
     } else {
       if (rates.length === 0) {
         await recordAttempt(db, anchor, 'rate', 'failed', 'no allowed couriers');
@@ -404,18 +421,15 @@ async function createShipmentForSubject(
         },
         parcels: [
           {
-            description: 'VYTA Order',
-            // Single parcel carrying the whole shipment's quantity-scaled
-            // weight — mirrors how the rate quote represents the shipment, so
-            // the label weight equals the quoted weight.
-            quantity: 1,
-            actual_weight: scaledWeight,
-            height: cfg.box.height ?? 5,
-            width: cfg.box.width ?? 10,
-            length: cfg.box.length ?? 15,
+            // One supplements line: the real unit count at the per-unit
+            // weight, declared at 1 per unit (createEasyshipShipment fixes the
+            // category and value). Same numbers as the quote above.
+            quantity: units,
+            actual_weight: scaledWeight / units,
+            height: cfg.box.height,
+            width: cfg.box.width,
+            length: cfg.box.length,
             declared_currency: 'CAD',
-            // Must be > 0; use the subject total when known, else a minimum.
-            declared_customs_value: Math.max(Math.round(Number(subject.total) || 0), 1),
           },
         ],
       },
@@ -436,6 +450,12 @@ async function createShipmentForSubject(
       .eq('id', anchor.id);
 
     await recordAttempt(db, anchor, 'create', 'success', undefined, pick.courier_name);
+
+    // Some accounts buy the label at creation. Treat that like any other
+    // label: mirror the shipment onto the invoice and send the shipped email.
+    if (result.label_url) {
+      await onShipmentLabelGenerated(db, anchor, { apiKey: cfg.apiKey });
+    }
 
     // Optionally buy the label right away. Charges the Easyship wallet, so
     // the invoice route only forwards buyLabel=true when the admin explicitly
@@ -478,6 +498,12 @@ async function buyLabelForAnchor(
       })
       .eq('id', anchor.id);
     await recordAttempt(db, anchor, 'buy-label', 'success');
+    // Label in hand → mirror the shipment onto the invoice and email the
+    // customer + admins. A label still generating is finished by the webhook,
+    // which runs the same step.
+    if (label.state === 'generated') {
+      await onShipmentLabelGenerated(db, anchor, { apiKey });
+    }
   } catch (e: any) {
     await recordAttempt(db, anchor, 'buy-label', 'failed', e?.message ?? 'unknown');
   }

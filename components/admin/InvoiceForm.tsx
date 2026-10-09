@@ -20,6 +20,7 @@ import { getActivePricelist } from '@/lib/admin/pricelists';
 import type { SalesPerson, InvoiceLineItem, Invoice } from '@/lib/types/ecommerce';
 import { formatMoney, normalizeCurrency, DEFAULT_CURRENCY, type Currency } from '@/lib/currency';
 import { vialPriceFor as catalogVialPrice } from '@/lib/pricing';
+import { DEFAULT_COURIER_PREFERENCE, type CourierPreference } from '@/lib/shipping/courier-pick';
 
 interface CustomerRef {
   id: string;
@@ -213,12 +214,12 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
   // buy-label are sent with the invoice payload and fired via after() on the
   // server so the save never blocks on Easyship.
   const [createShipment, setCreateShipment] = useState(false);
-  // Carrier choice when no specific live rate is picked. 'cheapest' keeps the
-  // existing behaviour (Easyship's cheapest allowed service); 'ups'/'fedex'
-  // pin the carrier and let the server take that carrier's cheapest service
-  // from a fresh quote at creation time.
+  // Carrier choice when no specific live rate is picked. 'best_value' (the
+  // default) books the cheapest UPS / Canada Post service that arrives within
+  // 2 days; 'ups' / 'canada_post' pin the carrier and take its best-value
+  // service from a fresh quote at creation time.
   const [courierPreference, setCourierPreference] =
-    useState<'cheapest' | 'ups' | 'fedex'>('cheapest');
+    useState<CourierPreference>(DEFAULT_COURIER_PREFERENCE);
   const [handover, setHandover] = useState<'dropoff' | 'collection' | 'free_collection'>('dropoff');
   const [insured, setInsured] = useState(false);
   const [buyLabel, setBuyLabel] = useState(false);
@@ -783,7 +784,7 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
 
   // Courier picker in the shipment card. Two kinds of choice share one control:
   // a specific quoted service (`rate:<courier_id>`, which also auto-fills the
-  // shipping fee) or a carrier preference (`pref:cheapest|ups|fedex`) that the
+  // shipping fee) or a carrier preference (`pref:best_value|ups|canada_post`) that the
   // server resolves against a fresh quote when the shipment is created — so a
   // courier can be chosen even before/without running the readiness check.
   function selectCourierOption(value: string) {
@@ -793,7 +794,7 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
       return;
     }
     setSelectedRateId(null);
-    setCourierPreference(value.slice(5) as 'cheapest' | 'ups' | 'fedex');
+    setCourierPreference(value.slice(5) as CourierPreference);
   }
 
   function selectSalesPerson(s: SalesPerson) {
@@ -1896,7 +1897,7 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
         <div className="space-y-4">
           {/* Easyship Shipment card — shipment-only. Two decoupled pieces:
               1) Readiness check — verifies origin/destination and fetches
-                 live UPS/FedEx rates so admin can auto-fill the shipping fee.
+                 live UPS / Canada Post rates so admin can auto-fill the shipping fee.
               2) "Create shipment record" toggle — when on, the invoice save
                  also schedules an Easyship shipment (via after()) using the
                  picked rate, handover method, insurance and optional buy-label. */}
@@ -1931,7 +1932,7 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
               {!readiness && (
                 <p className="text-xs text-ink-muted">
                   Click "Check readiness" to verify origin/destination and fetch
-                  live UPS/FedEx rates.
+                  live UPS / Canada Post rates.
                 </p>
               )}
 
@@ -2042,9 +2043,9 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
                       onChange={(e) => selectCourierOption(e.target.value)}
                       className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/40"
                     >
-                      <option value="pref:cheapest">Cheapest allowed courier</option>
-                      <option value="pref:ups">UPS — cheapest UPS service</option>
-                      <option value="pref:fedex">FedEx — cheapest FedEx service</option>
+                      <option value="pref:best_value">Best value — cheapest UPS / Canada Post within 2 days</option>
+                      <option value="pref:ups">UPS — best-value UPS service</option>
+                      <option value="pref:canada_post">Canada Post — best-value Canada Post service</option>
                       {readiness && readiness.rates.length > 0 && (
                         <optgroup label="Quoted services">
                           {readiness.rates.map((r) => (
@@ -2114,9 +2115,9 @@ export default function InvoiceForm({ mode, invoiceId, initial }: InvoiceFormPro
 
                   {!selectedRateId && (
                     <p className="text-[11px] text-amber-600">
-                      {courierPreference === 'cheapest'
-                        ? 'No exact rate picked — Easyship will book its cheapest allowed courier at creation.'
-                        : `No exact rate picked — Easyship will book the cheapest ${courierPreference.toUpperCase()} service at creation, and the shipping fee stays as typed.`}
+                      {courierPreference === 'ups' || courierPreference === 'canada_post'
+                        ? `No exact rate picked — the best-value ${courierPreference === 'ups' ? 'UPS' : 'Canada Post'} service (cheapest within 2 days) is booked at creation, and the shipping fee stays as typed.`
+                        : 'No exact rate picked — the cheapest UPS / Canada Post service that arrives within 2 days is booked at creation.'}
                     </p>
                   )}
                 </div>

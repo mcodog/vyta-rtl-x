@@ -10,6 +10,7 @@ import type {
 } from '@/lib/types/ecommerce';
 import type { PuramassInvoiceContext } from '@/lib/admin/puramass-invoice';
 import type { InvoiceBreakdown } from '@/lib/admin/invoice-breakdown';
+import type { CourierPreference } from '@/lib/shipping/courier-pick';
 
 async function getToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -499,7 +500,7 @@ export async function createInvoiceShipment(
   id: string,
   opts: {
     courier_service_id?: string | null;
-    courier_preference?: 'cheapest' | 'ups' | 'fedex' | null;
+    courier_preference?: CourierPreference | null;
     insured?: boolean;
     handover?: 'dropoff' | 'collection' | 'free_collection' | null;
     buy_label?: boolean;
@@ -619,6 +620,17 @@ export interface InvoiceTrackingSnapshot {
       primary_status?: string | null;
     }>;
     refresh_error?: string;
+    /** The Easyship record mirrored onto the invoice when the label was made. */
+    record?: {
+      service: string | null;
+      label_cost: number | null;
+      label_currency: string | null;
+      est_delivery_min_days: number | null;
+      est_delivery_max_days: number | null;
+      label_generated_at: string | null;
+      synced_at: string | null;
+      shipped_emailed_at: string | null;
+    } | null;
     /** Last after()-scheduled auto-shipment attempt. `status` is one of
      *  'success' | 'skipped' | 'failed'; `stage` is 'create' / 'rate' /
      *  'buy-label'. Null when no attempt has ever run for this order. */

@@ -782,7 +782,7 @@ export default function SettingsPage() {
           <p className="text-sm font-medium text-ink">Shipping</p>
           <p className="text-xs text-ink-muted mb-3">
             With live rates on, the checkout asks for the delivery address and offers the
-            fastest UPS, FedEx and Canada Post services for it — the buyer picks one and
+            fastest UPS and Canada Post services for it — the buyer picks one and
             that amount is sent to Stealth Health as the shipping total. The{' '}
             <span className="font-medium text-ink">Processing fee</span> configured under
             Shipping &amp; Easyship is folded into every quoted price and never itemised

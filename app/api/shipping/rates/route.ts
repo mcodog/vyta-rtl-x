@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getShippingConfig,
   getShippingQuoteOrFallback,
+  parcelQuantity,
 } from '@/lib/easyship';
-import { computeScaledWeight } from '@/lib/shipping/auto-shipment';
+import { computeScaledWeight, unitWeightKg } from '@/lib/shipping/auto-shipment';
 import type { EasyshipRateRequest } from '@/lib/types/ecommerce';
 
 interface CheckoutShipping {
@@ -23,7 +24,7 @@ interface RatesBody {
 }
 
 // POST /api/shipping/rates
-// Public storefront route. Returns live UPS/FedEx rates (handling fee
+// Public storefront route. Returns live UPS / Canada Post rates (handling fee
 // folded in) for the supplied destination address. When EasyShip is not
 // configured / down, returns an empty `rates` array and the configured
 // `flat_rate` as `fallback_rate`. The checkout UI should hide the
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
   // Quantity-scaled weight — the exact same calculation the auto-shipment
   // creation uses (shared helper), so the quoted rate and the purchased label
   // are computed from the same weight instead of diverging.
-  const scaledWeight = computeScaledWeight(body.items, cfg.box.weight ?? 0.5);
+  const scaledWeight = computeScaledWeight(body.items, unitWeightKg(cfg));
 
   const payload: EasyshipRateRequest = {
     origin_country_alpha2: cfg.origin.country_alpha2 || 'CA',
@@ -71,11 +72,13 @@ export async function POST(req: NextRequest) {
     destination_city: dest.city ?? '',
     destination_state: dest.state || undefined,
     total_actual_weight: scaledWeight,
+    quantity: parcelQuantity(body.items),
+    // Blank box sides go out as 1 cm (lib/easyship.ts parcelDimensions).
     boxes: [
       {
-        length: cfg.box.length ?? 15,
-        width: cfg.box.width ?? 10,
-        height: cfg.box.height ?? 5,
+        length: cfg.box.length ?? 0,
+        width: cfg.box.width ?? 0,
+        height: cfg.box.height ?? 0,
         weight: scaledWeight,
       },
     ],

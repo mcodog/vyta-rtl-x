@@ -24,34 +24,61 @@ const rate = (
 
 const quote = [
   rate('ups-ground', 'UPS', 12, 3, 5),
-  rate('fedex-express', 'FedEx', 40, 1, 1),
+  rate('cp-priority', 'Canada Post', 40, 1, 1),
   rate('ups-express', 'UPS', 35, 1, 1),
-  rate('fedex-ground', 'FedEx', 14, 2, 6),
+  rate('cp-xpresspost', 'Canada Post', 18, 1, 2),
+  rate('cp-regular', 'Canada Post', 9, 4, 8),
 ];
 
-test('fastest picks the quickest service, cheaper on a tie', () => {
+test('best value: cheapest service that arrives within 2 days', () => {
+  assert.equal(pickCourier(quote, 'best_value')?.courier_id, 'cp-xpresspost');
+});
+
+test('best value: a "1–3 day" service is over 2 days and is not picked', () => {
+  const r = [rate('slow-cheap', 'UPS', 5, 1, 3), rate('quick', 'Canada Post', 20, 1, 2)];
+  assert.equal(pickCourier(r, 'best_value')?.courier_id, 'quick');
+});
+
+test('best value: nothing within 2 days falls back to the fastest, not the cheapest', () => {
+  const r = [rate('a', 'UPS', 10, 4, 7), rate('b', 'Canada Post', 30, 3, 3)];
+  assert.equal(pickCourier(r, 'best_value')?.courier_id, 'b');
+});
+
+test('best value: unknown transit time never counts as within 2 days', () => {
+  const r = [rate('unknown', 'UPS', 1, 0, 0), rate('known', 'Canada Post', 50, 2, 2)];
+  assert.equal(pickCourier(r, 'best_value')?.courier_id, 'known');
+});
+
+test('fastest picks the quickest worst case, cheaper of equals', () => {
   assert.equal(pickCourier(quote, 'fastest')?.courier_id, 'ups-express');
 });
 
-test('fastest ranks on the worst-case estimate', () => {
-  const r = [rate('a', 'UPS', 10, 1, 7), rate('b', 'FedEx', 20, 2, 2)];
+test('fastest ranks by worst case, not best case', () => {
+  const r = [rate('a', 'UPS', 10, 1, 7), rate('b', 'Canada Post', 20, 2, 2)];
   assert.equal(pickCourier(r, 'fastest')?.courier_id, 'b');
 });
 
-test('an unknown estimate sorts last for fastest', () => {
-  const r = [rate('unknown', 'UPS', 5, 0, 0), rate('known', 'FedEx', 50, 4, 4)];
+test('an unknown transit time sorts last, not first', () => {
+  const r = [rate('unknown', 'UPS', 5, 0, 0), rate('known', 'Canada Post', 50, 4, 4)];
   assert.equal(pickCourier(r, 'fastest')?.courier_id, 'known');
-  assert.equal(deliveryDays(r[0]), Number.POSITIVE_INFINITY);
 });
 
-test('cheapest and carrier preferences still pick on price', () => {
-  assert.equal(pickCourier(quote, 'cheapest')?.courier_id, 'ups-ground');
-  assert.equal(pickCourier(quote, 'fedex')?.courier_id, 'fedex-ground');
+test('cheapest and carrier preferences', () => {
+  assert.equal(pickCourier(quote, 'cheapest')?.courier_id, 'cp-regular');
+  assert.equal(pickCourier(quote, 'ups')?.courier_id, 'ups-express');
+  assert.equal(pickCourier(quote, 'canada_post')?.courier_id, 'cp-xpresspost');
 });
 
-test('does not reorder the caller\'s array; empty yields null', () => {
-  const copy = [...quote];
+test('a carrier that is not on offer falls back to the overall best value', () => {
+  const r = quote.filter((q) => q.courier_name !== 'UPS');
+  assert.equal(pickCourier(r, 'ups')?.courier_id, 'cp-xpresspost');
+});
+
+test('does not mutate the quote, and an empty quote picks nothing', () => {
+  const before = quote.map((r) => r.courier_id);
   pickCourier(quote, 'fastest');
-  assert.deepEqual(quote, copy);
-  assert.equal(pickCourier([], 'fastest'), null);
+  pickCourier(quote, 'best_value');
+  assert.deepEqual(quote.map((r) => r.courier_id), before);
+  assert.equal(pickCourier([], 'best_value'), null);
+  assert.equal(deliveryDays(rate('x', 'UPS', 1, 0, 0)), Number.POSITIVE_INFINITY);
 });

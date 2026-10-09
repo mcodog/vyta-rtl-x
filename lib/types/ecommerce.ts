@@ -257,15 +257,15 @@ export interface EasyshipRateRequest {
   destination_postal_code: string;
   destination_city: string;
   destination_state?: string;
+  /** Whole-parcel weight (kg). Split evenly over `quantity` units. */
   total_actual_weight: number;
-  /** Declared customs/insurance value per parcel (CAD by default). */
-  declared_customs_value?: number;
-  declared_currency?: string;
   /**
-   * EasyShip HS code for the parcel item. Each rate item must carry an hs_code.
-   * Defaults to 17049000 ("Dry Food & Supplements").
+   * Units in the parcel (default 1). The quote's only real-valued item field:
+   * category, declared value and dimensions are fixed — see "Parcel contents"
+   * in lib/easyship.ts.
    */
-  hs_code?: string;
+  quantity?: number;
+  declared_currency?: string;
   boxes: Array<{
     length: number;
     width: number;
@@ -302,16 +302,20 @@ export interface EasyshipShipmentRequest {
     country_alpha2: string;
   };
   destination: ShippingAddress & { country_alpha2: string; email?: string };
+  /**
+   * One parcel per entry. Description, category (supplements) and declared
+   * value (1 per unit) are fixed by createEasyshipShipment; blank dimensions
+   * fall back to 1 cm.
+   */
   parcels: Array<{
-    description: string;
-    hs_code?: string;
+    /** Units in the parcel. */
     quantity: number;
+    /** Per-unit weight (kg). */
     actual_weight: number;
-    height: number;
-    width: number;
-    length: number;
-    declared_currency: string;
-    declared_customs_value: number;
+    height?: number | null;
+    width?: number | null;
+    length?: number | null;
+    declared_currency?: string;
   }>;
   /** Purchase Easyship parcel insurance for this shipment (default false). */
   insured?: boolean;
@@ -322,11 +326,11 @@ export interface EasyshipShipmentRequest {
 
 export interface EasyshipShipmentResponse {
   easyship_shipment_id: string;
-  tracking_number: string;
-  label_url: string;
-  courier_name: string;
-  total_charge: number;
-  currency: string;
+  tracking_number: string | null;
+  label_url: string | null;
+  courier_name: string | null;
+  total_charge: number | null;
+  currency: string | null;
 }
 
 // ---- PURCHASE ORDERS ----

@@ -5,7 +5,7 @@
  * shipping the buyer pays is ours to decide instead of a flat fee we could only
  * guess at. This module holds the rules for deciding it:
  *
- *   • which couriers a buyer may choose from (UPS / FedEx / Canada Post),
+ *   • which couriers a buyer may choose from (UPS / Canada Post),
  *   • which of the returned services are worth showing (the fastest handful),
  *   • what each one costs once the admin's processing fee is folded in,
  *   • the flat fallback used when live rates are switched off or the quote
@@ -38,15 +38,14 @@ export const PURAMASS_FLAT_COURIER_ID = 'flat';
 export const PURAMASS_RATE_LIMIT = 5;
 
 /**
- * Couriers a hosted-checkout buyer may pick. Narrower than the admin's own
- * whitelist (`ALLOWED_COURIERS` in lib/easyship.ts, UPS + FedEx): a retail
- * buyer shipping inside Canada should also see Canada Post.
+ * Couriers a hosted-checkout buyer may pick — the same two every shipment is
+ * booked with (`ALLOWED_COURIERS` in lib/easyship.ts): UPS and Canada Post.
  *
- * Matched against Easyship's `umbrella_name` ("UPS", "FedEx", "Canada Post"),
+ * Matched against Easyship's `umbrella_name` ("UPS", "Canada Post"),
  * lower-cased. `\b` on both ends so "Canada Post" doesn't also match some
  * other courier that merely mentions Canada.
  */
-export const PURAMASS_COURIERS = ['ups', 'fedex', 'canada post'] as const;
+export const PURAMASS_COURIERS = ['ups', 'canada post'] as const;
 
 export function isHostedCourier(rate: { courier_name?: string | null }): boolean {
   const name = (rate.courier_name || '').toLowerCase();

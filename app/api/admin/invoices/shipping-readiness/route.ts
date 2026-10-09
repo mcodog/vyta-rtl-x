@@ -7,6 +7,7 @@ import {
   fetchEasyshipRates,
   isAllowedCourier,
   applyHandlingFee,
+  parcelDimensions,
 } from '@/lib/easyship';
 
 const db = createClient(
@@ -47,7 +48,7 @@ interface Check {
  *
  * Read-only pre-flight for the invoice form: given a proposed destination +
  * line items, tell the admin whether an Easyship shipment could be created,
- * and (when everything checks out) return live UPS/FedEx rates so the shipping
+ * and (when everything checks out) return live UPS / Canada Post rates so the shipping
  * fee can be auto-filled. Creates nothing.
  *
  * `invoice_id` lets the check run on an invoice whose address this admin never
@@ -155,13 +156,17 @@ export async function POST(req: NextRequest) {
     ok: itemsOk,
   });
 
+  // Never blocks: a side left blank in Settings goes out as 1 cm
+  // (lib/easyship.ts parcelDimensions).
   const box = cfg.box ?? {};
-  const parcelOk = !!(box.length && box.width && box.height);
+  const dims = parcelDimensions(box);
+  const parcelSet = !!(box.length && box.width && box.height);
   checks.push({
     key: 'parcel',
-    label: 'Parcel dimensions configured',
-    ok: parcelOk,
-    detail: parcelOk ? undefined : 'Set default box in Site Settings',
+    label: parcelSet
+      ? `Parcel ${dims.length} × ${dims.width} × ${dims.height} cm`
+      : `Parcel ${dims.length} × ${dims.width} × ${dims.height} cm (blank sides default to 1 cm)`,
+    ok: true,
   });
 
   const ready = checks.every((c) => c.ok);
@@ -201,14 +206,8 @@ export async function POST(req: NextRequest) {
         destination_city: destination.city ?? '',
         destination_state: destination.state ?? undefined,
         total_actual_weight: totalWeight,
-        boxes: [
-          {
-            length: box.length ?? 15,
-            width: box.width ?? 10,
-            height: box.height ?? 5,
-            weight: box.weight ?? 0.05,
-          },
-        ],
+        quantity: Math.max(1, Math.round(itemCount)),
+        boxes: [{ ...dims, weight: totalWeight }],
       },
       cfg.apiKey,
     );
@@ -218,7 +217,7 @@ export async function POST(req: NextRequest) {
       .sort((a, b) => a.total_charge - b.total_charge);
     if (rates.length === 0) {
       ratesNote =
-        'Easyship returned no UPS/FedEx rates for this destination. Manual shipping cost will be used.';
+        'Easyship returned no UPS / Canada Post rates for this destination. Manual shipping cost will be used.';
     }
   } catch (e: any) {
     ratesNote = `Live rate quote failed: ${e?.message ?? 'unknown error'}`;

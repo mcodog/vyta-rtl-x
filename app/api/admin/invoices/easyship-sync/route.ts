@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getInvoiceCaller, callerCanWrite } from '@/lib/admin/invoice-access';
 import { logAuditServer } from '@/lib/admin/audit';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
 import {
   listEasyshipShipments,
   type EasyshipShipmentSummary,
@@ -652,6 +653,15 @@ async function apply(
       continue;
     }
     applied += 1;
+
+    // Pull the full Easyship record onto the invoice; when the linked
+    // shipment already has its label, that also sends the shipped email
+    // (customer + admins) unless this invoice was emailed already.
+    const linked = {
+      kind: anchor.table === 'orders' ? ('order' as const) : ('invoice' as const),
+      id: anchor.id,
+    };
+    after(() => onShipmentLabelGenerated(db, linked).then(() => {}));
 
     await logAuditServer(db, actor, {
       action: e.override ? 'invoice.easyship_manual_link' : 'invoice.easyship_sync',
