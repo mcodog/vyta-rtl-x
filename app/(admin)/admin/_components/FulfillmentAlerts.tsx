@@ -26,8 +26,8 @@ const NOTIFIABLE: FulfillmentStatus[] = ['packed', 'shipped', 'picked_up', 'drop
  * Admin-only live fulfillment banner. Subscribes to `postgres_changes`
  * UPDATEs on `invoices`; when `fulfillment_status` reaches a "notifiable"
  * state (packed / shipped / picked_up / dropped_off) it prepends a row
- * (deduped by `id:status`, capped at MAX_EVENTS) with a one-click
- * "Notify customer" button that opens the shared FulfillmentEmailModal.
+ * (deduped by `id:status`, capped at MAX_EVENTS). Shipments get a one-click
+ * "Send shipped email" button that opens the shared FulfillmentEmailModal.
  *
  * Mount once on the admin dashboard. Silently no-ops when the invoices
  * table isn't in the supabase_realtime publication (development).
@@ -35,10 +35,7 @@ const NOTIFIABLE: FulfillmentStatus[] = ['packed', 'shipped', 'picked_up', 'drop
 export default function FulfillmentAlerts() {
   const [events, setEvents] = useState<AlertEvent[]>([]);
   const [collapsed, setCollapsed] = useState(false);
-  const [notify, setNotify] = useState<null | {
-    invoiceId: string; invoiceNumber: string | null; kind: 'packed' | 'shipped';
-    fulfillmentType: 'shipment' | 'pickup';
-  }>(null);
+  const [notify, setNotify] = useState<null | { invoiceId: string; invoiceNumber: string | null }>(null);
 
   // The Realtime callback only carries the row that changed — enrich it
   // with the joined customer/order names via a follow-up SELECT so the
@@ -153,18 +150,16 @@ export default function FulfillmentAlerts() {
                     {ev.customer_name ?? 'Unknown customer'} · {timeAgo(ev.at)}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setNotify({
-                    invoiceId: ev.id,
-                    invoiceNumber: ev.invoice_number,
-                    kind: ev.fulfillment_status === 'packed' ? 'packed' : 'shipped',
-                    fulfillmentType: ev.fulfillment_type,
-                  })}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-ink text-white text-xs font-medium hover:bg-ink/90"
-                >
-                  <Send className="w-3 h-3" /> Notify customer
-                </button>
+                {/* One customer email — "Your Order Has Shipped!" — for shipments. */}
+                {ev.fulfillment_type === 'shipment' && (
+                  <button
+                    type="button"
+                    onClick={() => setNotify({ invoiceId: ev.id, invoiceNumber: ev.invoice_number })}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-ink text-white text-xs font-medium hover:bg-ink/90"
+                  >
+                    <Send className="w-3 h-3" /> Send shipped email
+                  </button>
+                )}
                 <Link
                   href={`/admin/invoices/${ev.id}`}
                   className="text-xs text-teal-dark hover:underline hidden sm:inline"
@@ -189,8 +184,6 @@ export default function FulfillmentAlerts() {
         <FulfillmentEmailModal
           invoiceId={notify.invoiceId}
           invoiceNumber={notify.invoiceNumber ?? undefined}
-          kind={notify.kind}
-          fulfillmentType={notify.fulfillmentType}
           onClose={() => setNotify(null)}
         />
       )}

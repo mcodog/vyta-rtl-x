@@ -10,7 +10,6 @@ import {
   FileText,
   ImageUp,
   Info,
-  Mail,
   MapPin,
   Package,
   Send,
@@ -67,7 +66,7 @@ export default function QueueDetail({ item, onMutate }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<string[]>(item.handling_checklist);
-  const [notifyKind, setNotifyKind] = useState<'packed' | 'shipped' | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -477,32 +476,23 @@ export default function QueueDetail({ item, onMutate }: Props) {
               {STATUS_LABEL_FOR[item.fulfillment_status]}
             </button>
           )}
-          {!orderCancelled && viewer.canSendEmails && item.fulfillment_status !== 'pending' && (
-            <>
+          {/* One customer email — "Your Order Has Shipped!" — once the
+              shipment is packed (or further along). */}
+          {!orderCancelled &&
+            viewer.canSendEmails &&
+            item.fulfillment_type === 'shipment' &&
+            item.fulfillment_status !== 'pending' && (
               <button
                 type="button"
-                onClick={() => setNotifyKind('packed')}
+                onClick={() => setNotifyOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-md border border-line text-sm text-ink-muted px-3 py-2 hover:border-teal"
               >
-                <Mail className="w-4 h-4" /> Notify packed
-                {item.packed_emailed_at && (
+                <Send className="w-4 h-4" /> Send shipped email
+                {item.shipped_emailed_at && (
                   <span className="text-[11px] text-emerald-600">· sent</span>
                 )}
               </button>
-              {item.fulfillment_type === 'shipment' && item.fulfillment_status !== 'packed' && (
-                <button
-                  type="button"
-                  onClick={() => setNotifyKind('shipped')}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-line text-sm text-ink-muted px-3 py-2 hover:border-teal"
-                >
-                  <Send className="w-4 h-4" /> Notify shipped
-                  {item.shipped_emailed_at && (
-                    <span className="text-[11px] text-emerald-600">· sent</span>
-                  )}
-                </button>
-              )}
-            </>
-          )}
+            )}
           {!orderCancelled &&
             !isComplete(item.fulfillment_type, item.fulfillment_status) && (
               <button
@@ -686,13 +676,11 @@ export default function QueueDetail({ item, onMutate }: Props) {
         </div>
       )}
 
-      {notifyKind && (
+      {notifyOpen && (
         <FulfillmentEmailModal
           invoiceId={item.id}
           invoiceNumber={item.invoice_number}
-          kind={notifyKind}
-          fulfillmentType={item.fulfillment_type}
-          onClose={() => setNotifyKind(null)}
+          onClose={() => setNotifyOpen(false)}
           onSent={onMutate}
         />
       )}

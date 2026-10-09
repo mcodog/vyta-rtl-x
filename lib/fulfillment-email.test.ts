@@ -1,5 +1,5 @@
 /**
- * Tests for the packed / shipped email templates.
+ * Tests for the "Your Order Has Shipped!" email template.
  *
  *   node --test --import tsx lib/fulfillment-email.test.ts
  */
@@ -18,8 +18,6 @@ import {
 const SITE = 'https://www.vytabio.com';
 
 const shipped: FulfillmentEmailData = {
-  kind: 'shipped',
-  fulfillmentType: 'shipment',
   customerName: 'Sam Lee',
   orderNumber: 'VYTA-10432',
   orderDate: '2026-03-24',
@@ -49,7 +47,7 @@ test('shipped email: cover, tracking, items, address and Track button', () => {
   assert.match(html, /Shipping Address/);
   assert.match(html, /March 24, 2026/);
   assert.match(html, /Hi Sam Lee, great news!/);
-  assert.equal(fulfillmentEmailSubject(shipped), 'Your VYTA order VYTA-10432 is on its way');
+  assert.equal(fulfillmentEmailSubject(shipped), 'Your VYTA order VYTA-10432 has shipped');
 });
 
 test('shipped email without tracking drops the Track button and tracking rows', () => {
@@ -58,19 +56,21 @@ test('shipped email without tracking drops the Track button and tracking rows', 
   assert.doesNotMatch(html, /Tracking Number/);
 });
 
-test('packed email uses the cropped cover and no tracking', () => {
-  const data: FulfillmentEmailData = { ...shipped, kind: 'packed', viewOrderUrl: `${SITE}/account/orders/1` };
+test('there is one design: no tracking yet still renders the shipped email', () => {
+  const data: FulfillmentEmailData = {
+    ...shipped,
+    tracking: { number: null, carrier: null, url: null },
+    viewOrderUrl: `${SITE}/account/orders/1`,
+  };
   const html = renderFulfillmentEmailHtml(data, SITE);
-  assert.match(html, /Your Order Has Been Packed!/);
-  assert.match(html, /packed-hero\.jpg/);
-  assert.doesNotMatch(html, /Tracking Number/);
+  assert.match(html, /Your Order Has Shipped!/);
+  assert.match(html, /shipped-hero\.jpg/);
+  assert.doesNotMatch(html, /packed|Pickup/i);
   assert.match(html, /View Order Details/);
-  assert.equal(fulfillmentEmailSubject(data), 'Your VYTA order VYTA-10432 has been packed');
 });
 
-test('pickup emails skip the shipping address', () => {
-  const html = renderFulfillmentEmailHtml({ ...shipped, kind: 'packed', fulfillmentType: 'pickup' }, SITE);
-  assert.match(html, /Ready for Pickup/);
+test('no shipping address on file leaves the address card out', () => {
+  const html = renderFulfillmentEmailHtml({ ...shipped, shipTo: undefined }, SITE);
   assert.doesNotMatch(html, /Shipping Address/);
 });
 
@@ -104,8 +104,8 @@ test('shipped email shows the estimated delivery in the card, next steps and tex
   assert.match(html, /Estimated Delivery/);
   assert.match(html, /Estimated delivery Mar 27, 2026 – Mar 31, 2026\./);
   assert.match(renderFulfillmentEmailText(data), /Estimated delivery: Mar 27, 2026 – Mar 31, 2026/);
-  // Not on a packed email.
-  assert.doesNotMatch(renderFulfillmentEmailHtml({ ...data, kind: 'packed' }, SITE), /Estimated Delivery/);
+  // Left out when no window is given.
+  assert.doesNotMatch(renderFulfillmentEmailHtml(shipped, SITE), /Estimated Delivery/);
 });
 
 test('tracking row has a selectable number and copy icon; UPS shows its logo', () => {

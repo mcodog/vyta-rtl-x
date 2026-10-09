@@ -1,15 +1,14 @@
 /**
- * The customer's "Your order has been packed" / "Your order has shipped"
- * emails — the branded templates behind the warehouse queue's and the admin
- * screens' Notify packed / Notify shipped buttons. Manual only: nothing sends
- * these on a status change; staff press the button (lib/warehouse/server.ts
+ * The customer's "Your Order Has Shipped!" email — the one email sent once an
+ * order is packed and shipped, from the Send shipped email buttons (admin
+ * invoice page, warehouse queue, admin alerts). Manual only: nothing sends it
+ * on a status change; staff press the button (lib/warehouse/server.ts
  * `sendFulfillmentEmail`).
  *
  * Same rules as the order confirmation (lib/order-confirmation-email.ts),
  * whose icon helpers this reuses: table layout, inline styles, no SVG, no web
  * fonts, absolute image URLs. The cover photo is a plain full-width <img>
- * (public/images/email/shipped-hero.jpg — with the truck — or packed-hero.jpg,
- * the same photo cropped above it), so it shows in Outlook too.
+ * (public/images/email/shipped-hero.jpg), so it shows in Outlook too.
  *
  * Pure (no server imports), so it renders under `node --test`.
  */
@@ -25,9 +24,6 @@ import {
   type IconName,
 } from './order-confirmation-email';
 
-export type FulfillmentEmailKind = 'packed' | 'shipped';
-export type FulfillmentEmailType = 'shipment' | 'pickup';
-
 export interface FulfillmentTracking {
   number: string | null;
   carrier: string | null;
@@ -36,8 +32,6 @@ export interface FulfillmentTracking {
 }
 
 export interface FulfillmentEmailData {
-  kind: FulfillmentEmailKind;
-  fulfillmentType: FulfillmentEmailType;
   customerName: string;
   orderNumber: string;
   /** When the order was placed / paid (timestamp or YYYY-MM-DD). */
@@ -45,7 +39,7 @@ export interface FulfillmentEmailData {
   items: ConfirmationLine[];
   shipTo?: ConfirmationShipTo;
   tracking?: FulfillmentTracking;
-  /** Delivery window (YYYY-MM-DD each; either may be missing) — shipped emails only. */
+  /** Delivery window (YYYY-MM-DD each; either may be missing). */
   estimatedDelivery?: { from: string | null; to: string | null } | null;
   /** "View Order Details" target (customer account), when the order has one. */
   viewOrderUrl?: string;
@@ -125,7 +119,7 @@ export function parseRecipients(raw: unknown): { emails: string[]; invalid: stri
 }
 
 // ---------------------------------------------------------------------------
-//  Copy per kind
+//  Copy
 // ---------------------------------------------------------------------------
 
 interface Copy {
@@ -140,57 +134,9 @@ interface Copy {
 
 function copyFor(data: FulfillmentEmailData): Copy {
   const n = data.orderNumber;
-  const pickup = data.fulfillmentType === 'pickup';
-
-  if (data.kind === 'packed' && pickup) {
-    return {
-      subject: `Your VYTA pickup order ${n} is ready`,
-      preheader: `Order ${n} is packed and ready for pickup.`,
-      title: 'Your Order Is Ready for Pickup!',
-      intro:
-        'Great news! Your order has been packed and is ready for you. Come by during business hours and we’ll have it waiting.',
-      badge: { icon: 'package-blue', label: 'Ready' },
-      itemsHeading: 'Items Packed',
-      steps: [
-        { icon: 'package-blue', title: 'Order Packed', body: 'Your order is packed and waiting.' },
-        { icon: 'map-pin-blue', title: 'Pick It Up', body: 'Come by during business hours.' },
-        { icon: 'package-open-blue', title: 'Enjoy Your Order', body: 'Thank you for choosing VYTA.' },
-      ],
-    };
-  }
-  if (data.kind === 'shipped' && pickup) {
-    return {
-      subject: `Your VYTA pickup order ${n}`,
-      preheader: `Thanks for picking up order ${n}.`,
-      title: 'Thanks for Picking Up Your Order!',
-      intro: 'Your order has been picked up. Thank you for choosing VYTA — we hope to see you again soon.',
-      badge: { icon: 'check-teal', label: 'Picked up' },
-      itemsHeading: 'Items Picked Up',
-      steps: [
-        { icon: 'package-blue', title: 'Order Packed', body: 'We prepared your order.' },
-        { icon: 'map-pin-blue', title: 'Picked Up', body: 'Your order is in your hands.' },
-        { icon: 'package-open-blue', title: 'Enjoy Your Order', body: 'Questions? We’re here to help.' },
-      ],
-    };
-  }
-  if (data.kind === 'packed') {
-    return {
-      subject: `Your VYTA order ${n} has been packed`,
-      preheader: `Order ${n} is packed and ready for the carrier.`,
-      title: 'Your Order Has Been Packed!',
-      intro:
-        'Great news! Your order has been packed and is ready for the carrier. We’ll send you the tracking details as soon as it ships.',
-      badge: { icon: 'package-blue', label: 'Packed' },
-      itemsHeading: 'Items Packed',
-      steps: [
-        { icon: 'package-blue', title: 'Order Packed', body: 'Your order is packed and ready to go.' },
-        { icon: 'truck-blue', title: 'Order Ships', body: 'You’ll get a tracking email once it ships.' },
-        { icon: 'package-open-blue', title: 'Enjoy Your Order', body: 'It will be on its way to you soon.' },
-      ],
-    };
-  }
+  const eta = formatDeliveryWindow(data.estimatedDelivery);
   return {
-    subject: `Your VYTA order ${n} is on its way`,
+    subject: `Your VYTA order ${n} has shipped`,
     preheader: `Order ${n} has shipped${data.tracking?.number ? ` — tracking ${data.tracking.number}` : ''}.`,
     title: 'Your Order Has Shipped!',
     intro: data.tracking?.number
@@ -203,14 +149,14 @@ function copyFor(data: FulfillmentEmailData): Copy {
       {
         icon: 'map-pin-blue',
         title: 'Track in Real Time',
-        body: trackingUrlFor(data.tracking) ? 'Click the button above to view tracking details.' : 'Use the tracking number above with the carrier.',
+        body: trackingUrlFor(data.tracking)
+          ? 'Click the button above to view tracking details.'
+          : 'Use the tracking number above with the carrier.',
       },
       {
         icon: 'package-open-blue',
         title: 'Enjoy Your Order',
-        body: formatDeliveryWindow(data.estimatedDelivery)
-          ? `Estimated delivery ${formatDeliveryWindow(data.estimatedDelivery)}.`
-          : 'Thank you for choosing VYTA.',
+        body: eta ? `Estimated delivery ${eta}.` : 'Thank you for choosing VYTA.',
       },
     ],
   };
@@ -235,7 +181,7 @@ function button(site: string, href: string, label: string): string {
 }
 
 function cta(site: string, data: FulfillmentEmailData): string {
-  const trackUrl = data.kind === 'shipped' && data.fulfillmentType === 'shipment' ? trackingUrlFor(data.tracking) : null;
+  const trackUrl = trackingUrlFor(data.tracking);
   if (trackUrl) {
     return `<div style="padding: 26px 0 0; text-align: center;">
               ${button(site, trackUrl, 'Track Your Order')}
@@ -285,27 +231,25 @@ function orderCard(site: string, data: FulfillmentEmailData, copy: Copy): string
     </tr></table>`;
 
   const rows: string[] = [];
-  if (data.kind === 'shipped' && data.fulfillmentType === 'shipment') {
-    const t = data.tracking;
-    if (t?.number) {
-      // Email can't run a copy-to-clipboard script, so the number selects
-      // whole on one tap / click (where the client honours user-select) and the
-      // copy icon marks it as the thing to copy.
-      rows.push(
-        detailRow(
-          'Tracking Number',
-          `<span class="mono" style="font-family: ${MONO}; font-weight: 600; word-break: break-all; -webkit-user-select: all; user-select: all;">${esc(t.number)}</span>`,
-          rows.length === 0,
-          icon(site, 'copy-blue', 20, 'Copy'),
-        ),
-      );
-    }
-    if (t?.carrier) {
-      rows.push(detailRow('Carrier', esc(t.carrier), rows.length === 0, carrierLogo(site, t.carrier)));
-    }
-    const eta = formatDeliveryWindow(data.estimatedDelivery);
-    if (eta) rows.push(detailRow('Estimated Delivery', esc(eta), rows.length === 0));
+  const t = data.tracking;
+  if (t?.number) {
+    // Email can't run a copy-to-clipboard script, so the number selects
+    // whole on one tap / click (where the client honours user-select) and the
+    // copy icon marks it as the thing to copy.
+    rows.push(
+      detailRow(
+        'Tracking Number',
+        `<span class="mono" style="font-family: ${MONO}; font-weight: 600; word-break: break-all; -webkit-user-select: all; user-select: all;">${esc(t.number)}</span>`,
+        rows.length === 0,
+        icon(site, 'copy-blue', 20, 'Copy'),
+      ),
+    );
   }
+  if (t?.carrier) {
+    rows.push(detailRow('Carrier', esc(t.carrier), rows.length === 0, carrierLogo(site, t.carrier)));
+  }
+  const eta = formatDeliveryWindow(data.estimatedDelivery);
+  if (eta) rows.push(detailRow('Estimated Delivery', esc(eta), rows.length === 0));
 
   return cardTable(`
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;"><tr>
@@ -353,7 +297,7 @@ function itemsCard(site: string, data: FulfillmentEmailData, copy: Copy): string
 
 function addressCard(site: string, data: FulfillmentEmailData): string {
   const ship = data.shipTo;
-  if (!ship || data.fulfillmentType !== 'shipment') return '';
+  if (!ship) return '';
   return cardTable(`
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;"><tr>
                 <td valign="top" style="padding-right: 14px;">${icon(site, 'map-pin-blue', 26, 'Address')}</td>
@@ -421,15 +365,7 @@ export function renderFulfillmentEmailHtml(
 ): string {
   const site = siteUrl.replace(/\/$/, '');
   const copy = copyFor(data);
-  // The shipped photo ends in the delivery truck; the packed one is cropped above it.
-  const shippedArt = data.kind === 'shipped' && data.fulfillmentType === 'shipment';
-  const hero = shippedArt
-    ? { src: `${site}/images/email/shipped-hero.jpg`, height: 360 }
-    : { src: `${site}/images/email/packed-hero.jpg`, height: 284 };
-  // Without the truck in the photo, mark the moment with an icon instead.
-  const badgeIcon = shippedArt
-    ? ''
-    : `<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate; margin: 0 auto 4px;"><tr><td>${iconCircle(icon(site, copy.badge.icon, 30), { size: 64 })}</td></tr></table>`;
+  const hero = `${site}/images/email/shipped-hero.jpg`;
 
   return `<!doctype html>
 <html lang="en">
@@ -478,14 +414,13 @@ ${
 }        <!-- Cover -->
         <tr>
           <td style="background: #DCEBF4; border-radius: 20px 20px 0 0; line-height: 0; font-size: 0;">
-            <a href="${site}" style="text-decoration: none;"><img src="${hero.src}" width="640" alt="VYTA Biosciences" style="display: block; width: 100%; max-width: 640px; height: auto; border: 0; border-radius: 20px 20px 0 0;"></a>
+            <a href="${site}" style="text-decoration: none;"><img src="${hero}" width="640" alt="VYTA Biosciences" style="display: block; width: 100%; max-width: 640px; height: auto; border: 0; border-radius: 20px 20px 0 0;"></a>
           </td>
         </tr>
 
         <!-- Body -->
         <tr>
           <td class="body-pad" style="background: #FFFFFF; border-radius: 0 0 20px 20px; padding: 28px 28px 24px;">
-            ${badgeIcon}
             <h1 class="title" style="margin: 0; text-align: center; font-size: 34px; line-height: 40px; font-weight: 800; letter-spacing: -0.01em; color: ${NAVY};">${esc(copy.title)}</h1>
             <p style="margin: 14px auto 0; max-width: 520px; text-align: center; font-size: 16px; line-height: 25px; color: #34495A;">
               ${esc(greet(data.customerName, copy.intro))}
@@ -514,7 +449,7 @@ ${
 export function renderFulfillmentEmailText(data: FulfillmentEmailData): string {
   const copy = copyFor(data);
   const date = formatOrderDate(data.orderDate);
-  const trackUrl = data.kind === 'shipped' && data.fulfillmentType === 'shipment' ? trackingUrlFor(data.tracking) : null;
+  const trackUrl = trackingUrlFor(data.tracking);
   const greeting = data.customerName && data.customerName !== 'there' ? `Hi ${data.customerName},` : 'Hi,';
   const lines = data.items.map((i) => {
     const qty = Number(i.quantity) || 0;
@@ -529,16 +464,16 @@ export function renderFulfillmentEmailText(data: FulfillmentEmailData): string {
     '',
     `Order #${data.orderNumber}`,
     date ? `Placed on ${date}` : null,
-    data.kind === 'shipped' && data.tracking?.number ? `Tracking number: ${data.tracking.number}` : null,
-    data.kind === 'shipped' && data.tracking?.carrier ? `Carrier: ${data.tracking.carrier}` : null,
-    data.kind === 'shipped' && formatDeliveryWindow(data.estimatedDelivery)
+    data.tracking?.number ? `Tracking number: ${data.tracking.number}` : null,
+    data.tracking?.carrier ? `Carrier: ${data.tracking.carrier}` : null,
+    formatDeliveryWindow(data.estimatedDelivery)
       ? `Estimated delivery: ${formatDeliveryWindow(data.estimatedDelivery)}`
       : null,
     trackUrl ? `Track your order: ${trackUrl}` : null,
     lines.length ? '' : null,
     lines.length ? `${copy.itemsHeading}:` : null,
     ...lines,
-    data.shipTo && data.fulfillmentType === 'shipment'
+    data.shipTo
       ? ['', 'Shipping address:', data.shipTo.name, ...data.shipTo.lines].filter(Boolean).join('\n')
       : null,
     '',
