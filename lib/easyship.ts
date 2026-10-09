@@ -7,6 +7,7 @@ import type {
 import { getSupabase } from '@/lib/supabase';
 import { applyProcessingFee } from '@/lib/shipping/processing-fee';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { EASYSHIP_WEBHOOK_URL } from '@/lib/shipping/easyship-webhook';
 
 // Base URL includes the dated API version. 2024-09 is the current stable
 // version; 2023-01 is legacy and its rates payload/response differ. Override
@@ -792,6 +793,10 @@ export interface ShippingDiagnosis {
   has_api_key: boolean;
   origin_complete: boolean;
   reachable: boolean | null;
+  /** Where Easyship sends events (lib/shipping/easyship-webhook.ts). */
+  webhook_url: string;
+  /** EASYSHIP_WEBHOOK_SECRET is set — without it every event is rejected. */
+  webhook_secret_set: boolean;
   errors: string[];
 }
 
@@ -861,9 +866,18 @@ export async function diagnoseShipping(): Promise<ShippingDiagnosis> {
     }
   }
 
+  const webhook_secret_set = !!process.env.EASYSHIP_WEBHOOK_SECRET;
+  if (!webhook_secret_set) {
+    errors.push(
+      `EASYSHIP_WEBHOOK_SECRET not set — ${EASYSHIP_WEBHOOK_URL} rejects every event (no shipped emails from Easyship-side labels)`,
+    );
+  }
+
   return {
     ok: errors.length === 0,
     base_url: EASYSHIP_BASE,
+    webhook_url: EASYSHIP_WEBHOOK_URL,
+    webhook_secret_set,
     db_read_ok,
     settings_row_present,
     easyship_columns_present,

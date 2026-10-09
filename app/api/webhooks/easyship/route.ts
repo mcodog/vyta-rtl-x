@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { advanceOrderForward } from '@/lib/warehouse/types';
 import { trackOrderStatus, trackOrderStatusById } from '@/lib/klaviyo/events';
 import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
+import { parseEasyshipWebhook } from '@/lib/shipping/easyship-webhook';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,39 +45,30 @@ function verifyHmac(raw: string, header: string, secret: string): boolean {
   return false;
 }
 
-// ---------- Checkpoints ----------
-
-interface NormalizedCheckpoint {
-  message: string;
-  occurred_at: string;
-  location: string | null;
-  primary_status: string | null;
-}
-
-// Normalize Easyship checkpoint objects to the compact shape the admin UI
-// (timeline + map) consumes. Easyship supplies either a pre-joined `location`
-// or discrete city/state/country parts, and timestamps under `checkpoint_time`.
-function normalizeCheckpoints(arr: unknown): NormalizedCheckpoint[] | null {
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  return arr.map((c: any) => {
-    const location =
-      c.location ||
-      [c.city, c.state, c.country_alpha2 ?? c.country].filter(Boolean).join(', ');
-    return {
-      message: c.message ?? '',
-      occurred_at: c.checkpoint_time ?? c.occurred_at ?? '',
-      location: location || null,
-      primary_status: c.primary_status ?? null,
-    };
-  });
-}
-
-// The most recent checkpoint by timestamp — used to derive a status when the
-// event payload doesn't carry a top-level one.
-function latestCheckpoint(cps: NormalizedCheckpoint[]): NormalizedCheckpoint | null {
-  return [...cps].sort(
-    (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
-  )[0] ?? null;
+/**
+ * Easyship's own signature: `X-EASYSHIP-SIGNATURE` carries a JWT signed
+ * HS256 with the webhook's secret key (Easyship → Connect → Webhooks). Valid
+ * when the signature over `header.payload` matches and any `exp` is still in
+ * the future.
+ */
+function verifyEasyshipJwt(token: string, secret: string): boolean {
+  const parts = token.trim().split('.');
+  if (parts.length !== 3) return false;
+  const [h, p, sig] = parts;
+  try {
+    const header = JSON.parse(Buffer.from(h, 'base64url').toString('utf8'));
+    if (header?.alg !== 'HS256') return false;
+    const expected = crypto.createHmac('sha256', secret).update(`${h}.${p}`).digest();
+    const given = Buffer.from(sig, 'base64url');
+    if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
+      return false;
+    }
+    const claims = JSON.parse(Buffer.from(p, 'base64url').toString('utf8'));
+    if (typeof claims?.exp === 'number' && claims.exp * 1000 < Date.now()) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ---------- Status mapping ----------
@@ -101,6 +93,7 @@ function mapToOrderStatus(s: string | null | undefined): string | null {
 export async function POST(req: NextRequest) {
   const raw = await req.text();
   const secret = process.env.EASYSHIP_WEBHOOK_SECRET;
+  const jwtHeader = req.headers.get('x-easyship-signature');
   const hmacHeader = req.headers.get('x-easyship-hmac-sha256');
   const sharedHeader = req.headers.get('x-easyship-webhook-secret');
 
@@ -112,7 +105,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'webhook not configured' }, { status: 503 });
   }
   let verified = false;
-  if (hmacHeader && verifyHmac(raw, hmacHeader, secret)) verified = true;
+  if (jwtHeader && verifyEasyshipJwt(jwtHeader, secret)) verified = true;
+  else if (hmacHeader && verifyHmac(raw, hmacHeader, secret)) verified = true;
   else if (sharedHeader && timingSafeEqualStr(sharedHeader, secret)) verified = true;
   if (!verified) {
     return NextResponse.json({ error: 'bad signature' }, { status: 401 });
@@ -125,39 +119,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
 
-  const event = payload?.shipment ?? payload?.resource ?? payload?.data ?? payload ?? {};
-  const easyshipId =
-    event.easyship_shipment_id ||
-    event.shipment_id ||
-    payload?.easyship_shipment_id ||
-    null;
-  const orderNumber =
-    event.platform_order_number || event.order_number || payload?.order_number || null;
-  const trackingNumber = event.tracking_number || payload?.tracking_number || null;
-  const trackingUrl = event.tracking_url || payload?.tracking_url || null;
-  const carrier = event.courier_name || event.carrier || null;
-  const labelUrl = event.label_url || event.shipping_documents?.label_url || null;
-  const labelState =
-    labelUrl || String(event.label_state ?? '').toLowerCase() === 'generated'
-      ? 'generated'
-      : null;
-
-  // Full checkpoint history — the shipment.tracking.checkpoints.created event
-  // carries the same journey shown on Easyship's trackmyshipment.co page.
-  const normalizedCheckpoints = normalizeCheckpoints(
-    event.tracking?.checkpoints ??
-      event.checkpoints ??
-      payload?.resource?.checkpoints ??
-      payload?.checkpoints,
-  );
-
-  // Derive the delivery status from the payload, falling back to the newest
-  // checkpoint (checkpoints events may not carry a top-level status).
-  const trackingStatus =
-    event.tracking_status ||
-    event.status ||
-    payload?.status ||
-    (normalizedCheckpoints ? latestCheckpoint(normalizedCheckpoints)?.primary_status ?? null : null);
+  // Registered at EASYSHIP_WEBHOOK_URL (lib/shipping/easyship-webhook.ts).
+  // Each event nests its subject under its own key (label / tracking_status /
+  // tracking_checkpoints / shipment); the parser reads all of them.
+  const parsed = parseEasyshipWebhook(payload);
+  if (!parsed.handled) {
+    // Account-level events (batches, credit, couriers, OAuth, transactions):
+    // nothing on an order or invoice to update. Ack so Easyship stops retrying.
+    return NextResponse.json({ ignored: parsed.eventType }, { status: 200 });
+  }
+  const {
+    shipmentId: easyshipId,
+    orderNumber,
+    trackingNumber,
+    trackingUrl,
+    carrier,
+    labelUrl,
+    labelState,
+    trackingStatus,
+    checkpoints: normalizedCheckpoints,
+  } = parsed;
 
   // Match order: easyship_shipment_id → order_number → tracking_number.
   let order: any = null;
