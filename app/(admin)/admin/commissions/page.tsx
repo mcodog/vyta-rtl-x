@@ -74,6 +74,7 @@ export default function AdminCommissions() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [paying, setPaying] = useState<string | null>(null);
   const [printing, setPrinting] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,6 +176,30 @@ export default function AdminCommissions() {
     if (!ok) toast.error('Could not generate report');
   };
 
+  // Paid Stealth Health sales that should have credited an affiliate but were
+  // never booked — re-run through the same rules the payment pass uses.
+  const backfill = async () => {
+    if (!confirm('Look for paid Stealth Health sales with no affiliate commission and book the ones that earned one?')) return;
+    setBackfilling(true);
+    try {
+      const res = await apiFetch<{ checked: number; recorded: number; amount: number; failed: number }>(
+        '/api/admin/commissions/backfill',
+        { method: 'POST', timeoutMs: 60_000 },
+      );
+      if (res.recorded > 0) {
+        toast.success(`Booked ${res.recorded} missed ${res.recorded === 1 ? 'commission' : 'commissions'} (${money(res.amount)})`);
+        await load();
+      } else {
+        toast.success(`No missed commissions (${res.checked} uncredited ${res.checked === 1 ? 'sale' : 'sales'} checked)`);
+      }
+      if (res.failed > 0) toast.error(`${res.failed} could not be booked — see the server log`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not check for missed commissions');
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   const showPending = statusView !== 'paid';
   const showPaid = statusView !== 'pending';
   const groupCols = 4 + (showPending ? 1 : 0) + (showPaid ? 1 : 0);
@@ -247,6 +272,16 @@ export default function AdminCommissions() {
           <FileText className="w-4 h-4" />
           {printing === 'all' ? 'Generating…' : 'Full report'}
         </button>
+        {editable && (
+          <button
+            onClick={backfill}
+            disabled={backfilling}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-line hover:border-ink/30 text-ink rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${backfilling ? 'animate-spin' : ''}`} />
+            {backfilling ? 'Checking…' : 'Find missed commissions'}
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-line overflow-hidden">

@@ -14,7 +14,7 @@ import { canEdit, canDelete } from '@/lib/permissions';
 import {
   getInvoice, updateInvoice, recordPayment,
   getInvoiceTracking, deleteInvoice, emailInvoice, getInvoicePuramass,
-  getInvoiceBreakdown, type InvoiceTrackingSnapshot,
+  getInvoiceBreakdown, bookInvoiceCommission, type InvoiceTrackingSnapshot,
 } from '@/lib/admin/invoices';
 import {
   InvoiceSourceBadge,
@@ -99,6 +99,7 @@ export default function InvoiceDetailPage() {
   // calculation the paid-order email shows. Server-side for the same reason
   // as the Stealth Health block.
   const [breakdown, setBreakdown] = useState<InvoiceBreakdown | null>(null);
+  const [bookingCommission, setBookingCommission] = useState(false);
 
   // Send email modal
   const [showEmail, setShowEmail] = useState(false);
@@ -254,6 +255,21 @@ export default function InvoiceDetailPage() {
   function flash(text: string) {
     setMsg(text);
     setTimeout(() => setMsg(''), 3000);
+  }
+
+  // A paid hosted sale whose commission was never booked at payment time.
+  async function bookCommission() {
+    setBookingCommission(true);
+    try {
+      const { amount } = await bookInvoiceCommission(id);
+      flash(`Commission of ${goodsMoney(amount)} booked`);
+      const b = await getInvoiceBreakdown(id);
+      if (b) setBreakdown(b);
+    } catch (e: any) {
+      flash(e?.message || 'Could not book the commission');
+    } finally {
+      setBookingCommission(false);
+    }
   }
 
   async function openPdf(autoPrint: boolean) {
@@ -970,9 +986,26 @@ export default function InvoiceDetailPage() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-xs text-ink-muted">
-                      No commission recorded{invoice.status === 'paid' ? '' : ' — it is booked when the invoice is paid'}.
-                    </p>
+                    <>
+                      <p className="text-xs text-ink-muted">
+                        No commission recorded{invoice.status === 'paid' ? '' : ' — it is booked when the invoice is paid'}.
+                      </p>
+                      {editable && invoice.status === 'paid' && isPuramassInvoice(invoice) && (
+                        <button
+                          type="button"
+                          onClick={bookCommission}
+                          disabled={bookingCommission}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-800 disabled:opacity-50"
+                        >
+                          {bookingCommission ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <DollarSign className="w-3.5 h-3.5" />
+                          )}
+                          Book commission
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}

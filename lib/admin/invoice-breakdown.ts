@@ -18,6 +18,7 @@ import {
   stealthHealthOrderSummary,
 } from '@/lib/order-confirmation-data';
 import { normalizeReferralCode } from '@/lib/affiliate/utils';
+import { resolveReferralCodeOwner } from '@/lib/affiliate/commission';
 
 /** One promo that went into the discount, as recorded at checkout. */
 export interface InvoiceDiscountPart {
@@ -269,11 +270,21 @@ export async function loadInvoiceBreakdown(
   let affiliateId: string | null = str(commission?.affiliate_id);
   const discountCode =
     (await maybeOne(db, 'discount_codes', 'id', commission?.discount_code_id ?? ledger?.discount_code_id)) ?? null;
-  const referral = commission?.referral_code_id
-    ? await maybeOne(db, 'referral_codes', 'id', commission.referral_code_id)
-    : ledger?.referral_code
-      ? await maybeOne(db, 'referral_codes', 'code', normalizeReferralCode(ledger.referral_code))
-      : null;
+  // The code the buyer arrived with, as they saw it — which may be an
+  // affiliate's discount code or a code since renamed, not a live referral
+  // code (see resolveReferralCodeOwner). Else the commission's own code.
+  let referral: Row | null = null;
+  const arrivedWith = str(ledger?.referral_code);
+  if (arrivedWith) {
+    referral = await maybeOne(db, 'referral_codes', 'code', normalizeReferralCode(arrivedWith));
+    if (!referral) {
+      const owner = await resolveReferralCodeOwner(db, arrivedWith);
+      if (owner) referral = { affiliate_id: owner.affiliateId, code: owner.code };
+    }
+  }
+  if (!referral && commission?.referral_code_id) {
+    referral = await maybeOne(db, 'referral_codes', 'id', commission.referral_code_id);
+  }
   const matches = (id: unknown) => typeof id === 'string' && !!id && (!affiliateId || id === affiliateId);
 
   if (matches(discountCode?.affiliate_id)) {

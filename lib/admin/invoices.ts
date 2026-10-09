@@ -675,6 +675,17 @@ export async function getInvoiceBreakdown(id: string): Promise<InvoiceBreakdown 
   }
 }
 
+/**
+ * Book the affiliate commission a paid Stealth Health sale missed. Throws with
+ * the server's reason (e.g. no affiliate behind the sale's codes).
+ */
+export async function bookInvoiceCommission(id: string): Promise<{ commissionId: string; amount: number }> {
+  return apiFetch<{ commissionId: string; amount: number }>(
+    `/api/admin/invoices/${id}/commission`,
+    { method: 'POST' },
+  );
+}
+
 export async function getInvoicePuramass(
   id: string,
 ): Promise<PuramassInvoiceContext | null> {
