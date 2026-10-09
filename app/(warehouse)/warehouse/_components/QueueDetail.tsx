@@ -18,7 +18,6 @@ import {
   Tag,
   Trash2,
   Truck,
-  X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import {
@@ -26,8 +25,6 @@ import {
   backorderLine,
   cancelFulfillment,
   saveChecklist,
-  sendNotification,
-  previewNotification,
   updateFulfillmentStatus,
   uploadPackedPhoto,
   deletePackedPhoto,
@@ -41,6 +38,7 @@ import {
   isComplete,
   stepsFor,
 } from '@/lib/warehouse/types';
+import FulfillmentEmailModal from '@/components/FulfillmentEmailModal';
 import { useViewer } from '../layout';
 
 interface Props {
@@ -689,9 +687,11 @@ export default function QueueDetail({ item, onMutate }: Props) {
       )}
 
       {notifyKind && (
-        <NotifyModal
+        <FulfillmentEmailModal
           invoiceId={item.id}
+          invoiceNumber={item.invoice_number}
           kind={notifyKind}
+          fulfillmentType={item.fulfillment_type}
           onClose={() => setNotifyKind(null)}
           onSent={onMutate}
         />
@@ -845,161 +845,6 @@ function LineActionInput({
       >
         {label}
       </button>
-    </div>
-  );
-}
-
-// ---------- Notify modal ----------
-
-const MERGE_VARS = [
-  'order_number',
-  'invoice_number',
-  'customer_first_name',
-  'customer_last_name',
-  'tracking_number',
-  'tracking_url',
-  'carrier',
-];
-
-function NotifyModal({
-  invoiceId,
-  kind,
-  onClose,
-  onSent,
-}: {
-  invoiceId: string;
-  kind: 'packed' | 'shipped';
-  onClose: () => void;
-  onSent: () => void;
-}) {
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [to, setTo] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const preview = await previewNotification(invoiceId, kind);
-        setSubject(preview.subject);
-        setBody(preview.body);
-        setTo(preview.to ?? '');
-      } catch (e: any) {
-        setError(e.message || 'Failed to load preview');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [invoiceId, kind]);
-
-  const insertVar = (v: string) => {
-    const ta = bodyRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const next = body.slice(0, start) + `{{${v}}}` + body.slice(end);
-    setBody(next);
-  };
-
-  const send = async () => {
-    setSending(true);
-    setError(null);
-    try {
-      const res = await sendNotification(invoiceId, kind, { subject, body, to });
-      if (!res.ok) {
-        setError(res.error || 'Send failed');
-        setSending(false);
-        return;
-      }
-      onSent();
-      onClose();
-    } catch (e: any) {
-      setError(e.message || 'Send failed');
-      setSending(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-      <div className="bg-white rounded-lg w-full max-w-xl border border-line">
-        <div className="px-5 py-3 border-b border-line flex items-center justify-between">
-          <h3 className="font-semibold text-ink">Send {kind} notification</h3>
-          <button onClick={onClose} className="text-ink-muted hover:text-ink">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="p-5 space-y-3 text-sm">
-          {loading ? (
-            <p className="text-ink-muted">Loading preview…</p>
-          ) : (
-            <>
-              <label className="block">
-                <span className="text-xs text-ink-muted">To</span>
-                <input
-                  type="email"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className="mt-1 w-full px-3 py-1.5 rounded border border-line"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs text-ink-muted">Subject</span>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="mt-1 w-full px-3 py-1.5 rounded border border-line"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs text-ink-muted">Body</span>
-                <textarea
-                  ref={bodyRef}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={10}
-                  className="mt-1 w-full px-3 py-2 rounded border border-line font-mono text-xs"
-                />
-              </label>
-              <div className="flex flex-wrap gap-1">
-                {MERGE_VARS.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => insertVar(v)}
-                    className="text-[11px] rounded border border-line px-2 py-0.5 text-ink-muted hover:border-teal"
-                  >
-                    {`{{${v}}}`}
-                  </button>
-                ))}
-              </div>
-              {error && (
-                <div className="rounded border border-red-200 bg-red-50 text-red-700 px-3 py-2">
-                  {error}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        <div className="px-5 py-3 border-t border-line flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="text-sm text-ink-muted hover:text-ink px-3 py-1.5"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={loading || sending || !to}
-            onClick={send}
-            className="text-sm rounded-md bg-teal-dark text-white px-4 py-1.5 hover:bg-ocean disabled:opacity-60"
-          >
-            {sending ? 'Sending…' : 'Send'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

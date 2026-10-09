@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   verifyWarehouse,
   buildNotificationPreview,
+  parseShipmentDetails,
   sendFulfillmentEmail,
 } from '@/lib/warehouse/server';
 
@@ -19,6 +20,8 @@ function isKind(s: string | null): s is Kind {
 }
 
 // GET /api/warehouse/queue/[id]/notify?preview=1&kind=packed|shipped
+//     [&tracking_number=&carrier=&tracking_url=&delivery_from=&delivery_to=]
+// The optional shipment details are what the sender typed — previewed, not saved.
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -36,13 +39,16 @@ export async function GET(
   if (!isKind(kind)) {
     return NextResponse.json({ error: 'kind must be packed|shipped' }, { status: 400 });
   }
-  const preview = await buildNotificationPreview(db, params.id, kind);
+  const details = parseShipmentDetails(url.searchParams);
+  const preview = await buildNotificationPreview(db, params.id, kind, details);
   if (!preview) return NextResponse.json({ error: 'invoice not found' }, { status: 404 });
   return NextResponse.json(preview);
 }
 
 // POST /api/warehouse/queue/[id]/notify
-// body: { kind, subject?, body?, to? }
+// body: { kind, subject?, to?, tracking_number?, carrier?, tracking_url?,
+//         delivery_from?, delivery_to? } — the body is the branded template;
+// the shipment details go into this email only (not saved).
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -55,7 +61,7 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden (no email permission)' }, { status: 403 });
   }
 
-  let body: { kind?: string; subject?: string; body?: string; to?: string };
+  let body: Record<string, unknown> & { kind?: string; subject?: string; to?: string };
   try {
     body = await req.json();
   } catch {
@@ -67,8 +73,8 @@ export async function POST(
 
   const result = await sendFulfillmentEmail(db, auth, params.id, body.kind as Kind, {
     subject: body.subject,
-    body: body.body,
     to: body.to,
+    details: parseShipmentDetails({ get: (key: string) => body[key] }),
   });
 
   if (!result.ok) {

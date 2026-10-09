@@ -34,6 +34,7 @@ import OrderManagementPanel from '@/components/admin/OrderManagementPanel';
 import LiveShipmentTracking from '@/components/admin/LiveShipmentTracking';
 import InvoiceEasyshipPanel from '@/components/admin/InvoiceEasyshipPanel';
 import OrderConfirmationEmailCard from '@/components/admin/OrderConfirmationEmailCard';
+import FulfillmentEmailCard from '@/components/admin/FulfillmentEmailCard';
 import AdminPaidAlertEmailCard from '@/components/admin/AdminPaidAlertEmailCard';
 import { formatAppDate } from '@/lib/datetime';
 import type { InvoiceBreakdown } from '@/lib/admin/invoice-breakdown';
@@ -877,6 +878,23 @@ export default function InvoiceDetailPage() {
                 canSend={editable}
               />
             </>
+          )}
+
+          {/* The customer's "order packed" / "order shipped" emails — sent
+              by hand only, from a preview. */}
+          {invoice.status !== 'cancelled' && (
+            <FulfillmentEmailCard
+              invoiceId={invoice.id}
+              invoiceNumber={invoice.invoice_number}
+              fulfillmentType={(invoice as any).fulfillment_type === 'pickup' ? 'pickup' : 'shipment'}
+              packedEmailedAt={(invoice as any).packed_emailed_at ?? null}
+              shippedEmailedAt={(invoice as any).shipped_emailed_at ?? null}
+              canSend={editable}
+              onSent={async () => {
+                const result = await getInvoice(id);
+                if (result) setData(result);
+              }}
+            />
           )}
 
           {/* Easyship — set up, follow and print the shipment for this

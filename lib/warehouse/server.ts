@@ -7,6 +7,16 @@ import { logAuditServer } from '@/lib/admin/audit';
 import { restoreStockForCancelledOrder } from '@/lib/order-stock';
 import { toShippingAddress } from '@/lib/payments/puramass-address';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import { SITE_URL } from '@/lib/config';
+import { loadOrderEmailForInvoice } from '@/lib/order-confirmation';
+import { pickDeliverableEmail } from '@/lib/order-confirmation-data';
+import {
+  fulfillmentEmailSubject,
+  renderFulfillmentEmailHtml,
+  renderFulfillmentEmailText,
+  type FulfillmentEmailData,
+  type FulfillmentTracking,
+} from '@/lib/fulfillment-email';
 import type {
   FulfillmentStatus,
   NotificationPreview,
@@ -472,109 +482,131 @@ export async function applyLineAction(
 }
 
 // ---------- Notification builder + sender ----------
+//
+// The customer's "packed" / "shipped" emails: the branded templates in
+// lib/fulfillment-email.ts, filled from the order behind the invoice. Sent
+// only when staff press Notify packed / Notify shipped — never on a status
+// change. Staff can change the recipient and subject; the body is the template.
 
-interface NotifyContext {
-  customer_first_name: string;
-  customer_last_name: string;
-  order_number: string;
-  invoice_number: string;
-  tracking_number: string;
-  tracking_url: string;
-  carrier: string;
+function trimmed(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
 
-const DEFAULT_TEMPLATES: Record<
-  string,
-  { subject: string; body: string }
-> = {
-  'shipment.packed': {
-    subject: 'Your VYTA order {{order_number}} has been packed',
-    body:
-      "Hi {{customer_first_name}},\n\nGreat news — your order {{order_number}} has been packed and is ready for the carrier. " +
-      "We'll send you the tracking details as soon as it ships.\n\nThanks,\nVYTA Fulfillment",
-  },
-  'shipment.shipped': {
-    subject: 'Your VYTA order {{order_number}} is on its way',
-    body:
-      "Hi {{customer_first_name}},\n\nYour order {{order_number}} just shipped via {{carrier}}.\n" +
-      "Tracking number: {{tracking_number}}\nTrack it here: {{tracking_url}}\n\nThanks,\nVYTA Fulfillment",
-  },
-  'pickup.packed': {
-    subject: 'Your VYTA pickup order {{order_number}} is ready',
-    body:
-      "Hi {{customer_first_name}},\n\nYour pickup order {{order_number}} is packed and ready. " +
-      "Come by during business hours and we'll have it waiting for you.\n\nThanks,\nVYTA Fulfillment",
-  },
-  'pickup.shipped': {
-    subject: 'Your VYTA pickup order {{order_number}}',
-    body:
-      "Hi {{customer_first_name}},\n\nThanks for picking up order {{order_number}}.\n\nVYTA Fulfillment",
-  },
-};
-
-function templateKey(type: 'shipment' | 'pickup', kind: 'packed' | 'shipped'): string {
-  return `${type}.${kind}`;
+/**
+ * Shipment details typed into the send modal — usually because the label was
+ * bought outside Easyship and nothing is on file yet. Used for this email
+ * only (not saved); a blank field falls back to what's stored.
+ */
+export interface ShipmentDetailsInput {
+  trackingNumber?: string | null;
+  carrier?: string | null;
+  trackingUrl?: string | null;
+  /** Estimated delivery window, YYYY-MM-DD. */
+  deliveryFrom?: string | null;
+  deliveryTo?: string | null;
 }
 
-function renderTemplate(tmpl: string, ctx: NotifyContext): string {
-  return tmpl.replace(/\{\{(\w+)\}\}/g, (_, k) => (ctx as any)[k] ?? '');
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Shipment details from query params / a JSON body, cleaned up. */
+export function parseShipmentDetails(source: { get(key: string): unknown }): ShipmentDetailsInput {
+  const text = (key: string, max = 200) => {
+    const v = trimmed(source.get(key));
+    return v ? v.slice(0, max) : null;
+  };
+  const date = (key: string) => {
+    const v = trimmed(source.get(key));
+    return v && DATE_RE.test(v) ? v : null;
+  };
+  const url = text('tracking_url', 1000);
+  return {
+    trackingNumber: text('tracking_number', 100),
+    carrier: text('carrier', 100),
+    trackingUrl: url && /^https?:\/\//i.test(url) ? url : null,
+    deliveryFrom: date('delivery_from'),
+    deliveryTo: date('delivery_to'),
+  };
 }
 
-export function plainTextToHtml(text: string): string {
-  const esc = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  return `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.5;color:#07203a;white-space:pre-wrap;">${esc}</div>`;
+/** Everything needed to render (and address) one packed / shipped email. */
+async function buildFulfillmentEmail(
+  db: SupabaseClient,
+  invoiceId: string,
+  kind: 'packed' | 'shipped',
+  details: ShipmentDetailsInput = {},
+): Promise<{ data: FulfillmentEmailData; to: string | null; stored: FulfillmentTracking } | null> {
+  // `*`: the invoice's own shipment columns arrive with a later migration.
+  const { data: inv } = await db.from('invoices').select('*').eq('id', invoiceId).maybeSingle();
+  if (!inv) return null;
+
+  const order = inv.order_id
+    ? (await db.from('orders').select('*').eq('id', inv.order_id).maybeSingle()).data
+    : null;
+
+  let content: Awaited<ReturnType<typeof loadOrderEmailForInvoice>> = null;
+  try {
+    content = await loadOrderEmailForInvoice(db, invoiceId);
+  } catch (err) {
+    console.error(`[warehouse] loading the order for invoice ${invoiceId} failed:`, err);
+  }
+  const shown = content?.data;
+
+  // The parcel: the order's shipment first, else the invoice's own.
+  const stored: FulfillmentTracking = {
+    number: trimmed(order?.tracking_number) ?? trimmed(inv.tracking_number),
+    carrier:
+      trimmed(order?.carrier) ?? trimmed(order?.shipping_carrier) ?? trimmed(inv.carrier),
+    url: trimmed(order?.tracking_url) ?? trimmed(inv.tracking_url),
+  };
+  // A typed tracking number makes the stored link stale, so it only keeps the
+  // stored URL when the number is unchanged.
+  const typedNumber = trimmed(details.trackingNumber);
+  const numberChanged = !!typedNumber && typedNumber !== stored.number;
+  const tracking: FulfillmentTracking = {
+    number: typedNumber ?? stored.number,
+    carrier: trimmed(details.carrier) ?? stored.carrier,
+    url: trimmed(details.trackingUrl) ?? (numberChanged ? null : stored.url),
+  };
+  const estimatedDelivery =
+    details.deliveryFrom || details.deliveryTo
+      ? { from: details.deliveryFrom ?? null, to: details.deliveryTo ?? null }
+      : null;
+
+  const data: FulfillmentEmailData = {
+    kind,
+    fulfillmentType: inv.fulfillment_type === 'pickup' ? 'pickup' : 'shipment',
+    customerName: shown?.customerName ?? trimmed(inv.customer_name) ?? 'there',
+    orderNumber:
+      shown?.orderNumber ?? trimmed(order?.order_number) ?? trimmed(inv.invoice_number) ?? '',
+    orderDate: shown?.orderDate,
+    items: shown?.items ?? [],
+    shipTo: shown?.shipTo,
+    tracking,
+    estimatedDelivery,
+    viewOrderUrl: shown?.viewOrderUrl,
+  };
+  const to =
+    shown?.to ?? pickDeliverableEmail(...(content?.emails ?? []), inv.customer_email) ?? trimmed(inv.customer_email);
+  return { data, to, stored };
 }
 
 export async function buildNotificationPreview(
   db: SupabaseClient,
   invoiceId: string,
   kind: 'packed' | 'shipped',
+  details: ShipmentDetailsInput = {},
 ): Promise<NotificationPreview | null> {
-  const { data: inv } = await db
-    .from('invoices')
-    .select(
-      'id, invoice_number, customer_email, customer_name, fulfillment_type, order_id',
-    )
-    .eq('id', invoiceId)
-    .maybeSingle();
-  if (!inv) return null;
-
-  const order = inv.order_id
-    ? (
-        await db
-          .from('orders')
-          .select(
-            'order_number, tracking_number, tracking_url, carrier, shipping_address',
-          )
-          .eq('id', inv.order_id)
-          .maybeSingle()
-      ).data
-    : null;
-
-  const [first, ...rest] = (inv.customer_name ?? '').split(/\s+/);
-  const ctx: NotifyContext = {
-    customer_first_name: first ?? '',
-    customer_last_name: rest.join(' '),
-    order_number: order?.order_number ?? '',
-    invoice_number: inv.invoice_number ?? '',
-    tracking_number: order?.tracking_number ?? '',
-    tracking_url: order?.tracking_url ?? '',
-    carrier: order?.carrier ?? '',
-  };
-
-  const key = templateKey(
-    (inv.fulfillment_type as 'shipment' | 'pickup') ?? 'shipment',
-    kind,
-  );
-  const defaults = DEFAULT_TEMPLATES[key];
+  const built = await buildFulfillmentEmail(db, invoiceId, kind, details);
+  if (!built) return null;
+  const subject = fulfillmentEmailSubject(built.data);
   return {
-    subject: renderTemplate(defaults.subject, ctx),
-    body: renderTemplate(defaults.body, ctx),
-    to: inv.customer_email ?? null,
-    defaults,
+    subject,
+    body: renderFulfillmentEmailText(built.data),
+    html: renderFulfillmentEmailHtml(built.data, SITE_URL),
+    to: built.to,
+    defaults: { subject },
+    trackingNumber: built.data.tracking?.number ?? null,
+    stored: built.stored,
   };
 }
 
@@ -598,24 +630,24 @@ export async function sendFulfillmentEmail(
   actor: WarehouseAuth,
   invoiceId: string,
   kind: 'packed' | 'shipped',
-  overrides: { subject?: string; body?: string; to?: string } = {},
+  overrides: { subject?: string; to?: string; details?: ShipmentDetailsInput } = {},
 ): Promise<{
   ok: boolean;
   message_id: string | null;
   emailed_at: string | null;
   error?: string;
 }> {
-  const preview = await buildNotificationPreview(db, invoiceId, kind);
-  if (!preview) {
+  const built = await buildFulfillmentEmail(db, invoiceId, kind, overrides.details);
+  if (!built) {
     return { ok: false, message_id: null, emailed_at: null, error: 'invoice not found' };
   }
-  const to = overrides.to ?? preview.to;
+  const to = trimmed(overrides.to) ?? built.to;
   if (!to) {
     return { ok: false, message_id: null, emailed_at: null, error: 'no recipient' };
   }
-  const subject = overrides.subject ?? preview.subject;
-  const body = overrides.body ?? preview.body;
-  const html = plainTextToHtml(body);
+  const subject = trimmed(overrides.subject) ?? fulfillmentEmailSubject(built.data);
+  const html = renderFulfillmentEmailHtml(built.data, SITE_URL);
+  const text = renderFulfillmentEmailText(built.data);
 
   let success = false;
   let messageId: string | null = null;
@@ -631,7 +663,7 @@ export async function sendFulfillmentEmail(
         from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'VYTA <orders@aminocan.com>',
         to,
         subject,
-        text: body,
+        text,
         html,
       });
       success = true;

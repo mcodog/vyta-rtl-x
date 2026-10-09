@@ -104,9 +104,27 @@ export interface QueueViewer {
 
 export interface NotificationPreview {
   subject: string;
+  /** Plain-text version of the email. */
   body: string;
+  /** The branded email exactly as it will be sent. */
+  html: string;
   to: string | null;
-  defaults: { subject: string; body: string };
+  defaults: { subject: string };
+  /** Null on a shipped email means it goes out without a tracking number. */
+  trackingNumber: string | null;
+  /** What's on file for the parcel — prefills the modal's shipment fields. */
+  stored: { number: string | null; carrier: string | null; url: string | null };
+}
+
+/** Shipment details typed into the send modal (snake_case, as sent on the wire). */
+export interface ShipmentDetailsFields {
+  tracking_number?: string;
+  carrier?: string;
+  tracking_url?: string;
+  /** YYYY-MM-DD */
+  delivery_from?: string;
+  /** YYYY-MM-DD */
+  delivery_to?: string;
 }
 
 // ---------- Step state machines ----------
