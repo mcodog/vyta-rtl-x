@@ -203,10 +203,9 @@ export async function fetchInvoicePdfHtml(
 
 export async function previewNotification(
   invoiceId: string,
-  kind: 'packed' | 'shipped',
   details: ShipmentDetailsFields = {},
 ): Promise<NotificationPreview> {
-  const params = new URLSearchParams({ preview: '1', kind });
+  const params = new URLSearchParams({ preview: '1' });
   for (const [k, v] of Object.entries(details)) if (v) params.set(k, v);
   const res = await fetch(
     `/api/warehouse/queue/${invoiceId}/notify?${params.toString()}`,
@@ -246,7 +245,6 @@ export async function sendPackingList(
 
 export async function sendNotification(
   invoiceId: string,
-  kind: 'packed' | 'shipped',
   overrides?: { subject?: string; to?: string } & ShipmentDetailsFields,
 ): Promise<{
   ok: boolean;
@@ -261,7 +259,7 @@ export async function sendNotification(
       'Content-Type': 'application/json',
       ...(await authHeader()),
     },
-    body: JSON.stringify({ kind, ...overrides }),
+    body: JSON.stringify({ ...overrides }),
   });
   return jsonOrThrow(res);
 }

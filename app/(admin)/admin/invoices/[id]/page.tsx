@@ -880,14 +880,13 @@ export default function InvoiceDetailPage() {
             </>
           )}
 
-          {/* The customer's "order packed" / "order shipped" emails — sent
-              by hand only, from a preview. */}
-          {invoice.status !== 'cancelled' && (
+          {/* The customer's "Your Order Has Shipped!" email — one email,
+              sent by hand once the order is packed and shipped. Shipments
+              only; a pickup has nothing to track. */}
+          {invoice.status !== 'cancelled' && (invoice as any).fulfillment_type !== 'pickup' && (
             <FulfillmentEmailCard
               invoiceId={invoice.id}
               invoiceNumber={invoice.invoice_number}
-              fulfillmentType={(invoice as any).fulfillment_type === 'pickup' ? 'pickup' : 'shipment'}
-              packedEmailedAt={(invoice as any).packed_emailed_at ?? null}
               shippedEmailedAt={(invoice as any).shipped_emailed_at ?? null}
               canSend={editable}
               onSent={async () => {

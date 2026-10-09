@@ -485,10 +485,10 @@ export async function applyLineAction(
 
 // ---------- Notification builder + sender ----------
 //
-// The customer's "packed" / "shipped" emails: the branded templates in
-// lib/fulfillment-email.ts, filled from the order behind the invoice. Sent
-// only when staff press Notify packed / Notify shipped — never on a status
-// change. Staff can change the recipient and subject; the body is the template.
+// The customer's one "Your Order Has Shipped!" email (lib/fulfillment-email.ts),
+// filled from the order behind the invoice. Sent only when staff press Send
+// shipped email — never on a status change. Staff can change the recipient and
+// subject and type the shipment details; the body is the template.
 
 function trimmed(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
@@ -530,11 +530,10 @@ export function parseShipmentDetails(source: { get(key: string): unknown }): Shi
   };
 }
 
-/** Everything needed to render (and address) one packed / shipped email. */
+/** Everything needed to render (and address) the shipped email. */
 async function buildFulfillmentEmail(
   db: SupabaseClient,
   invoiceId: string,
-  kind: 'packed' | 'shipped',
   details: ShipmentDetailsInput = {},
 ): Promise<{ data: FulfillmentEmailData; to: string | null; stored: FulfillmentTracking } | null> {
   // `*`: the invoice's own shipment columns arrive with a later migration.
@@ -575,8 +574,6 @@ async function buildFulfillmentEmail(
       : null;
 
   const data: FulfillmentEmailData = {
-    kind,
-    fulfillmentType: inv.fulfillment_type === 'pickup' ? 'pickup' : 'shipment',
     customerName: shown?.customerName ?? trimmed(inv.customer_name) ?? 'there',
     orderNumber:
       shown?.orderNumber ?? trimmed(order?.order_number) ?? trimmed(inv.invoice_number) ?? '',
@@ -595,10 +592,9 @@ async function buildFulfillmentEmail(
 export async function buildNotificationPreview(
   db: SupabaseClient,
   invoiceId: string,
-  kind: 'packed' | 'shipped',
   details: ShipmentDetailsInput = {},
 ): Promise<NotificationPreview | null> {
-  const built = await buildFulfillmentEmail(db, invoiceId, kind, details);
+  const built = await buildFulfillmentEmail(db, invoiceId, details);
   if (!built) return null;
   const subject = fulfillmentEmailSubject(built.data);
   return {
@@ -641,7 +637,6 @@ export async function sendFulfillmentEmail(
   db: SupabaseClient,
   actor: WarehouseAuth,
   invoiceId: string,
-  kind: 'packed' | 'shipped',
   overrides: { subject?: string; to?: string; details?: ShipmentDetailsInput } = {},
 ): Promise<{
   ok: boolean;
@@ -651,7 +646,7 @@ export async function sendFulfillmentEmail(
   /** The admin team's copy — only attempted once the customer's send worked. */
   admin_copy?: AdminCopyResult;
 }> {
-  const built = await buildFulfillmentEmail(db, invoiceId, kind, overrides.details);
+  const built = await buildFulfillmentEmail(db, invoiceId, overrides.details);
   if (!built) {
     return { ok: false, message_id: null, emailed_at: null, error: 'invoice not found' };
   }
@@ -709,7 +704,7 @@ export async function sendFulfillmentEmail(
   try {
     await db.from('fulfillment_email_log').insert({
       invoice_id: invoiceId,
-      kind,
+      kind: 'shipped',
       to_email: to,
       subject,
       message_id: messageId,
@@ -732,7 +727,7 @@ export async function sendFulfillmentEmail(
     adminCopy = { sent: false, to: adminTo };
     if (adminTo.length > 0) {
       const who = actor.actorEmail ? ` by ${actor.actorEmail}` : '';
-      const notice = `this ${kind === 'packed' ? 'packed' : 'shipped'} email was sent to ${to}${who}.`;
+      const notice = `this shipped email was sent to ${to}${who}.`;
       try {
         await transport.sendMail({
           from: FROM_ADDRESS(),
@@ -744,21 +739,20 @@ export async function sendFulfillmentEmail(
         adminCopy.sent = true;
       } catch (e: any) {
         adminCopy.error = e?.message ?? 'send failed';
-        console.error(`[warehouse] admin copy of the ${kind} email for invoice ${invoiceId} failed:`, e);
+        console.error(`[warehouse] admin copy of the shipped email for invoice ${invoiceId} failed:`, e);
       }
     }
   }
 
   if (success) {
-    const stamp = kind === 'packed' ? 'packed_emailed_at' : 'shipped_emailed_at';
     try {
-      await db.from('invoices').update({ [stamp]: sentAt }).eq('id', invoiceId);
+      await db.from('invoices').update({ shipped_emailed_at: sentAt }).eq('id', invoiceId);
     } catch {}
     await logAuditServer(
       db,
       { actor_id: actor.actorId, actor_email: actor.actorEmail },
       {
-        action: `fulfillment.email_sent.${kind}`,
+        action: 'fulfillment.email_sent.shipped',
         entity_type: 'invoice',
         entity_id: invoiceId,
       },
