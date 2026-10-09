@@ -11,6 +11,12 @@ import {
   renderOrderConfirmationText,
   type AdminOrderPaidEmailData,
 } from '@/lib/order-confirmation-email';
+import {
+  affiliateCommissionSubject,
+  renderAffiliateCommissionHtml,
+  renderAffiliateCommissionText,
+  type AffiliateCommissionEmailData,
+} from '@/lib/affiliate-commission-email';
 
 /**
  * Storefront / transactional email sends route through the shared custom SMTP
@@ -1050,6 +1056,37 @@ export async function sendAdminOrderPaidAlert(
     return { success: true, id: result?.id, subject };
   } catch (error) {
     console.error("Error sending admin order-paid alert:", error);
+    return { success: false, error: "Failed to send email", subject };
+  }
+}
+
+/**
+ * Tell an affiliate a paid order earned them a commission ("You earned a new
+ * commission"). Sent once per commission by `notifyAffiliateOfCommission`
+ * (lib/affiliate/commission-email.ts); the template is
+ * lib/affiliate-commission-email.ts. Never throws; `subject` is returned on
+ * every branch so the caller can log it.
+ */
+export async function sendAffiliateCommissionEmail(
+  to: string,
+  data: AffiliateCommissionEmailData,
+): Promise<{ success: boolean; id?: string; error?: string; subject: string }> {
+  const subject = affiliateCommissionSubject(data);
+  try {
+    const { data: result, error } = await getResend().emails.send({
+      from: fromEmail,
+      to,
+      subject,
+      html: renderAffiliateCommissionHtml(data, SITE_URL),
+      text: renderAffiliateCommissionText(data),
+    });
+    if (error) {
+      console.error("Error sending affiliate commission email:", error);
+      return { success: false, error: error.message, subject };
+    }
+    return { success: true, id: result?.id, subject };
+  } catch (error) {
+    console.error("Error sending affiliate commission email:", error);
     return { success: false, error: "Failed to send email", subject };
   }
 }
