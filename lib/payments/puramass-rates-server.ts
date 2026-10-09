@@ -97,11 +97,13 @@ export async function quoteHostedRates(
         destination_city: destination.city ?? '',
         destination_state: destination.state || undefined,
         total_actual_weight: hostedParcelWeight(vials, cfg.itemWeightKg),
+        quantity: Math.max(1, Math.round(Number(vials) || 1)),
+        // Blank sides go out as 1 cm (lib/easyship.ts parcelDimensions).
         boxes: [
           {
-            length: box.length ?? 15,
-            width: box.width ?? 10,
-            height: box.height ?? 5,
+            length: box.length ?? 0,
+            width: box.width ?? 0,
+            height: box.height ?? 0,
             weight: box.weight ?? 0.05,
           },
         ],

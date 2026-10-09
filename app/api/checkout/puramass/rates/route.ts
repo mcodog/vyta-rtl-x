@@ -15,7 +15,7 @@ const db = createClient(
  * The admin-side twin of this is /api/admin/invoices/shipping-readiness, which
  * quotes Easyship for an invoice. This is the buyer-facing version: given the
  * address they just typed and how many vials are in the cart, return the
- * fastest handful of UPS / FedEx / Canada Post services, each priced with the
+ * fastest handful of UPS / Canada Post services, each priced with the
  * admin's processing fee already folded in.
  *
  * Read-only — it creates no shipment and no order. The amounts it returns are

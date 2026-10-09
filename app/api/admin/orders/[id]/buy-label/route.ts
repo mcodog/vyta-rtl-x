@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buyEasyshipLabel, getShippingConfig } from '@/lib/easyship';
+import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +56,15 @@ export async function POST(
         carrier: label.carrier ?? undefined,
       })
       .eq('id', params.id);
+    // Mirror the record onto the order's invoice and send the shipped email
+    // (customer + admins) once the label exists — after the response.
+    if (label.state === 'generated') {
+      after(() =>
+        onShipmentLabelGenerated(db, { kind: 'order', id: params.id }, { apiKey: cfg.apiKey }).then(
+          () => {},
+        ),
+      );
+    }
     return NextResponse.json({ label });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? 'buy-label failed' }, { status: 502 });

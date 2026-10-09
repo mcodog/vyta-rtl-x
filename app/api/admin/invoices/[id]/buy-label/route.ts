@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getInvoiceCaller, callerCanWrite } from '@/lib/admin/invoice-access';
 import { logAuditServer } from '@/lib/admin/audit';
 import { buyEasyshipLabel, getShippingConfig } from '@/lib/easyship';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,6 +96,16 @@ export async function POST(
         carrier: label.carrier ?? undefined,
       })
       .eq('id', rowId);
+
+    // Label in hand: mirror the Easyship record onto the invoice and send the
+    // shipped email (customer + admins), after the response. A label still
+    // generating is finished by the Easyship webhook, which does the same.
+    if (label.state === 'generated') {
+      const anchor = invoice.order_id
+        ? ({ kind: 'order', id: invoice.order_id } as const)
+        : ({ kind: 'invoice', id: params.id } as const);
+      after(() => onShipmentLabelGenerated(db, anchor, { apiKey: cfg.apiKey }).then(() => {}));
+    }
 
     await logAuditServer(db, caller, {
       action: 'invoice.buy_label',

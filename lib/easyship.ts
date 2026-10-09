@@ -23,6 +23,58 @@ function headers(apiKey?: string) {
   };
 }
 
+// ---------- Parcel contents ----------
+//
+// Every Easyship parcel goes out the same way, whatever the order holds:
+//   • one item line under the supplements category (SUPPLEMENTS_HS_CODE),
+//   • the real unit count as its quantity,
+//   • a declared value of 1 per unit — never the order's real prices,
+//   • the box from Settings → Default parcel, each blank side falling back
+//     to 1 cm.
+// Rate quotes and shipment creation both build from these, so the rate the
+// courier was picked on is the rate the label is bought at.
+
+/** Easyship item category "Dry Food & Supplements". */
+export const SUPPLEMENTS_HS_CODE = '17049000';
+/** Description on every parcel item. */
+export const PARCEL_ITEM_DESCRIPTION = 'Supplements';
+/** Declared customs value per unit (CAD). */
+export const DECLARED_UNIT_VALUE = 1;
+/** Per-unit weight floor (kg) — Easyship rejects a weight <= 0. */
+export const MIN_UNIT_WEIGHT_KG = 0.01;
+/** Box side (cm) used when Settings → Default parcel leaves it blank or 0. */
+export const FALLBACK_DIMENSION_CM = 1;
+
+/** A box side, or the 1 cm fallback for a blank / zero / junk value. */
+export function parcelDimension(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : FALLBACK_DIMENSION_CM;
+}
+
+/** The configured box with the 1 cm fallback applied to each side. */
+export function parcelDimensions(box: {
+  length?: number | null;
+  width?: number | null;
+  height?: number | null;
+} | null | undefined): { length: number; width: number; height: number } {
+  return {
+    length: parcelDimension(box?.length),
+    width: parcelDimension(box?.width),
+    height: parcelDimension(box?.height),
+  };
+}
+
+/** Units in a parcel: the summed line quantities, at least 1. */
+export function parcelQuantity(
+  items: Array<{ quantity?: number | string | null; qty?: number | string | null }> | null | undefined,
+): number {
+  const total = (items ?? []).reduce(
+    (s, i) => s + (Number(i.quantity) || Number(i.qty) || 0),
+    0,
+  );
+  return Math.max(1, Math.round(total));
+}
+
 // ---------- Config from site_settings (with env fallback) ----------
 
 export interface ShippingConfig {
@@ -59,7 +111,9 @@ const DEFAULT_CONFIG: ShippingConfig = {
     postal_code: process.env.EASYSHIP_ORIGIN_POSTAL ?? '',
     country_alpha2: process.env.EASYSHIP_ORIGIN_COUNTRY ?? 'CA',
   },
-  box: { length: 15, width: 10, height: 5, weight: 0.05 },
+  // Blank dimensions fall back to 1 cm each (FALLBACK_DIMENSION_CM) — see
+  // parcelDimensions(). Weight is the per-unit floor.
+  box: { length: FALLBACK_DIMENSION_CM, width: FALLBACK_DIMENSION_CM, height: FALLBACK_DIMENSION_CM, weight: 0.05 },
   itemWeightKg: 0.05,
   flatRate: 20,
   handlingFeeType: 'flat',
@@ -115,11 +169,18 @@ export async function getShippingConfig(
 
 // ---------- Courier whitelist & handling fee ----------
 
-export const ALLOWED_COURIERS = ['ups', 'fedex'] as const;
+/**
+ * The only couriers a shipment is ever booked with. Matched against Easyship's
+ * `umbrella_name` ("UPS", "Canada Post"), lower-cased; `\s*` so "CanadaPost"
+ * matches too.
+ */
+export const ALLOWED_COURIERS = ['ups', 'canada post'] as const;
 
-export function isAllowedCourier(rate: EasyshipRate): boolean {
+const ALLOWED_COURIER_PATTERNS = [/\bups\b/, /\bcanada\s*post\b/];
+
+export function isAllowedCourier(rate: { courier_name?: string | null }): boolean {
   const name = (rate.courier_name || '').toLowerCase();
-  return ALLOWED_COURIERS.some((c) => new RegExp(`\\b${c}\\b`).test(name));
+  return ALLOWED_COURIER_PATTERNS.some((re) => re.test(name));
 }
 
 /** Carrier rate plus the configured processing fee. See lib/shipping/processing-fee.ts. */
@@ -134,6 +195,13 @@ export function applyHandlingFee(cost: number, config: ShippingConfig): number {
 // not a valid rates request on any current API version, so every quote threw
 // and checkout silently fell back to the flat rate.
 function buildRatesBody(payload: EasyshipRateRequest) {
+  const quantity = Math.max(1, Math.round(Number(payload.quantity) || 1));
+  const dimensions = parcelDimensions(payload.boxes?.[0]);
+  // total_actual_weight is the whole parcel; Easyship's item weight is per unit.
+  const unitWeight = Math.max(
+    (Number(payload.total_actual_weight) || 0) / quantity,
+    MIN_UNIT_WEIGHT_KG,
+  );
   return {
     origin_address: {
       country_alpha2: payload.origin_country_alpha2,
@@ -150,24 +218,21 @@ function buildRatesBody(payload: EasyshipRateRequest) {
     incoterms: 'DDU',
     insurance: { is_insured: false },
     courier_settings: { show_courier_logo_url: false, apply_shipping_rules: true },
-    // Rate quotes use a fixed minimal parcel: 1 lb, 1x1x1 in. Configured box
-    // dims were arriving as 0 and Easyship rejects any dimension <= 0.
-    shipping_settings: { units: { weight: 'lb', dimensions: 'in' } },
-    // 2024-09 requires parcels[].items[] — a parcel described only by a box +
-    // total weight is rejected ("parcels[0].items can't be blank"). Represent
-    // the whole shipment as a single item carrying the total weight + box dims.
+    shipping_settings: { units: { weight: 'kg', dimensions: 'cm' } },
+    // 2024-09 requires parcels[].items[]. The quote describes the same single
+    // supplements line the shipment is created with (see "Parcel contents"):
+    // the real unit count, a declared value of 1 per unit, and the configured
+    // box with each blank side at 1 cm.
     parcels: [
       {
         items: [
           {
-            // Each rate item must carry an hs_code; 17049000 = "Dry Food &
-            // Supplements". (item_category_id is not accepted by this schema.)
-            hs_code: payload.hs_code ?? '17049000',
-            actual_weight: 1,
+            hs_code: SUPPLEMENTS_HS_CODE,
+            quantity,
+            actual_weight: unitWeight,
             declared_currency: payload.declared_currency ?? 'CAD',
-            declared_customs_value: payload.declared_customs_value ?? 50,
-            // dimensions is a required nested object on the rate item.
-            dimensions: { length: 1, width: 1, height: 1 },
+            declared_customs_value: DECLARED_UNIT_VALUE,
+            dimensions,
           },
         ],
       },
@@ -342,38 +407,29 @@ export async function createEasyshipShipment(
         buy_label: false,
         buy_label_synchronous: false,
       },
-      // 2024-09 ParcelCreate does NOT accept item fields (description,
-      // quantity, weight, dimensions, customs value) directly on the parcel —
-      // they live on parcels[].items[], with the parcel carrying box dims +
-      // total_actual_weight. Mirror the item shape the /rates endpoint accepts.
-      // Easyship rejects dims/weight <= 0 — fall back to the minimum (1 cm,
-      // 1 lb ≈ 0.4536 kg) when a value is missing or zero.
-      parcels: payload.parcels.map((raw) => {
-        const pos = (v: unknown, d: number) => (Number(v) > 0 ? Number(v) : d);
-        const p = {
-          ...raw,
-          length: pos(raw.length, 1),
-          width: pos(raw.width, 1),
-          height: pos(raw.height, 1),
-          actual_weight: pos(raw.actual_weight, 0.4536),
-        };
+      // 2024-09 ParcelCreate does NOT accept item fields directly on the
+      // parcel — they live on parcels[].items[], with the parcel carrying box
+      // dims + total_actual_weight. One supplements line per parcel: the real
+      // unit count, a declared value of 1 per unit, and each blank box side at
+      // 1 cm (see "Parcel contents" above).
+      parcels: payload.parcels.map((p) => {
+        const quantity = Math.max(1, Math.round(Number(p.quantity) || 1));
+        const unitWeight = Math.max(Number(p.actual_weight) || 0, MIN_UNIT_WEIGHT_KG);
+        const dimensions = parcelDimensions(p);
         return {
-        box: { length: p.length, width: p.width, height: p.height },
-        total_actual_weight: p.actual_weight * (p.quantity || 1),
-        items: [
-          {
-            description: p.description,
-            quantity: p.quantity,
-            actual_weight: p.actual_weight,
-            declared_currency: p.declared_currency,
-            // Easyship requires declared_customs_value > 0.
-            declared_customs_value: Math.max(Number(p.declared_customs_value) || 0, 1),
-            // Each item must carry an hs_code; 17049000 = "Dry Food &
-            // Supplements" (same default used for rate quotes).
-            hs_code: p.hs_code ?? '17049000',
-            dimensions: { length: p.length, width: p.width, height: p.height },
-          },
-        ],
+          box: dimensions,
+          total_actual_weight: Number((unitWeight * quantity).toFixed(3)),
+          items: [
+            {
+              description: PARCEL_ITEM_DESCRIPTION,
+              hs_code: SUPPLEMENTS_HS_CODE,
+              quantity,
+              actual_weight: unitWeight,
+              declared_currency: p.declared_currency || 'CAD',
+              declared_customs_value: DECLARED_UNIT_VALUE,
+              dimensions,
+            },
+          ],
         };
       }),
     }),
@@ -385,15 +441,118 @@ export async function createEasyshipShipment(
   }
 
   const json = await res.json();
-  const s = json.shipment;
+  const d = normalizeEasyshipShipment(json.shipment);
   return {
-    easyship_shipment_id: s.easyship_shipment_id,
-    tracking_number: s.tracking_number,
-    label_url: s.label_url,
-    courier_name: s.courier_name,
-    total_charge: s.total_charge,
-    currency: s.currency,
+    easyship_shipment_id: d.easyship_shipment_id,
+    tracking_number: d.tracking_number,
+    label_url: d.label_url,
+    courier_name: d.carrier,
+    total_charge: d.total_charge,
+    currency: d.currency,
   };
+}
+
+// ---------- Shipment details (the record mirrored onto the invoice) ----------
+
+/** Everything worth keeping from an Easyship shipment, flattened. */
+export interface EasyshipShipmentDetails {
+  easyship_shipment_id: string;
+  label_state: 'not_created' | 'pending' | 'generated' | 'failed';
+  label_url: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  tracking_status: string | null;
+  /** Courier brand, e.g. "UPS" / "Canada Post". */
+  carrier: string | null;
+  /** Service, e.g. "UPS Express Saver" / "Canada Post Xpresspost". */
+  service_name: string | null;
+  courier_service_id: string | null;
+  /** What the label cost on the Easyship account. */
+  total_charge: number | null;
+  currency: string | null;
+  min_delivery_days: number | null;
+  max_delivery_days: number | null;
+  /** When Easyship says the label was generated, if it says. */
+  label_generated_at: string | null;
+}
+
+const str = (v: unknown): string | null =>
+  typeof v === 'string' && v.trim() ? v.trim() : null;
+const num = (v: unknown): number | null => {
+  const n = typeof v === 'string' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Flatten an Easyship shipment object. Field placement differs between API
+ * versions and between "just created" and "label bought" shipments, so each
+ * value is probed in the places it has been seen and the first real one wins.
+ */
+export function normalizeEasyshipShipment(shipment: any): EasyshipShipmentDetails {
+  const s = shipment ?? {};
+  const cs = s.courier_service ?? s.courier ?? s.selected_courier ?? {};
+  const rate = (Array.isArray(s.rates) ? s.rates[0] : null) ?? s.selected_rate ?? {};
+  const trackings = Array.isArray(s.trackings) ? s.trackings : [];
+  // shipping_documents is an array of { category, url, ... } on current
+  // versions; older payloads used an object with label_url.
+  const docs = s.shipping_documents;
+  const labelDoc = Array.isArray(docs)
+    ? docs.find((d: any) => String(d?.category ?? '').toLowerCase() === 'label')
+    : null;
+  const labelUrl =
+    str(s.label_url) ??
+    str(labelDoc?.url) ??
+    str(docs?.label_url) ??
+    str(s.label?.url);
+
+  const rawState = String(s.label_state ?? s.label_status ?? '').toLowerCase();
+  let labelState: EasyshipShipmentDetails['label_state'] = labelUrl ? 'generated' : 'not_created';
+  if (rawState === 'generated' || rawState === 'printed') labelState = 'generated';
+  if (rawState === 'pending' || rawState === 'processing') labelState = labelUrl ? 'generated' : 'pending';
+  if (rawState === 'failed' || rawState === 'error') labelState = 'failed';
+
+  return {
+    easyship_shipment_id: str(s.easyship_shipment_id) ?? str(s.id) ?? '',
+    label_state: labelState,
+    label_url: labelUrl,
+    tracking_number:
+      str(s.tracking_number) ??
+      str(trackings[0]?.tracking_number) ??
+      str(s.last_mile_tracking_number),
+    tracking_url: str(s.tracking_page_url) ?? str(s.tracking_url),
+    tracking_status:
+      str(s.tracking_status) ??
+      str(trackings[0]?.tracking_state) ??
+      str(s.delivery_state) ??
+      null,
+    carrier:
+      str(cs.umbrella_name) ?? str(s.courier_name) ?? str(rate.courier_service?.umbrella_name) ?? str(cs.name),
+    service_name: str(cs.name) ?? str(rate.courier_service?.name) ?? str(rate.full_description),
+    courier_service_id: str(cs.id) ?? str(rate.courier_service?.id),
+    total_charge:
+      num(rate.total_charge) ?? num(s.total_charge) ?? num(rate.shipment_charge_total),
+    currency: str(rate.currency) ?? str(s.currency),
+    min_delivery_days: num(rate.min_delivery_time) ?? num(s.min_delivery_time),
+    max_delivery_days: num(rate.max_delivery_time) ?? num(s.max_delivery_time),
+    label_generated_at:
+      str(s.label_generated_at) ?? str(s.label_paid_at) ?? str(labelDoc?.created_at),
+  };
+}
+
+/** Read one shipment off Easyship, flattened. Throws on an API error. */
+export async function getEasyshipShipmentDetails(
+  easyshipShipmentId: string,
+  apiKey?: string,
+): Promise<EasyshipShipmentDetails> {
+  const res = await fetch(`${EASYSHIP_BASE}/shipments/${easyshipShipmentId}`, {
+    headers: headers(apiKey),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Easyship shipment read error ${res.status}: ${text}`);
+  }
+  const json = await res.json();
+  return normalizeEasyshipShipment(json.shipment);
 }
 
 // ---------- List shipments (for the sync dialog) ----------
@@ -563,20 +722,12 @@ export function extractLabelInfo(shipment: any): EasyshipLabelInfo {
   if (!shipment) {
     return { state: 'not_created', url: null, tracking_number: null, carrier: null };
   }
-  const url =
-    shipment.label_url ||
-    shipment.shipping_documents?.label_url ||
-    shipment.label?.url ||
-    null;
-  const status = (shipment.label_state || shipment.label_status || '').toLowerCase();
-  let state: EasyshipLabelInfo['state'] = url ? 'generated' : 'not_created';
-  if (status === 'pending' || status === 'processing') state = 'pending';
-  if (status === 'failed' || status === 'error') state = 'failed';
+  const d = normalizeEasyshipShipment(shipment);
   return {
-    state,
-    url,
-    tracking_number: shipment.tracking_number ?? null,
-    carrier: shipment.courier_name ?? null,
+    state: d.label_state,
+    url: d.label_url,
+    tracking_number: d.tracking_number,
+    carrier: d.carrier,
   };
 }
 

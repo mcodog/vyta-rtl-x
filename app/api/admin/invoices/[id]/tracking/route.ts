@@ -3,6 +3,33 @@ import { createClient } from '@supabase/supabase-js';
 import { getInvoiceCaller } from '@/lib/admin/invoice-access';
 import { getEasyshipTracking } from '@/lib/easyship';
 import { isMissingColumnError } from '@/lib/payments/puramass-columns';
+import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
+
+/**
+ * The rest of the Easyship record, mirrored onto the invoice when the label
+ * was generated (easyship-label-sync-migration.sql). Read on its own so a
+ * database without those columns still answers.
+ */
+async function loadShipmentRecord(invoiceId: string) {
+  const { data, error } = await db
+    .from('invoices')
+    .select(
+      'shipping_service, shipping_label_cost, shipping_label_currency, est_delivery_min_days, est_delivery_max_days, label_generated_at, easyship_synced_at, shipped_emailed_at',
+    )
+    .eq('id', invoiceId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    service: data.shipping_service ?? null,
+    label_cost: data.shipping_label_cost != null ? Number(data.shipping_label_cost) : null,
+    label_currency: data.shipping_label_currency ?? null,
+    est_delivery_min_days: data.est_delivery_min_days ?? null,
+    est_delivery_max_days: data.est_delivery_max_days ?? null,
+    label_generated_at: data.label_generated_at ?? null,
+    synced_at: data.easyship_synced_at ?? null,
+    shipped_emailed_at: data.shipped_emailed_at ?? null,
+  };
+}
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +61,23 @@ export async function GET(
   const caller = await getInvoiceCaller(db, req);
   if (!caller.ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  // An admin's live refresh also re-syncs the full Easyship record onto the
+  // invoice — and, when the label exists and the customer hasn't had the
+  // shipped email yet, sends it (catches a label the webhook never reported).
+  if (req.nextUrl.searchParams.get('refresh') === '1' && caller.role === 'admin') {
+    const { data: head } = await db
+      .from('invoices')
+      .select('id, order_id')
+      .eq('id', params.id)
+      .maybeSingle();
+    if (head) {
+      await onShipmentLabelGenerated(
+        db,
+        head.order_id ? { kind: 'order', id: head.order_id } : { kind: 'invoice', id: head.id },
+      );
+    }
   }
 
   // The invoice's own shipment block (easyship-invoice-shipment-migration.sql).
@@ -173,6 +217,8 @@ export async function GET(
     }
   }
 
+  tracking.record = await loadShipmentRecord(params.id);
+
   return NextResponse.json({
     hasOrder: true,
     order_id: order.id,
@@ -244,6 +290,8 @@ async function invoiceAnchoredSnapshot(
       tracking = { ...tracking, refresh_error: e?.message ?? 'Easyship error' };
     }
   }
+
+  tracking.record = await loadShipmentRecord(invoice.id);
 
   const hasShipment = !!invoice.easyship_shipment_id;
   return {

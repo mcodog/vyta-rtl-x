@@ -42,11 +42,11 @@ function rate(over: Partial<EasyshipRate> & { courier_id: string }): EasyshipRat
 
 // ---- Courier whitelist ----------------------------------------------------
 
-test('only UPS, FedEx and Canada Post are offered', () => {
-  for (const courier_name of ['UPS', 'ups', 'FedEx', 'Canada Post', 'canada post']) {
+test('only UPS and Canada Post are offered', () => {
+  for (const courier_name of ['UPS', 'ups', 'Canada Post', 'canada post']) {
     assert.equal(isHostedCourier({ courier_name }), true, courier_name);
   }
-  for (const courier_name of ['DHL', 'Purolator', 'Canpar', 'Sendle', '']) {
+  for (const courier_name of ['FedEx', 'DHL', 'Purolator', 'Canpar', 'Sendle', '']) {
     assert.equal(isHostedCourier({ courier_name }), false, courier_name);
   }
 });

@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { advanceOrderForward } from '@/lib/warehouse/types';
 import { trackOrderStatus, trackOrderStatusById } from '@/lib/klaviyo/events';
+import { onShipmentLabelGenerated } from '@/lib/shipping/label-generated';
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -136,7 +137,10 @@ export async function POST(req: NextRequest) {
   const trackingUrl = event.tracking_url || payload?.tracking_url || null;
   const carrier = event.courier_name || event.carrier || null;
   const labelUrl = event.label_url || event.shipping_documents?.label_url || null;
-  const labelState = labelUrl ? 'generated' : null;
+  const labelState =
+    labelUrl || String(event.label_state ?? '').toLowerCase() === 'generated'
+      ? 'generated'
+      : null;
 
   // Full checkpoint history — the shipment.tracking.checkpoints.created event
   // carries the same journey shown on Easyship's trackmyshipment.co page.
@@ -160,7 +164,7 @@ export async function POST(req: NextRequest) {
   if (easyshipId) {
     const { data } = await db
       .from('orders')
-      .select('id, status')
+      .select('id, status, label_state')
       .eq('easyship_shipment_id', easyshipId)
       .maybeSingle();
     if (data) order = data;
@@ -168,7 +172,7 @@ export async function POST(req: NextRequest) {
   if (!order && orderNumber) {
     const { data } = await db
       .from('orders')
-      .select('id, status')
+      .select('id, status, label_state')
       .eq('order_number', orderNumber)
       .maybeSingle();
     if (data) order = data;
@@ -176,7 +180,7 @@ export async function POST(req: NextRequest) {
   if (!order && trackingNumber) {
     const { data } = await db
       .from('orders')
-      .select('id, status')
+      .select('id, status, label_state')
       .eq('tracking_number', trackingNumber)
       .maybeSingle();
     if (data) order = data;
@@ -208,6 +212,14 @@ export async function POST(req: NextRequest) {
 
     if (Object.keys(invoiceUpdate).length > 0) {
       await db.from('invoices').update(invoiceUpdate).eq('id', invoice.id);
+    }
+    // First sight of the label (e.g. bought in the Easyship dashboard, or a
+    // purchase that was still generating): pull the full record onto the
+    // invoice and send the shipped email to the customer + admins.
+    if (labelState === 'generated' && invoice.label_state !== 'generated') {
+      after(() =>
+        onShipmentLabelGenerated(db, { kind: 'invoice', id: invoice.id }).then(() => {}),
+      );
     }
     if (normalizedCheckpoints && normalizedCheckpoints.length > 0) {
       const { error: cpErr } = await db
@@ -285,6 +297,12 @@ export async function POST(req: NextRequest) {
 
   // Klaviyo "Fulfilled Order" / "Delivered Order" (best-effort, never throws).
   if (nextStatus) await trackOrderStatusById(db, order.id, nextStatus);
+
+  // First sight of the label: mirror the full record onto the order's invoice
+  // and send the shipped email to the customer + admins.
+  if (labelState === 'generated' && order.label_state !== 'generated') {
+    after(() => onShipmentLabelGenerated(db, { kind: 'order', id: order.id }).then(() => {}));
+  }
 
   return NextResponse.json({ matched: true, advanced: nextStatus });
 }

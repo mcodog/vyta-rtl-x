@@ -732,7 +732,8 @@ export async function expireStealthHealthInvoices(
  * toggle says (`force`). A buyer who chose a courier on our checkout has
  * already paid for that exact service, so it is booked as-is. A flat-fee or
  * free-shipping order picked no service — live rates weren't on screen — so
- * the fastest allowed service from a fresh quote is booked instead. The
+ * the best value from a fresh quote is booked instead: the cheapest UPS /
+ * Canada Post service that arrives within 2 days. The
  * shipment is a DRAFT; buying the label stays governed by
  * `easyship_auto_buy_label`.
  *
@@ -750,7 +751,7 @@ async function bookShipment(
       db,
       invoiceId,
       true,
-      courierId ? { courierIdOverride: courierId } : { courierPreference: 'fastest' },
+      courierId ? { courierIdOverride: courierId } : { courierPreference: 'best_value' },
     );
   } catch (err) {
     console.error('[stealth-health] shipment booking failed:', err);

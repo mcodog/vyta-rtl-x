@@ -637,7 +637,13 @@ export async function sendFulfillmentEmail(
   db: SupabaseClient,
   actor: WarehouseAuth,
   invoiceId: string,
-  overrides: { subject?: string; to?: string; details?: ShipmentDetailsInput } = {},
+  overrides: {
+    subject?: string;
+    to?: string;
+    details?: ShipmentDetailsInput;
+    /** How the send came about, for the admin copy's banner (default: who sent it). */
+    trigger?: string;
+  } = {},
 ): Promise<{
   ok: boolean;
   message_id: string | null;
@@ -726,7 +732,11 @@ export async function sendFulfillmentEmail(
     );
     adminCopy = { sent: false, to: adminTo };
     if (adminTo.length > 0) {
-      const who = actor.actorEmail ? ` by ${actor.actorEmail}` : '';
+      const who = overrides.trigger
+        ? ` ${overrides.trigger}`
+        : actor.actorEmail
+          ? ` by ${actor.actorEmail}`
+          : '';
       const notice = `this shipped email was sent to ${to}${who}.`;
       try {
         await transport.sendMail({

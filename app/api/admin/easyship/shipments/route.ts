@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createEasyshipShipment } from '@/lib/easyship';
+import { createEasyshipShipment, getShippingConfig, parcelQuantity } from '@/lib/easyship';
+import { unitWeightKg } from '@/lib/shipping/auto-shipment';
 import type { EasyshipShipmentRequest } from '@/lib/types/ecommerce';
 
 const db = createClient(
@@ -49,16 +50,20 @@ export async function POST(req: NextRequest) {
 
   const dest = order.shipping_address ?? {};
 
-  const parcels = (order.order_items ?? []).map((item: any) => ({
-    description: item.name_snapshot ?? item.product_name ?? 'Product',
-    quantity: item.qty ?? item.quantity ?? 1,
-    actual_weight: 0.1,
-    height: 5,
-    width: 10,
-    length: 15,
-    declared_currency: 'CAD',
-    declared_customs_value: item.unit_price ?? item.price_at_time ?? 0,
-  }));
+  // One supplements parcel: the unit count at the per-unit weight, declared
+  // at 1 per unit, in the configured box (blank sides → 1 cm). Category and
+  // declared value are fixed by createEasyshipShipment.
+  const cfg = await getShippingConfig(db);
+  const parcels = [
+    {
+      quantity: parcelQuantity(order.order_items ?? []),
+      actual_weight: unitWeightKg(cfg),
+      length: cfg.box.length,
+      width: cfg.box.width,
+      height: cfg.box.height,
+      declared_currency: 'CAD',
+    },
+  ];
 
   const shipmentPayload: EasyshipShipmentRequest = {
     order_id,
