@@ -6,7 +6,7 @@ import {
   Settings as SettingsIcon, AlertCircle, AlertTriangle, Check, CreditCard, Send, Mail, Plus,
   Trash2, FileText, ChevronRight, MapPin, Users, ToggleRight, ToggleLeft,
   Truck, KeyRound, Bell, Clock, ShieldCheck, RefreshCw, Megaphone, Droplets,
-  ShoppingCart, BadgeCheck,
+  ShoppingCart, BadgeCheck, Copy, Webhook,
 } from 'lucide-react';
 import { supabase, type SiteSettings } from '@/lib/supabase';
 import { useToast } from '@/contexts/ToastContext';
@@ -17,6 +17,7 @@ import AddressAutocomplete, {
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import ToggleSwitch from '@/components/admin/ToggleSwitch';
 import { DEFAULT_FLAT_SHIPPING } from '@/lib/payments/puramass-settings';
+import { EASYSHIP_WEBHOOK_URL, EASYSHIP_WEBHOOK_EVENTS } from '@/lib/shipping/easyship-webhook';
 
 const INPUT =
   'px-4 py-2.5 bg-surface rounded-lg border border-line text-sm text-ink ' +
@@ -1054,6 +1055,41 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Webhook — the URL registered in Easyship. Fixed; nothing to save. */}
+        <div className="mb-4 rounded-lg border border-line bg-surface p-3">
+          <p className="text-xs font-medium text-ink-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <Webhook className="w-3.5 h-3.5" /> Easyship webhook
+          </p>
+          <p className="text-xs text-ink-muted mb-2">
+            Registered in Easyship → Connect → Webhooks. Label and tracking events update
+            the order and invoice and send the shipped email. The webhook&apos;s secret key
+            goes in the server&apos;s <span className="font-mono">EASYSHIP_WEBHOOK_SECRET</span>.
+          </p>
+          <div className="flex items-center gap-2">
+            <input type="text" readOnly value={EASYSHIP_WEBHOOK_URL}
+              onFocus={(e) => e.currentTarget.select()}
+              className={`flex-1 font-mono text-xs ${INPUT}`} />
+            <button type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(EASYSHIP_WEBHOOK_URL).then(
+                  () => toast.success('Webhook URL copied'),
+                  () => {},
+                );
+              }}
+              className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-line rounded-lg text-xs text-ink hover:border-teal/40">
+              <Copy className="w-3.5 h-3.5" /> Copy
+            </button>
+          </div>
+          <details className="mt-2">
+            <summary className="text-xs text-ink-muted cursor-pointer">
+              Subscribed events ({EASYSHIP_WEBHOOK_EVENTS.length})
+            </summary>
+            <ul className="mt-1 grid sm:grid-cols-2 gap-x-4 font-mono text-[11px] text-ink-muted">
+              {EASYSHIP_WEBHOOK_EVENTS.map((e) => <li key={e}>{e}</li>)}
+            </ul>
+          </details>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={handleSaveShipping} disabled={isReadOnly || saving}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:bg-ink/90 disabled:opacity-50">
@@ -1084,6 +1120,7 @@ export default function SettingsPage() {
               <DiagRow label="API token set" ok={diag.has_api_key} />
               <DiagRow label="Origin address complete" ok={diag.origin_complete} />
               <DiagRow label="EasyShip reachable" ok={diag.reachable} />
+              <DiagRow label="Webhook secret set" ok={diag.webhook_secret_set} />
             </ul>
             {Array.isArray(diag.errors) && diag.errors.length > 0 && (
               <div className="mt-3 pt-3 border-t border-current/20">

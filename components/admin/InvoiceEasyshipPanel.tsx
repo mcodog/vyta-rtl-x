@@ -52,7 +52,7 @@ function LabelChip({ state }: { state: string | null }) {
   const tone =
     state === 'generated'
       ? 'bg-emerald-500/10 text-emerald-700 border-emerald-200'
-      : state === 'failed'
+      : state === 'failed' || state === 'cancelled'
         ? 'bg-red-500/10 text-red-700 border-red-200'
         : state === 'pending'
           ? 'bg-amber-500/10 text-amber-700 border-amber-200'
@@ -62,6 +62,8 @@ function LabelChip({ state }: { state: string | null }) {
       ? 'Label ready'
       : state === 'failed'
         ? 'Label failed'
+        : state === 'cancelled'
+          ? 'Label cancelled'
         : state === 'pending'
           ? 'Label pending'
           : 'No label yet';
