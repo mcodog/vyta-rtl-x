@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
 <body><div class="page">
   <div class="top">
     <div>
-      <h1 class="logo">AMINO<span>CAN</span></h1>
+      <h1 class="logo">VYTA<span>BIO</span></h1>
       <div class="meta">${esc(title)} &bull; ${esc(statusLabel)} &bull; ${rows.length} ${rows.length === 1 ? 'entry' : 'entries'} &bull; ${fmtDate(new Date().toISOString())}</div>
     </div>
     <button class="print-btn" onclick="window.print()">Print</button>
