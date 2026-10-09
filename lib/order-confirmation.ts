@@ -716,3 +716,34 @@ export function confirmationSummariesByInvoice(
 ): Promise<Record<string, ConfirmationSummary>> {
   return summariesBy(db, 'invoice_id', invoiceIds);
 }
+
+// ---------------------------------------------------------------------------
+//  Shared with the packed / shipped emails
+// ---------------------------------------------------------------------------
+
+/**
+ * The order behind an invoice as the customer emails show it — lines (with
+ * images), ship-to, number, date, recipient and the "View Order Details"
+ * link — whether it's a storefront order, a Stealth Health hand-off or a
+ * manual invoice. Used by the packed / shipped emails (lib/warehouse/server.ts).
+ * `data` is null when no deliverable address is on file; `emails` says why.
+ */
+export async function loadOrderEmailForInvoice(
+  db: SupabaseClient,
+  invoiceId: string,
+): Promise<{ data: ConfirmationEmailData | null; emails: unknown[] } | null> {
+  const target = await resolveConfirmationTarget(db, { invoiceId });
+  if (!target) return null;
+
+  const loaded =
+    target.kind === 'storefront'
+      ? await loadStorefront(db, target.orderId)
+      : target.kind === 'stealth_health'
+        ? await loadStealthHealth(db, target.puramassOrderId)
+        : await loadManual(db, target.invoiceId);
+  if (!loaded) return null;
+  return {
+    data: loaded.data ? await enrichForEmail(db, loaded.data) : null,
+    emails: loaded.emails,
+  };
+}

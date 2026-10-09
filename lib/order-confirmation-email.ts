@@ -38,7 +38,7 @@ const GREEN = '#047857';
 
 const FONT = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
 
-function esc(s: unknown): string {
+export function esc(s: unknown): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -46,7 +46,7 @@ function esc(s: unknown): string {
     .replace(/"/g, '&quot;');
 }
 
-function money(n: number): string {
+export function money(n: number): string {
   const v = Number(n) || 0;
   const sign = v < 0 ? '-' : '';
   return `${sign}$${Math.abs(v).toFixed(2)}`;
@@ -66,7 +66,7 @@ export function formatOrderDate(value: string | undefined | null): string | null
   });
 }
 
-function packLabel(item: ConfirmationLine): string {
+export function packLabel(item: ConfirmationLine): string {
   if (item.unit === 'case') {
     const n = Number(item.vialsPerBox) > 0 ? Number(item.vialsPerBox) : 10;
     return `Pack of ${n}`;
@@ -75,7 +75,7 @@ function packLabel(item: ConfirmationLine): string {
   return '';
 }
 
-type IconName =
+export type IconName =
   | 'file-text-blue'
   | 'calendar-blue'
   | 'check-teal'
@@ -92,12 +92,12 @@ type IconName =
   | 'arrow-right-muted';
 
 /** One pre-rendered icon (see the header comment), shown at `px`. */
-function icon(site: string, name: IconName, px: number, alt = ''): string {
+export function icon(site: string, name: IconName, px: number, alt = ''): string {
   return `<img src="${site}/images/email/${name}.png" width="${px}" height="${px}" alt="${esc(alt)}" style="display: inline-block; width: ${px}px; height: ${px}px; border: 0; vertical-align: middle;">`;
 }
 
 /** An icon centred in a filled (or outlined) circle. */
-function iconCircle(
+export function iconCircle(
   content: string,
   opts: { bg?: string; size?: number; border?: string } = {},
 ): string {

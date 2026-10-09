@@ -42,7 +42,7 @@ export async function GET(
 }
 
 // POST /api/warehouse/queue/[id]/notify
-// body: { kind, subject?, body?, to? }
+// body: { kind, subject?, to? } — the body is the branded template.
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -55,7 +55,7 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden (no email permission)' }, { status: 403 });
   }
 
-  let body: { kind?: string; subject?: string; body?: string; to?: string };
+  let body: { kind?: string; subject?: string; to?: string };
   try {
     body = await req.json();
   } catch {
@@ -67,7 +67,6 @@ export async function POST(
 
   const result = await sendFulfillmentEmail(db, auth, params.id, body.kind as Kind, {
     subject: body.subject,
-    body: body.body,
     to: body.to,
   });
 

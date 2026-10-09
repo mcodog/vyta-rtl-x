@@ -243,7 +243,7 @@ export async function sendPackingList(
 export async function sendNotification(
   invoiceId: string,
   kind: 'packed' | 'shipped',
-  overrides?: { subject?: string; body?: string; to?: string },
+  overrides?: { subject?: string; to?: string },
 ): Promise<{
   ok: boolean;
   message_id: string | null;

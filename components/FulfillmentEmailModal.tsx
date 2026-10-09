@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Send, Loader2, RotateCcw, Mail, AlertCircle } from 'lucide-react';
+import { X, Send, Loader2, RotateCcw, Mail, AlertCircle, AlertTriangle } from 'lucide-react';
 import {
   previewNotification,
   sendNotification,
@@ -21,14 +21,12 @@ export interface FulfillmentEmailModalProps {
 }
 
 /**
- * Editable email composer shared by the warehouse queue detail pane and
- * the admin dashboard's FulfillmentAlerts banner. On open it fetches a
- * server-rendered preview of the default template (with merge-vars
- * resolved from the invoice) into three fields — To / Subject / Message —
- * which the sender can then edit before hitting Send.
- *
- * "Reset to default" restores whatever the server returned on open, so an
- * edit doesn't lose the resolved merge-vars.
+ * The manual "Notify packed" / "Notify shipped" sender shared by the warehouse
+ * queue detail pane and the admin dashboard's FulfillmentAlerts banner. On
+ * open it fetches the server-rendered branded email (lib/fulfillment-email.ts,
+ * filled from the invoice's order) and shows it exactly as the customer will
+ * see it. The sender can change the recipient and subject; the body is the
+ * template. Nothing is sent until they press Send.
  */
 export default function FulfillmentEmailModal({
   invoiceId,
@@ -43,7 +41,6 @@ export default function FulfillmentEmailModal({
   const [preview, setPreview] = useState<NotificationPreview | null>(null);
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -56,7 +53,6 @@ export default function FulfillmentEmailModal({
         setPreview(p);
         setTo(p.to ?? '');
         setSubject(p.subject ?? p.defaults.subject);
-        setBody(p.body ?? p.defaults.body);
       })
       .catch((e: any) => {
         if (cancelled) return;
@@ -68,16 +64,13 @@ export default function FulfillmentEmailModal({
 
   const heading = (() => {
     if (kind === 'packed') {
-      return fulfillmentType === 'pickup' ? 'Ready-for-pickup email' : 'Packed email';
+      return fulfillmentType === 'pickup' ? 'Ready-for-pickup email' : 'Order packed email';
     }
-    return fulfillmentType === 'pickup' ? 'Pickup confirmation' : 'Shipping notification';
+    return fulfillmentType === 'pickup' ? 'Pickup confirmation' : 'Order shipped email';
   })();
 
-  function resetToDefault() {
-    if (!preview) return;
-    setSubject(preview.defaults.subject);
-    setBody(preview.defaults.body);
-  }
+  const missingTracking =
+    kind === 'shipped' && fulfillmentType !== 'pickup' && !!preview && !preview.trackingNumber;
 
   async function handleSend() {
     setSending(true);
@@ -86,7 +79,6 @@ export default function FulfillmentEmailModal({
       const res = await sendNotification(invoiceId, kind, {
         to: to.trim() || undefined,
         subject: subject.trim() || undefined,
-        body,
       });
       if (!res.ok) {
         setError(res.error ?? 'Failed to send email');
@@ -104,7 +96,7 @@ export default function FulfillmentEmailModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl border border-line shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl border border-line shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
@@ -129,11 +121,21 @@ export default function FulfillmentEmailModal({
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
           </div>
         ) : (
-          <div className="px-5 py-4 space-y-3">
+          <div className="px-5 py-4 space-y-3 overflow-y-auto">
             {error && (
               <div className="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {missingTracking && (
+              <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>
+                  No tracking number on this order yet — the email will go out without one
+                  and without the Track Your Order button.
+                </span>
               </div>
             )}
 
@@ -150,14 +152,16 @@ export default function FulfillmentEmailModal({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-ink-muted">Subject</label>
-                <button
-                  type="button"
-                  onClick={resetToDefault}
-                  className="inline-flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink"
-                  title="Restore the default template"
-                >
-                  <RotateCcw className="w-3 h-3" /> Reset to default
-                </button>
+                {preview && subject !== preview.defaults.subject && (
+                  <button
+                    type="button"
+                    onClick={() => setSubject(preview.defaults.subject)}
+                    className="inline-flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink"
+                    title="Restore the default subject"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Reset to default
+                  </button>
+                )}
               </div>
               <input
                 type="text"
@@ -167,15 +171,17 @@ export default function FulfillmentEmailModal({
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1">Message</label>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={10}
-                className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-400/40 whitespace-pre-wrap font-mono"
-              />
-            </div>
+            {preview?.html && (
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1">Preview</label>
+                <iframe
+                  title="Email preview"
+                  srcDoc={preview.html}
+                  sandbox=""
+                  className="w-full h-[55vh] rounded-lg border border-line bg-[#EEF4F7]"
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -189,7 +195,7 @@ export default function FulfillmentEmailModal({
           </button>
           <button
             onClick={handleSend}
-            disabled={sending || loading || !to.trim() || !subject.trim()}
+            disabled={sending || loading || !preview || !to.trim() || !subject.trim()}
             className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:bg-ink/90 disabled:opacity-50"
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
