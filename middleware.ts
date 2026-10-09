@@ -47,7 +47,7 @@ function randomId(): string {
  *   1. mints the anonymous visitor + session ids the activity log is keyed by;
  *   2. records the first and last marketing touch (Google Ads gclid, Meta
  *      fbclid, UTM tagging, referring host) as cookies;
- *   3. keeps the existing affiliate `?ref=` capture;
+ *   3. keeps the affiliate `?ref=` capture (the latest link's code wins);
  *   4. remembers which off-site landing page (`?lp=`) sent the visitor, so its
  *      offer can be put into the checkout's discount field (lib/promos/landing.ts).
  *
@@ -77,13 +77,12 @@ export function middleware(req: NextRequest) {
     const clean = url.clone();
     clean.searchParams.delete('ref');
     response = NextResponse.redirect(clean);
-    // First referrer wins — never overwrite an existing affiliate cookie.
-    if (!req.cookies.get(REF_COOKIE)) {
-      response.cookies.set(REF_COOKIE, refCode!, {
-        ...COOKIE_BASE,
-        maxAge: REF_COOKIE_MAX_AGE,
-      });
-    }
+    // Latest referrer wins: a new ?ref= replaces whatever code was stored, and
+    // restarts its 30 days. The checkout shows this code in its affiliate field.
+    response.cookies.set(REF_COOKIE, refCode!, {
+      ...COOKIE_BASE,
+      maxAge: REF_COOKIE_MAX_AGE,
+    });
   } else {
     response = NextResponse.next();
   }
