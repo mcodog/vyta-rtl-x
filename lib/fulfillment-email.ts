@@ -235,10 +235,30 @@ function cta(site: string, data: FulfillmentEmailData): string {
   return '';
 }
 
-function detailRow(label: string, valueHtml: string, first = false): string {
+/**
+ * Carrier logos shown at the right of the Carrier row, as 96px PNGs in
+ * public/images/email/. UPS is the Simple Icons mark (CC0), recoloured to
+ * UPS brown and gold. To add another (e.g. Canada Post), drop its official
+ * logo in as carrier-<name>.png and list it here; carriers without one just
+ * show their name.
+ */
+const CARRIER_LOGOS: Array<{ match: RegExp; file: string; alt: string }> = [
+  { match: /\bups\b/i, file: 'carrier-ups.png', alt: 'UPS' },
+];
+
+function carrierLogo(site: string, carrier: string): string {
+  const hit = CARRIER_LOGOS.find((c) => c.match.test(carrier));
+  return hit
+    ? `<img src="${site}/images/email/${hit.file}" width="34" height="34" alt="${esc(hit.alt)}" style="display: inline-block; width: 34px; height: 34px; border: 0; vertical-align: middle;">`
+    : '';
+}
+
+function detailRow(label: string, valueHtml: string, first = false, asideHtml = ''): string {
+  const rule = first ? '' : `border-top: 1px solid ${LINE};`;
   return `<tr>
-      <td width="40%" valign="middle" style="padding: 13px 12px 13px 0; ${first ? '' : `border-top: 1px solid ${LINE};`} font-size: 14px; font-weight: 700; color: ${NAVY};">${label}</td>
-      <td valign="middle" style="padding: 13px 0; ${first ? '' : `border-top: 1px solid ${LINE};`} font-size: 14px; color: ${NAVY};">${valueHtml}</td>
+      <td class="dl-label" width="38%" valign="middle" style="padding: 13px 12px 13px 0; ${rule} font-size: 14px; font-weight: 700; color: ${NAVY};">${label}</td>
+      <td valign="middle" style="padding: 13px 0; ${rule} font-size: 14px; color: ${NAVY};">${valueHtml}</td>
+      <td class="dl-aside" width="44" align="right" valign="middle" style="width: 44px; padding: 6px 0; ${rule} line-height: 0;">${asideHtml || '&nbsp;'}</td>
     </tr>`;
 }
 
@@ -252,9 +272,21 @@ function orderCard(site: string, data: FulfillmentEmailData, copy: Copy): string
   if (data.kind === 'shipped' && data.fulfillmentType === 'shipment') {
     const t = data.tracking;
     if (t?.number) {
-      rows.push(detailRow('Tracking Number', `<span style="font-family: ${MONO}; font-weight: 600; word-break: break-all;">${esc(t.number)}</span>`, rows.length === 0));
+      // Email can't run a copy-to-clipboard script, so the number selects
+      // whole on one tap / click (where the client honours user-select) and the
+      // copy icon marks it as the thing to copy.
+      rows.push(
+        detailRow(
+          'Tracking Number',
+          `<span class="mono" style="font-family: ${MONO}; font-weight: 600; word-break: break-all; -webkit-user-select: all; user-select: all;">${esc(t.number)}</span>`,
+          rows.length === 0,
+          icon(site, 'copy-blue', 20, 'Copy'),
+        ),
+      );
     }
-    if (t?.carrier) rows.push(detailRow('Carrier', esc(t.carrier), rows.length === 0));
+    if (t?.carrier) {
+      rows.push(detailRow('Carrier', esc(t.carrier), rows.length === 0, carrierLogo(site, t.carrier)));
+    }
     const eta = formatDeliveryWindow(data.estimatedDelivery);
     if (eta) rows.push(detailRow('Estimated Delivery', esc(eta), rows.length === 0));
   }
@@ -388,6 +420,9 @@ export function renderFulfillmentEmailHtml(data: FulfillmentEmailData, siteUrl: 
     .card-pad { padding: 18px 16px !important; }
     .badge-cell { display: block !important; text-align: left !important; padding: 12px 0 0 !important; }
     .show-sm { display: block !important; }
+    .dl-label { width: 30% !important; padding-right: 8px !important; }
+    .dl-aside { width: 36px !important; }
+    .mono { font-size: 13px !important; }
     .thumb { width: 60px !important; padding-right: 10px !important; }
     .thumb img, .thumb td { width: 52px !important; height: 52px !important; }
   }

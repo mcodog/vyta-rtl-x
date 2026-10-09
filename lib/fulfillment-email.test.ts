@@ -106,3 +106,19 @@ test('shipped email shows the estimated delivery in the card, next steps and tex
   // Not on a packed email.
   assert.doesNotMatch(renderFulfillmentEmailHtml({ ...data, kind: 'packed' }, SITE), /Estimated Delivery/);
 });
+
+test('tracking row has a selectable number and copy icon; UPS shows its logo', () => {
+  const html = renderFulfillmentEmailHtml(shipped, SITE);
+  assert.match(html, /user-select: all;">1Z9VYTA1234567890</);
+  assert.match(html, /images\/email\/copy-blue\.png/);
+  assert.match(html, /images\/email\/carrier-ups\.png/);
+});
+
+test('carriers without a logo file show just their name', () => {
+  const html = renderFulfillmentEmailHtml(
+    { ...shipped, tracking: { number: '7023210039414604', carrier: 'Canada Post', url: null } },
+    SITE,
+  );
+  assert.match(html, /Canada Post/);
+  assert.doesNotMatch(html, /carrier-/);
+});
