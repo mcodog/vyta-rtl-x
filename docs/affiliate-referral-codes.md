@@ -153,7 +153,7 @@ request is open, and the last five decided rows.
 
 ## Integration points
 
-- **`middleware.ts`** captures `?ref=` first-touch. It now normalizes the
+- **`middleware.ts`** captures `?ref=`; a newer link's code replaces the stored one. It now normalizes the
   candidate and measures it against the shared validator. Left as `{8}`, every
   `AMCSMITH10` link silently drops its cookie and the affiliate is never
   credited, with no error anywhere.

@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
   @media print { body { padding: 0; } }
 </style></head>
 <body><div class="page">
-  <h1 class="logo">AMINO<span>CAN</span></h1>
+  <h1 class="logo">VYTA<span>BIO</span></h1>
   <div class="meta">Affiliate Report &bull; ${rows.length} affiliates &bull; ${fmtDate(new Date().toISOString())}</div>
   <table>
     <thead><tr><th>Affiliate</th><th>Referral Code</th><th class="num">Referrals</th><th class="num">Total Earned</th><th class="num">Pending</th><th>Status</th></tr></thead>
