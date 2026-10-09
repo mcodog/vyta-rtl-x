@@ -90,7 +90,8 @@ export type IconName =
   | 'canadian-maple-leaf-white'
   | 'arrow-right-white'
   | 'arrow-right-muted'
-  | 'copy-blue';
+  | 'copy-blue'
+  | 'coins-teal';
 
 /** One pre-rendered icon (see the header comment), shown at `px`. */
 export function icon(site: string, name: IconName, px: number, alt = ''): string {

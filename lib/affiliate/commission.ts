@@ -236,6 +236,8 @@ export interface RecordCommissionInput {
 interface DiscountCodeCredit {
   affiliateId: string;
   discountCodeId: string;
+  /** The code as stored. */
+  code: string | null;
   /** Percentage override on the code; null = the affiliate's own rate. */
   commissionRate: number | null;
 }
@@ -253,7 +255,7 @@ async function resolveDiscountCodeCredit(
   if (!discountCodeId) return null;
   const { data, error } = await db
     .from('discount_codes')
-    .select('id, affiliate_id, commission_rate')
+    .select('id, code, affiliate_id, commission_rate')
     .eq('id', discountCodeId)
     .maybeSingle();
   if (error || !data?.affiliate_id) return null;
@@ -262,12 +264,22 @@ async function resolveDiscountCodeCredit(
   return {
     affiliateId: data.affiliate_id,
     discountCodeId: data.id,
+    code: typeof data.code === 'string' && data.code ? data.code : null,
     commissionRate: rate != null && Number.isFinite(rate) ? rate : null,
   };
 }
 
 export type RecordCommissionResult =
-  | { recorded: true; commissionId: string; amount: number }
+  | {
+      recorded: true;
+      commissionId: string;
+      amount: number;
+      affiliateId: string;
+      /** The base the commission was worked out on (goods subtotal). */
+      orderTotal: number;
+      /** The code the sale came in on, as stored; null if none (bound customer, no live code). */
+      code: string | null;
+    }
   | { recorded: false; reason: 'no-attribution' | 'no-base' | 'already-recorded' | 'error' };
 
 /**
@@ -306,7 +318,7 @@ export async function recordAffiliateCommission(
 
     const codeCredit = await resolveDiscountCodeCredit(db, input.discountCodeId, customerId);
     const attribution = codeCredit
-      ? { affiliateId: codeCredit.affiliateId, referralCodeId: null, referralCode: null }
+      ? { affiliateId: codeCredit.affiliateId, referralCodeId: null, referralCode: codeCredit.code }
       : await resolveAffiliateAttribution(db, { customerId, referralCode });
     if (!attribution) return { recorded: false, reason: 'no-attribution' };
 
@@ -365,7 +377,14 @@ export async function recordAffiliateCommission(
       return { recorded: false, reason: 'error' };
     }
 
-    return { recorded: true, commissionId: commission.id, amount };
+    return {
+      recorded: true,
+      commissionId: commission.id,
+      amount,
+      affiliateId: attribution.affiliateId,
+      orderTotal: base,
+      code: attribution.referralCode ?? null,
+    };
   } catch (err) {
     console.error('[affiliate] recordAffiliateCommission threw:', err);
     return { recorded: false, reason: 'error' };

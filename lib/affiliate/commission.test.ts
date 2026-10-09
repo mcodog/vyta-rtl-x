@@ -250,6 +250,38 @@ test('the affiliate row is credited, with the code and a pending status', async 
   assert.equal(inserted[0].status, 'pending');
 });
 
+test('a booked commission reports who, what and which code — for the affiliate email', async () => {
+  const viaRef = paidSale();
+  const res = await recordAffiliateCommission(viaRef.db, {
+    invoiceId: 'inv-6',
+    subtotalCents: 25099,
+    referralCode: 'ref10',
+  });
+  assert.deepEqual(res, {
+    recorded: true,
+    commissionId: 'comm-1',
+    amount: 25.1,
+    affiliateId: 'aff-1',
+    orderTotal: 250.99,
+    code: 'REF10',
+  });
+
+  // A discount code typed at checkout is the code the sale came in on.
+  const viaCode = paidSale({
+    discountCode: { id: 'dc-1', code: 'ALWASSERBERGER', affiliate_id: 'aff-2', commission_rate: null },
+  });
+  const coded = await recordAffiliateCommission(viaCode.db, {
+    invoiceId: 'inv-7',
+    subtotalCents: 10000,
+    discountCodeId: 'dc-1',
+  });
+  assert.equal(coded.recorded, true);
+  if (coded.recorded) {
+    assert.equal(coded.affiliateId, 'aff-2');
+    assert.equal(coded.code, 'ALWASSERBERGER');
+  }
+});
+
 test('a percentage-stored rate pays the same as a fraction-stored one', async () => {
   const asFraction = paidSale({ affiliate: { commission_rate: 0.15 } });
   await recordAffiliateCommission(asFraction.db, {

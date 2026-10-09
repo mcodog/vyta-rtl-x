@@ -797,6 +797,10 @@ async function sendAdminAlert(db: SupabaseClient, ledgerId: string, firstPaid: b
  * Credit the affiliate for this sale. Best-effort: an uncredited commission is
  * a bookkeeping problem, while a thrown error would break a webhook ACK.
  * Guarded against double credit by a unique index on `commissions.invoice_id`.
+ *
+ * The pass that books the commission also emails the affiliate ("You earned a
+ * new commission") — only one pass ever books it, so the email goes out once.
+ * Imported lazily, like `sendConfirmation`.
  */
 async function creditAffiliate(
   db: SupabaseClient,
@@ -805,13 +809,26 @@ async function creditAffiliate(
   discountCodeId: string | null,
 ): Promise<void> {
   try {
-    await recordAffiliateCommission(db, {
+    const res = await recordAffiliateCommission(db, {
       invoiceId,
       subtotalCents: ledger.subtotal_cents ?? null,
       customerId: ledger.customer_id ?? null,
       referralCode: ledger.referral_code ?? null,
       discountCodeId,
     });
+    if (res.recorded) {
+      const { notifyAffiliateOfCommission } = await import('@/lib/affiliate/commission-email');
+      const sent = await notifyAffiliateOfCommission(db, {
+        affiliateId: res.affiliateId,
+        invoiceId,
+        amount: res.amount,
+        orderTotal: res.orderTotal,
+        code: res.code,
+      });
+      if (!sent.sent) {
+        console.error(`[stealth-health] affiliate commission email for ${invoiceId} not sent: ${sent.reason}`);
+      }
+    }
   } catch (err) {
     console.error('[stealth-health] affiliate commission failed:', err);
   }

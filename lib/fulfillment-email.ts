@@ -170,13 +170,13 @@ export function fulfillmentEmailSubject(data: FulfillmentEmailData): string {
 //  HTML
 // ---------------------------------------------------------------------------
 
-function cardTable(inner: string, opts: { bg?: string; marginTop?: number } = {}): string {
+export function cardTable(inner: string, opts: { bg?: string; marginTop?: number } = {}): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; margin-top: ${opts.marginTop ?? 16}px; background: ${opts.bg ?? '#FFFFFF'}; border: 1px solid ${LINE}; border-radius: 16px;">
               <tr><td class="card-pad" style="padding: 22px 24px;">${inner}</td></tr>
             </table>`;
 }
 
-function button(site: string, href: string, label: string): string {
+export function button(site: string, href: string, label: string): string {
   return `<a href="${esc(href)}" style="display: inline-block; padding: 15px 34px; border-radius: 999px; background: #12A9D6; background-image: linear-gradient(90deg, #22C1E0, ${BLUE}); color: #FFFFFF; font-size: 17px; font-weight: 700; text-decoration: none; white-space: nowrap;">${esc(label)}&nbsp;&nbsp;&nbsp;${icon(site, 'arrow-right-white', 18)}</a>`;
 }
 
@@ -215,10 +215,16 @@ function carrierLogo(site: string, carrier: string): string {
     : '';
 }
 
-function detailRow(label: string, valueHtml: string, first = false, asideHtml = ''): string {
+export function detailRow(
+  label: string,
+  valueHtml: string,
+  first = false,
+  asideHtml = '',
+  labelWidth = '38%',
+): string {
   const rule = first ? '' : `border-top: 1px solid ${LINE};`;
   return `<tr>
-      <td class="dl-label" width="38%" valign="middle" style="padding: 13px 12px 13px 0; ${rule} font-size: 14px; font-weight: 700; color: ${NAVY};">${label}</td>
+      <td class="dl-label" width="${labelWidth}" valign="middle" style="padding: 13px 12px 13px 0; ${rule} font-size: 14px; font-weight: 700; color: ${NAVY};">${label}</td>
       <td valign="middle" style="padding: 13px 0; ${rule} font-size: 14px; color: ${NAVY};">${valueHtml}</td>
       <td class="dl-aside" width="44" align="right" valign="middle" style="width: 44px; padding: 6px 0; ${rule} line-height: 0;">${asideHtml || '&nbsp;'}</td>
     </tr>`;
@@ -358,14 +364,28 @@ export interface FulfillmentEmailRenderOptions {
   notice?: string;
 }
 
-export function renderFulfillmentEmailHtml(
-  data: FulfillmentEmailData,
-  siteUrl: string,
-  options: FulfillmentEmailRenderOptions = {},
-): string {
+export interface VytaEmailShellOptions {
+  /** The document <title> (the subject). */
+  title: string;
+  /** Inbox preview text. */
+  preheader: string;
+  /** Admin-copy bar above the cover; see `FulfillmentEmailRenderOptions`. */
+  notice?: string;
+  /** Everything inside the white panel under the cover photo. */
+  body: string;
+  /** Cover photo in public/images/email/; defaults to shipped-hero.jpg. */
+  hero?: string;
+}
+
+/**
+ * The frame the shipped email is built in — the 640px column, the cover
+ * photo and the white rounded panel below it, plus the phone-width rules.
+ * Shared with the affiliate commission email
+ * (lib/affiliate-commission-email.ts), which uses the same mock.
+ */
+export function renderVytaEmailShell(siteUrl: string, opts: VytaEmailShellOptions): string {
   const site = siteUrl.replace(/\/$/, '');
-  const copy = copyFor(data);
-  const hero = `${site}/images/email/shipped-hero.jpg`;
+  const hero = `${site}/images/email/${opts.hero ?? 'shipped-hero.jpg'}`;
 
   return `<!doctype html>
 <html lang="en">
@@ -373,7 +393,7 @@ export function renderFulfillmentEmailHtml(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light only">
-<title>${esc(copy.subject)}</title>
+<title>${esc(opts.title)}</title>
 <style>
   @media only screen and (max-width: 600px) {
     .stack { display: block !important; width: 100% !important; box-sizing: border-box !important; }
@@ -393,19 +413,19 @@ export function renderFulfillmentEmailHtml(
 </style>
 </head>
 <body style="margin: 0; padding: 0; background: ${PAGE};">
-<div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">${esc(copy.preheader)}</div>
+<div style="display: none; max-height: 0; overflow: hidden; opacity: 0; color: transparent;">${esc(opts.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; background: ${PAGE};">
   <tr>
     <td align="center" style="padding: 28px 10px; font-family: ${FONT};">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 640px; border-collapse: separate;">
 
 ${
-  options.notice
+  opts.notice
     ? `        <!-- Admin notice -->
         <tr>
           <td style="padding: 0 0 12px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: separate; background: #FFF7E6; border: 1px solid #F3D49B; border-radius: 12px;">
-              <tr><td style="padding: 12px 16px; font-size: 13px; line-height: 19px; color: #7A4B00;"><strong>Admin copy</strong> — ${esc(options.notice)}</td></tr>
+              <tr><td style="padding: 12px 16px; font-size: 13px; line-height: 19px; color: #7A4B00;"><strong>Admin copy</strong> — ${esc(opts.notice)}</td></tr>
             </table>
           </td>
         </tr>
@@ -421,7 +441,29 @@ ${
         <!-- Body -->
         <tr>
           <td class="body-pad" style="background: #FFFFFF; border-radius: 0 0 20px 20px; padding: 28px 28px 24px;">
-            <h1 class="title" style="margin: 0; text-align: center; font-size: 34px; line-height: 40px; font-weight: 800; letter-spacing: -0.01em; color: ${NAVY};">${esc(copy.title)}</h1>
+${opts.body}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+}
+
+export function renderFulfillmentEmailHtml(
+  data: FulfillmentEmailData,
+  siteUrl: string,
+  options: FulfillmentEmailRenderOptions = {},
+): string {
+  const site = siteUrl.replace(/\/$/, '');
+  const copy = copyFor(data);
+  return renderVytaEmailShell(site, {
+    title: copy.subject,
+    preheader: copy.preheader,
+    notice: options.notice,
+    body: `            <h1 class="title" style="margin: 0; text-align: center; font-size: 34px; line-height: 40px; font-weight: 800; letter-spacing: -0.01em; color: ${NAVY};">${esc(copy.title)}</h1>
             <p style="margin: 14px auto 0; max-width: 520px; text-align: center; font-size: 16px; line-height: 25px; color: #34495A;">
               ${esc(greet(data.customerName, copy.intro))}
             </p>
@@ -431,15 +473,8 @@ ${
             ${itemsCard(site, data, copy)}
             ${addressCard(site, data)}
             ${nextSteps(site, copy)}
-            ${footer(site)}
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-</body>
-</html>`;
+            ${footer(site)}`,
+  });
 }
 
 // ---------------------------------------------------------------------------
